@@ -41,6 +41,7 @@ spikes:
 | R0.3 | linear sRGB <-> XYZ D65 | PASS |
 | R0.4 | XYZ D65 <-> Oklab | PASS |
 | R0.5 | Oklab <-> OKLCH and hue semantics | PASS |
+| R0.6 | Alpha, premultiplied alpha and linear-light source-over | PASS |
 
 The currently validated computational chain is:
 
