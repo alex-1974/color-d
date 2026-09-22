@@ -1,0 +1,14 @@
+.dub/
+dub.selections.json
+*.a
+*.o
+*.obj
+*.lib
+*.exe
+*.so
+*.dll
+*.dylib
+color-d-test-library
+
+# Experiment executables
+experiments/*/color-d-*

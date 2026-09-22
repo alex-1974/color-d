@@ -1,0 +1,7 @@
+name "color-d-r0-1-type-model-ctfe"
+description "color-d R0.1 architecture spike: type model, layout, alpha and CTFE"
+authors "Alexander"
+license "BSL-1.0"
+
+targetType "executable"
+sourcePaths "source"
