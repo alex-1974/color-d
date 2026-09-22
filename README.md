@@ -75,6 +75,7 @@ In particular:
 
 - [`R0.4 XYZ D65 / Oklab results`](experiments/r0_4_xyz_oklab/RESULTS.md)
 - [`R0.5 OKLCH / hue semantics results`](experiments/r0_5_oklch_semantics/RESULTS.md)
+- [`R0.6 alpha / compositing results`](experiments/r0_6_alpha_semantics/RESULTS.md)
 
 ## Workspace role
 
