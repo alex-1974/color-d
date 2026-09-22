@@ -1,0 +1,7 @@
+name "color-d-r0-6-alpha-semantics"
+description "color-d R0.6: alpha, premultiplied alpha and source-over semantics"
+authors "Alexander"
+license "MIT"
+
+targetType "executable"
+sourcePaths "source"
