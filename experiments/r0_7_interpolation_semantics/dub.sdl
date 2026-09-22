@@ -1,0 +1,6 @@
+name "color-d-r0-7-interpolation-semantics"
+description "color-d R0.7: interpolation and hue-path semantics"
+authors "Alexander"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
