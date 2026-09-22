@@ -42,6 +42,7 @@ spikes:
 | R0.4 | XYZ D65 <-> Oklab | PASS |
 | R0.5 | Oklab <-> OKLCH and hue semantics | PASS |
 | R0.6 | Alpha, premultiplied alpha and linear-light source-over | PASS |
+| R0.7 | Interpolation and OKLCH hue-path semantics | PASS |
 
 The currently validated computational chain is:
 
@@ -76,6 +77,7 @@ In particular:
 - [`R0.4 XYZ D65 / Oklab results`](experiments/r0_4_xyz_oklab/RESULTS.md)
 - [`R0.5 OKLCH / hue semantics results`](experiments/r0_5_oklch_semantics/RESULTS.md)
 - [`R0.6 alpha / compositing results`](experiments/r0_6_alpha_semantics/RESULTS.md)
+- [`R0.7 interpolation results`](experiments/r0_7_interpolation_semantics/RESULTS.md)
 
 ## Workspace role
 
