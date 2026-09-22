@@ -1,0 +1,7 @@
+name "color-d-r0-4-xyz-oklab"
+description "color-d R0.4: XYZ D65 <-> Oklab"
+authors "Alexander"
+license "BSL-1.0"
+
+targetType "executable"
+sourcePaths "source"
