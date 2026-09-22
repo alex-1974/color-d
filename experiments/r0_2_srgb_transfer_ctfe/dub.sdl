@@ -1,7 +1,7 @@
 name "color-d-r0-2-srgb-transfer-ctfe"
 description "color-d R0.2: sRGB transfer functions, extended range and CTFE"
 authors "Alexander"
-license "BSL-1.0"
+license "MIT"
 
 targetType "executable"
 sourcePaths "source"

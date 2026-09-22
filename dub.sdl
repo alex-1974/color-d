@@ -1,7 +1,7 @@
 name "color-d"
 description "Type-safe modern color mathematics library for D"
 authors "Alexander"
-license "BSL-1.0"
+license "MIT"
 
 targetType "library"
 
