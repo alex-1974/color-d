@@ -626,30 +626,113 @@ CIELAB-based Delta-E variants may be added when CIELAB support becomes a concret
 
 # 18. Gamut mapping
 
-Gamut mapping is a policy layer separate from conversion.
+Gamut membership, clipping and perceptual gamut mapping are distinct
+operations.
 
-Initial architecture should allow multiple strategies:
+Ordinary color-space conversion must not implicitly clip or gamut-map
+extended values.
+
+The initial concrete target gamut is sRGB.
+
+## 18.1 Gamut membership
+
+Strict gamut membership is a diagnostic query.
+
+For the initial sRGB target, encoded sRGB and linear sRGB use the same
+component-domain membership condition:
+
+```text
+0 <= r <= 1
+0 <= g <= 1
+0 <= b <= 1
+```
+
+A numerical tolerance around the boundary is a separate numerical-policy
+concern. It must not redefine the geometric gamut.
+
+Non-finite values are not considered in gamut and are not silently repaired.
+
+## 18.2 Clipping
+
+Hard component clipping is an explicit target-space operation.
+
+It is distinct from perceptual gamut mapping and therefore must not be a
+`GamutMapMethod` variant.
+
+Clipping may alter hue and perceived color, but remains useful where the
+caller explicitly requests hard target-coordinate saturation.
+
+## 18.3 Perceptual gamut mapping
+
+The architecture shall allow multiple explicit perceptual mapping methods.
+
+The initial validated candidates are:
 
 ```d
 enum GamutMapMethod
 {
     // names provisional
-    clip,
-    cssRayTrace,
-    ...
+    localMinde,
+    rayTrace
 }
 ```
 
-A modern OKLCH-based strategy should be investigated first.
+No public default mapping method is frozen at this stage.
 
-The current preferred research candidate is the CSS Color 4 ray-trace gamut-mapping method because it offers:
+### Local MINDE
 
-- perceptual behavior;
-- constant-lightness/hue-oriented mapping;
-- predictable runtime;
-- no external lookup table requirement.
+Local MINDE remains the standards-oriented / perceptual reference candidate.
 
-The strategy must remain replaceable and must not become implicit behavior of ordinary conversions.
+R0.8 observed:
+
+- adaptive iterative search;
+- useful perceptual/reference behavior;
+- substantially higher dynamic cost than Ray Trace on the measured system.
+
+### Ray Trace
+
+Ray Trace remains the bounded-cost / performance-oriented candidate.
+
+R0.8 observed:
+
+- a fixed small iteration budget;
+- substantially fewer dynamic instructions and branches than Local MINDE;
+- predictable bounded work;
+- no requirement for an external lookup table.
+
+The validated optimized implementation can avoid repeated `atan2` in the
+iterative projection path.
+
+The RGB-cube intersection helper is also a justified explicit-inline
+candidate based on timing, hardware-counter and generated-code evidence.
+
+These performance results are implementation evidence from the measured
+x86-64/LDC system, not universal cross-platform guarantees.
+
+## 18.4 Fast-path and alpha semantics
+
+Already in-gamut colors shall take the identity / fast path and must not enter
+the iterative mapping process.
+
+Per-color gamut mapping transforms color coordinates, not alpha. Alpha is
+preserved.
+
+A premultiplied compositing representation must not be interpreted directly
+as ordinary RGB coordinates for gamut mapping.
+
+## 18.5 Policy boundary
+
+The mapping method should remain explicit wherever policy matters until
+consumer evidence establishes whether a default is desirable.
+
+EdgeSeeker remains deferred.
+
+Per-color scalar gamut mapping in `color-d` is not a complete photographic
+rendering intent. Image-wide rendering, spatial adaptation and raster-wide
+policy remain consumer responsibilities, primarily in `imagery-d`.
+
+The strategy must remain replaceable and must never become implicit behavior
+of ordinary conversions.
 
 ---
 
@@ -1294,7 +1377,8 @@ deltaEOK
 inGamut
 clip
 
-first perceptual gamut-mapping implementation
+explicit perceptual gamut mapping
+with Local MINDE and Ray Trace as validated initial candidates
 
 OKLCH tone-scale generation
 
@@ -1385,7 +1469,7 @@ Before freezing a public v0.1 API, perform a focused architecture/prototype phas
 9. compile-time tone generation;
 10. compile-time theme generation;
 11. compile-time theme validation;
-12. initial gamut-mapping prototype;
+12. promotion of validated gamut semantics and initial mapping candidates;
 13. comparison against standards/reference vectors;
 14. basic performance and generated-code inspection.
 

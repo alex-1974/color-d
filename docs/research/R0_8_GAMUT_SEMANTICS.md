@@ -1,8 +1,8 @@
 # R0.8 Research — Gamut Detection, Clipping and Mapping Semantics
 
-**Project:** `color-d`  
-**Status:** Research / pre-experiment design  
-**Date:** 2026-09-22  
+**Project:** `color-d`
+**Status:** Research / pre-experiment design
+**Date:** 2026-09-22
 **Branch:** `research/r0_8-gamut-semantics`
 
 ## 1. Purpose
