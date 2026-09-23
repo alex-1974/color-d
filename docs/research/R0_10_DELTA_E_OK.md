@@ -1,6 +1,6 @@
 # R0.10 — DeltaEOK semantics and reference coverage
 
-**Status:** VALIDATED / PENDING INTEGRATION
+**Status:** COMPLETE
 **Issue:** https://github.com/alex-1974/color-d/issues/6
 
 This document is the durable repository-side research contract for R0.10.
@@ -516,8 +516,9 @@ Phobos three-argument hypot for finite values
 
 No public API is frozen by R0.10.
 
-The research result is validated; repository integration and higher-level
-documentation updates remain before R0.10 is fully closed.
+The research result is validated and repository integration is complete.
+
+Public API promotion remains an R1 task.
 
 ---
 
