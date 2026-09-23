@@ -1,7 +1,7 @@
 # R0.9 Results — Relative Luminance and Contrast Semantics
 
-**Status:** PASS  
-**Date:** 2026-09-23  
+**Status:** PASS
+**Date:** 2026-09-23
 **Branch:** `research/r0_9-luminance-contrast`
 
 ## 1. Scope
