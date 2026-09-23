@@ -221,3 +221,236 @@ Candidate D is expected to demonstrate that anchoring is separate policy and
 must not be smuggled into ordinary raw scale generation.
 
 `RESULTS.md` will be created only after observed compiler runs.
+
+---
+
+# R0.11-B — Schedule semantics
+
+R0.11-A established that the scalar mathematical operation is conceptually:
+
+```d
+withLightness(color, L)
+```
+
+and that a raw tone collection can be obtained mechanically by applying that
+operation over a sequence of requested lightness values.
+
+R0.11-B therefore studies the sequence itself.
+
+It does not revisit the R0.11-A primitive decomposition.
+
+## B1 — Explicit positions
+
+Caller-supplied lightness positions have no implicit spacing algorithm.
+
+Examples:
+
+```text
+[]
+[0.5]
+[0.2, 0.8]
+[0.95, 0.80, 0.60, 0.35, 0.10]
+```
+
+The experiment tests whether:
+
+- an empty explicit schedule is representable;
+- a single explicit position is unambiguous;
+- arbitrary ascending and descending explicit schedules remain ordinary data.
+
+For explicit positions:
+
+```text
+N == 0
+```
+
+means no requested tones.
+
+For:
+
+```text
+N == 1
+```
+
+the one supplied lightness already specifies the result.
+
+No midpoint/start/end policy is required.
+
+## B2 — Generated inclusive linear schedule
+
+A generated interval is different.
+
+Conceptually:
+
+```text
+linearSchedule(start, end, N)
+```
+
+normally implies that both endpoints participate.
+
+For:
+
+```text
+N >= 2
+```
+
+the inclusive interpretation is unambiguous:
+
+```text
+result[0]     = start
+result[N - 1] = end
+```
+
+with interior samples between them.
+
+For:
+
+```text
+N == 1
+```
+
+several plausible results exist:
+
+```text
+[start]
+[midpoint]
+[end]
+```
+
+None follows uniquely from the phrase "inclusive linear schedule".
+
+R0.11-B therefore compares explicit singleton policies rather than silently
+choosing one.
+
+The principal hypothesis is that a generic inclusive endpoint schedule should
+require:
+
+```text
+N >= 2
+```
+
+while explicit caller-supplied positions naturally handle zero and one item.
+
+## B3 — Direct-difference formula
+
+The straightforward formula is:
+
+```text
+start + (end - start) * t
+```
+
+This is algebraically correct over real numbers.
+
+For floating-point values, however:
+
+```text
+end - start
+```
+
+may overflow even when:
+
+- `start` is finite;
+- `end` is finite;
+- the mathematically interpolated value is finite.
+
+R0.11-B tests this with large finite endpoints of opposite sign.
+
+## B4 — Weighted-endpoint formula
+
+A second candidate is:
+
+```text
+(1 - t) * start + t * end
+```
+
+For the large opposite-sign probe this avoids forming the potentially
+overflowing full endpoint difference.
+
+The experiment does not assume that this formula solves every floating-point
+interpolation problem.
+
+It tests whether it is a better candidate for the concrete lightness-schedule
+requirements observed here.
+
+## B5 — Endpoint preservation
+
+Regardless of the interior formula, an inclusive schedule should preserve
+requested endpoints exactly where possible:
+
+```text
+result[0]     == start
+result[N - 1] == end
+```
+
+The research implementation therefore writes the endpoints explicitly and
+uses interpolation only for interior elements.
+
+This avoids making exact endpoint preservation depend on arithmetic rounding.
+
+## B6 — Direction
+
+A linear schedule must support both:
+
+```text
+start < end
+```
+
+and:
+
+```text
+start > end
+```
+
+without a separate algorithm.
+
+The experiment validates:
+
+- nondecreasing ascending schedules;
+- nonincreasing descending schedules.
+
+## B7 — Extended finite endpoints
+
+The raw mathematical schedule is not initially restricted to:
+
+```text
+0 <= L <= 1
+```
+
+R0.11-B tests finite extended endpoints separately from later display/gamut
+policy.
+
+This does not yet establish the final public-domain contract.
+
+## B8 — Composition with R0.11-A
+
+A generated lightness schedule remains separate from color generation:
+
+```text
+linear L schedule
+       ↓
+tonesByLightness(color, schedule)
+```
+
+R0.11-B tests this composition explicitly.
+
+No chroma shaping or gamut mapping is introduced.
+
+## B9 — Questions
+
+R0.11-B asks:
+
+1. Can explicit schedules represent zero positions?
+2. Is one explicit caller-supplied position already unambiguous?
+3. Should an inclusive generated endpoint schedule require `N >= 2`?
+4. Do start/midpoint/end singleton policies produce observably different
+   answers?
+5. Does the direct-difference interpolation formula lose finite-range
+   robustness?
+6. Does the weighted-endpoint form avoid that concrete failure?
+7. Can exact endpoints be guaranteed independently from the interior formula?
+8. Are ascending and descending schedules both monotonic?
+9. Can finite extended endpoints remain mathematical inputs?
+10. Does the resulting schedule compose mechanically with the validated
+    R0.11-A `withLightness` model?
+
+Observed R0.11-B results are recorded in `RESULTS.md` only after the compiler matrix was executed.

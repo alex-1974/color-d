@@ -1,8 +1,8 @@
-# R0.11-A results — primitive decomposition
+# R0.11 results — OKLCH tone-scale research
 
-**Status:** VALIDATED
+**Status:** R0.11-A/B VALIDATED — R0.11 IN PROGRESS
 **Research block:** R0.11 — OKLCH tone-scale generation
-**Phase:** R0.11-A — primitive decomposition
+**Validated phases:** R0.11-A — primitive decomposition; R0.11-B — schedule semantics
 
 This file records observed results.
 
@@ -753,5 +753,653 @@ found no additional color mathematics in that layer.
 
 Exact base anchoring is a separate, potentially conflicting policy and must
 remain explicit.
+
+R0.11 remains in progress.
+
+---
+
+## R0.11-B results — schedule semantics
+
+**Status:** VALIDATED
+**Phase:** R0.11-B — schedule semantics
+
+R0.11-B studied the lightness schedule itself after R0.11-A established that
+raw tone construction decomposes into:
+
+```text
+withLightness(color, L)
+```
+
+applied over a sequence of requested lightness values.
+
+No public API is established by these results.
+
+### B.1 Observed compiler matrix
+
+The final R0.11-B candidate was executed under:
+
+```text
+DMD 2.111.0  Debug
+DMD 2.111.0  Release
+LDC 1.41.0   Debug
+LDC 1.41.0   Release
+```
+
+Each configuration executed the complete R0.11-A and R0.11-B runtime suite:
+
+```text
+82 PASS
+0 FAIL
+```
+
+Therefore the observed final matrix totals:
+
+```text
+4 configurations
+82 runtime checks per configuration
+
+328 PASS
+0 FAIL
+```
+
+The compile-time probes also compiled successfully in all four configurations.
+
+Observed matrix:
+
+| Compiler | Build | Result |
+|---|---|---:|
+| DMD 2.111.0 | Debug | 82/82 PASS |
+| DMD 2.111.0 | Release | 82/82 PASS |
+| LDC 1.41.0 | Debug | 82/82 PASS |
+| LDC 1.41.0 | Release | 82/82 PASS |
+
+No final hybrid-property disagreement was observed between compiler families or
+build modes.
+
+### B.2 Explicit schedules
+
+Caller-supplied positions were tested independently from generated intervals.
+
+Observed:
+
+```text
+N == 0
+```
+
+is naturally representable as an empty explicit position sequence and produces
+an empty tone collection.
+
+Observed:
+
+```text
+N == 1
+```
+
+is also unambiguous when the caller supplies the position explicitly.
+
+For example:
+
+```text
+[0.42]
+```
+
+means exactly one requested tone at:
+
+```text
+L = 0.42
+```
+
+No endpoint or midpoint policy is involved.
+
+### B.3 Generated inclusive intervals
+
+A generated inclusive endpoint schedule has different semantics.
+
+For:
+
+```text
+N == 2
+```
+
+the observed and intended result is exactly:
+
+```text
+[start, end]
+```
+
+The experiment explicitly constrains the generated inclusive schedule
+candidates to:
+
+```text
+N >= 2
+```
+
+Compile-time probes confirm that the weighted generated candidate:
+
+```text
+N == 0  -> does not compile
+N == 1  -> does not compile
+N == 2  -> compiles
+```
+
+This is deliberate experiment semantics rather than a D language limitation.
+
+### B.4 Singleton ambiguity
+
+R0.11-B compared three explicit interpretations for a generated interval with:
+
+```text
+N == 1
+```
+
+namely:
+
+```text
+[start]
+[midpoint]
+[end]
+```
+
+For the probe interval:
+
+```text
+start = 0.20
+end   = 0.80
+```
+
+the three policies produce distinct values.
+
+Therefore the phrase:
+
+```text
+inclusive linear schedule from start to end with one sample
+```
+
+does not identify one unique mathematical result.
+
+R0.11-B consequently supports keeping generic generated inclusive endpoint
+schedules constrained to:
+
+```text
+N >= 2
+```
+
+rather than silently selecting a singleton policy.
+
+Explicit caller-supplied schedules remain free to contain one value.
+
+### B.5 Ascending and descending schedules
+
+Generated schedules were tested in both directions.
+
+Observed:
+
+```text
+0.10 -> 0.90
+```
+
+is nondecreasing and preserves both endpoints exactly.
+
+Observed:
+
+```text
+0.90 -> 0.10
+```
+
+is nonincreasing and preserves both endpoints exactly.
+
+No separate ascending and descending generation algorithms are required.
+
+### B.6 Finite extended lightness
+
+The raw schedule layer was tested with:
+
+```text
+start = -0.50
+end   =  1.50
+```
+
+The generated values remained ordinary finite mathematical values and preserved
+the expected order and endpoints.
+
+R0.11-B therefore found no mathematical reason for the raw schedule generator
+itself to clamp lightness to:
+
+```text
+[0, 1]
+```
+
+This does not establish the final public non-finite or domain contract.
+
+NaN and infinity remain later R0.11 questions.
+
+### B.7 Direct-difference interpolation candidate
+
+The straightforward interior formula was:
+
+```text
+start + (end - start) * t
+```
+
+For ordinary ranges it behaves as expected.
+
+However, R0.11-B deliberately tested finite opposite-sign endpoints:
+
+```text
+start =  0.75 * T.max
+end   = -0.75 * T.max
+```
+
+Both endpoints are finite.
+
+Their full difference is not representable in the same scalar type.
+
+For:
+
+```text
+t = 0.5
+```
+
+the mathematically expected result is:
+
+```text
+0
+```
+
+Observed in every tested compiler/build/scalar combination:
+
+```text
+direct-difference formula loses finite midpoint
+```
+
+The direct-difference expression therefore does not satisfy the desired
+finite-range property for the complete finite endpoint domain.
+
+### B.8 Weighted-endpoint interpolation candidate
+
+The second candidate was:
+
+```text
+(1 - t) * start + t * end
+```
+
+For the large opposite-sign probe it avoided formation of the overflowing full
+difference.
+
+Observed in every tested configuration:
+
+```text
+weighted midpoint is finite
+weighted symmetric midpoint == 0
+exact externally assigned endpoints are preserved
+```
+
+This resolves the concrete opposite-sign range failure of the direct formula.
+
+However, R0.11-B also tested equal large endpoints.
+
+For:
+
+```text
+start == end
+```
+
+a mathematically constant schedule should contain exactly that value at every
+position.
+
+The weighted candidate was observed as:
+
+```text
+weighted equal-endpoint exact: NO
+```
+
+for every tested combination:
+
+```text
+DMD Debug    float   NO
+DMD Debug    double  NO
+
+DMD Release  float   NO
+DMD Release  double  NO
+
+LDC Debug    float   NO
+LDC Debug    double  NO
+
+LDC Release  float   NO
+LDC Release  double  NO
+```
+
+Therefore the pure weighted formula is not accepted as the general
+R0.11-B schedule-interpolation candidate.
+
+Its weakness was repeatable across the complete historical compiler matrix.
+
+### B.9 Hybrid candidate
+
+The final phase-B candidate chooses the arithmetic form according to endpoint
+signs.
+
+Conceptually:
+
+```text
+strictly opposite signs
+    -> weighted-endpoint expression
+
+otherwise
+    -> direct-difference expression
+```
+
+The experimental scalar operation is equivalent to:
+
+```text
+if start and end have strictly opposite signs:
+    (1 - t) * start + t * end
+else:
+    start + (end - start) * t
+```
+
+The generated schedule writes:
+
+```text
+result[0]     = start
+result[N - 1] = end
+```
+
+explicitly and applies the interpolation expression only to interior samples.
+
+This separates exact endpoint preservation from interior floating-point
+arithmetic.
+
+### B.10 Equal-endpoint property
+
+For equal large endpoints, the direct and hybrid candidates were tested over an
+11-element generated schedule.
+
+Observed in all tested configurations:
+
+```text
+direct formula preserves equal-endpoint constant schedule
+hybrid formula preserves equal-endpoint constant schedule
+```
+
+while the pure weighted candidate produced the separate observation:
+
+```text
+weighted equal-endpoint exact: NO
+```
+
+The hybrid candidate therefore retains the useful exact constant-schedule
+property of the direct form.
+
+### B.11 Same-sign large endpoints
+
+The hybrid candidate was tested with large same-sign finite endpoints:
+
+```text
+start = 0.75 * T.max
+end   = 0.50 * T.max
+```
+
+Observed:
+
+```text
+all tested interior values remain finite
+schedule remains nonincreasing
+```
+
+Because the endpoints have the same sign, the direct-difference branch does not
+form the large opposite-sign span that caused the earlier overflow failure.
+
+### B.12 Opposite-sign large endpoints
+
+The hybrid candidate was also retested with:
+
+```text
+start =  0.75 * T.max
+end   = -0.75 * T.max
+```
+
+Observed in every configuration and scalar type:
+
+```text
+midpoint remains finite
+symmetric midpoint == 0 exactly
+endpoints remain exact
+```
+
+Thus the hybrid candidate retains the finite-range advantage of the weighted
+expression where that advantage is required.
+
+### B.13 Representative finite-domain property sweep
+
+The final experiment used this deterministic endpoint set for each scalar type:
+
+```text
+-0.75 * T.max
+-2
+-1
+-T.min_normal
+-0.0
+ 0
+ T.min_normal
+ 0.25
+ 1
+ 2
+ 0.75 * T.max
+```
+
+This produces:
+
+```text
+11 * 11 = 121
+```
+
+ordered endpoint pairs.
+
+For every pair, the hybrid candidate generated:
+
+```text
+17
+```
+
+samples.
+
+Therefore the representative sweep generated:
+
+```text
+121 * 17 = 2057
+```
+
+schedule values per scalar type and compiler/build configuration.
+
+Across:
+
+```text
+2 scalar types
+4 compiler/build configurations
+```
+
+the final matrix exercised:
+
+```text
+16,456
+```
+
+representative generated schedule values in this sweep.
+
+This number describes generated values, not independent test assertions.
+
+### B.14 Sweep properties
+
+For every representative endpoint pair, the experiment checked:
+
+```text
+finite output
+monotonicity in the endpoint direction
+boundedness within the closed endpoint interval
+exact first endpoint
+exact last endpoint
+exact constant schedule when start == end
+```
+
+Observed for both `float` and `double`, under all four configurations:
+
+```text
+PASS  hybrid representative sweep remains finite
+PASS  hybrid representative sweep remains monotonic
+PASS  hybrid representative sweep remains within endpoints
+PASS  hybrid representative sweep preserves exact endpoints
+PASS  hybrid representative equal endpoints remain exact
+```
+
+No counterexample was found in the representative sweep.
+
+This is strong empirical evidence for the tested domain.
+
+It is not a formal proof over every finite IEEE-754 value.
+
+### B.15 Composition with R0.11-A
+
+R0.11-B keeps schedule generation separate from color manipulation.
+
+The experiment composes:
+
+```text
+generated lightness schedule
+            ↓
+tonesByLightness(seed, schedule)
+            ↓
+repeated withLightness(seed, L)
+```
+
+Observed:
+
+```text
+generated schedule composes mechanically with phase A
+```
+
+while preserving:
+
+```text
+the generated L schedule
+seed chroma
+seed hue
+```
+
+No extra color mathematics is introduced by the schedule layer.
+
+### B.16 Current architectural decomposition
+
+After R0.11-A and R0.11-B, the current research decomposition is:
+
+```text
+scalar OKLCH operation
+    withLightness(color, L)
+
+        ↓
+
+lightness positions
+
+    caller-supplied:
+        N = 0, 1, 2, ...
+
+    or generated inclusive interval:
+        N >= 2
+
+        ↓
+
+robust finite interior schedule arithmetic
+
+    same-sign / equal:
+        direct-difference form
+
+    strictly opposite-sign:
+        weighted-endpoint form
+
+        ↓
+
+raw tone collection
+```
+
+This is a decomposition result, not a frozen public API.
+
+### B.17 Phase-B decisions
+
+R0.11-B supports the following research decisions.
+
+Accepted:
+
+1. Caller-supplied explicit positions naturally support `N == 0`.
+2. Caller-supplied explicit positions naturally support `N == 1`.
+3. A generic generated inclusive endpoint schedule should require `N >= 2`
+   unless a separate singleton policy is explicitly requested.
+4. Ascending and descending schedules use the same abstraction.
+5. Exact generated endpoints should be assigned explicitly.
+6. Raw finite lightness schedules need not be restricted to `[0,1]`.
+7. The pure direct-difference expression is insufficient over the tested full
+   finite endpoint range because opposite-sign endpoint subtraction can
+   overflow.
+8. The pure weighted-endpoint expression fixes that concrete range problem but
+   loses exact constant-schedule behavior in the tested compiler matrix.
+9. The tested hybrid candidate combines the useful properties of both forms for
+   the investigated finite schedule domain.
+10. Schedule generation remains separate from `withLightness` and raw tone
+    construction.
+11. No separate ascending/descending API is justified.
+12. No implicit seed anchoring is introduced by schedule generation.
+
+### B.18 Not established by R0.11-B
+
+R0.11-B does not establish:
+
+- a general-purpose public `lerp` API;
+- final public names for schedule helpers;
+- runtime-sized output representation;
+- caller-buffer APIs;
+- nonlinear/eased schedule policy;
+- chroma shaping;
+- hue policy;
+- NaN semantics;
+- infinity semantics;
+- gamut mapping policy;
+- target-space conversion policy;
+- perceptual-distance-equalized schedules;
+- a universal floating-point interpolation theorem.
+
+The hybrid helper remains research vocabulary until later R0.11 phases and
+consumer validation justify a production boundary.
+
+### B.19 Phase-B conclusion
+
+R0.11-B validates a clean distinction between:
+
+```text
+explicit positions
+```
+
+and:
+
+```text
+generated inclusive endpoint schedules
+```
+
+Explicit positions require no special zero- or one-element policy.
+
+Generated inclusive endpoint schedules are semantically clean from:
+
+```text
+N >= 2
+```
+
+onward.
+
+For finite endpoints, the tested hybrid arithmetic avoids the observed
+opposite-sign overflow failure of the direct formula while preserving the exact
+constant-schedule property that the pure weighted formula lost.
+
+The complete historical DMD/LDC matrix passed with no hybrid-property
+disagreement.
+
+R0.11-B is therefore complete.
 
 R0.11 remains in progress.

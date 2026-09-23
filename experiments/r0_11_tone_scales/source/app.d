@@ -1,7 +1,7 @@
 module app;
 
 import core.stdc.stdio : printf;
-import std.traits : isFloatingPoint;
+import std.traits : isFloatingPoint, Unqual;
 
 
 /*
@@ -471,6 +471,349 @@ static assert(
 );
 
 
+
+// --------------------------------------------------------------------------
+// R0.11-B — schedule semantics
+// --------------------------------------------------------------------------
+
+/*
+ * Direct-difference linear schedule candidate.
+ *
+ * This is intentionally retained as a comparison candidate because
+ *
+ *     end - start
+ *
+ * can overflow for finite opposite-sign endpoints.
+ *
+ * Inclusive generated schedules are defined only for N >= 2 in this
+ * candidate family.
+ */
+T[N] linearScheduleDirect(T, size_t N)(
+    T start,
+    T end
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T && N >= 2)
+{
+    T[N] result;
+
+    result[0] = start;
+    result[N - 1] = end;
+
+    foreach (i; 1 .. N - 1)
+    {
+        const T t =
+            cast(T)i /
+            cast(T)(N - 1);
+
+        result[i] =
+            start +
+            (end - start) * t;
+    }
+
+    return result;
+}
+
+
+/*
+ * Weighted-endpoint candidate.
+ *
+ * Avoid forming the full endpoint difference:
+ *
+ *     (1 - t) * start + t * end
+ *
+ * Endpoints are assigned explicitly.
+ */
+T[N] linearScheduleWeighted(T, size_t N)(
+    T start,
+    T end
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T && N >= 2)
+{
+    T[N] result;
+
+    result[0] = start;
+    result[N - 1] = end;
+
+    foreach (i; 1 .. N - 1)
+    {
+        const T t =
+            cast(T)i /
+            cast(T)(N - 1);
+
+        result[i] =
+            (cast(T)1 - t) * start +
+            t * end;
+    }
+
+    return result;
+}
+
+
+/*
+ * Deliberately competing N == 1 interpretations.
+ *
+ * Their purpose is to expose semantic ambiguity, not to propose three public
+ * APIs.
+ */
+
+/*
+ * Hybrid finite-range candidate.
+ *
+ * For same-sign endpoints, the difference cannot overflow merely because of
+ * opposite signs, and the direct-difference form preserves important cases
+ * such as start == end exactly.
+ *
+ * For strictly opposite-sign endpoints, avoid forming the potentially
+ * overflowing full difference and use the weighted-endpoint form.
+ *
+ * This candidate is deliberately limited to the finite t-in-[0,1] schedule
+ * problem studied by R0.11-B. It is not a general interpolation API.
+ */
+T interpolateScheduleHybrid(T)(
+    T start,
+    T end,
+    T t
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    const bool oppositeSigns =
+        (start < cast(T)0 && end > cast(T)0) ||
+        (start > cast(T)0 && end < cast(T)0);
+
+    if (oppositeSigns)
+    {
+        return
+            (cast(T)1 - t) * start +
+            t * end;
+    }
+
+    return
+        start +
+        (end - start) * t;
+}
+
+
+T[N] linearScheduleHybrid(T, size_t N)(
+    T start,
+    T end
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T && N >= 2)
+{
+    T[N] result;
+
+    result[0] = start;
+    result[N - 1] = end;
+
+    foreach (i; 1 .. N - 1)
+    {
+        const T t =
+            cast(T)i /
+            cast(T)(N - 1);
+
+        result[i] =
+            interpolateScheduleHybrid(
+                start,
+                end,
+                t
+            );
+    }
+
+    return result;
+}
+
+
+T[1] singletonScheduleStart(T)(
+    T start,
+    T end
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    T[1] result;
+    result[0] = start;
+    return result;
+}
+
+
+T[1] singletonScheduleMidpoint(T)(
+    T start,
+    T end
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    T[1] result;
+
+    result[0] =
+        start / cast(T)2 +
+        end / cast(T)2;
+
+    return result;
+}
+
+
+T[1] singletonScheduleEnd(T)(
+    T start,
+    T end
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    T[1] result;
+    result[0] = end;
+    return result;
+}
+
+
+bool nondecreasing(T, size_t N)(
+    const T[N] values
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    static if (N >= 2)
+    {
+        foreach (i; 1 .. N)
+        {
+            if (values[i] < values[i - 1])
+                return false;
+        }
+    }
+
+    return true;
+}
+
+
+bool nonincreasing(T, size_t N)(
+    const T[N] values
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    static if (N >= 2)
+    {
+        foreach (i; 1 .. N)
+        {
+            if (values[i] > values[i - 1])
+                return false;
+        }
+    }
+
+    return true;
+}
+
+
+bool finiteScalar(T)(T value)
+@safe pure nothrow @nogc
+if (isColorScalar!(Unqual!T))
+{
+    alias U = Unqual!T;
+
+    const U unqualified = cast(U)value;
+
+    return
+        unqualified == unqualified &&
+        unqualified != U.infinity &&
+        unqualified != -U.infinity;
+}
+
+
+/*
+ * Compile-time schedule probes.
+ */
+
+static assert(
+    !__traits(
+        compiles,
+        linearScheduleWeighted!(double, 0)(
+            0.0,
+            1.0
+        )
+    )
+);
+
+static assert(
+    !__traits(
+        compiles,
+        linearScheduleWeighted!(double, 1)(
+            0.0,
+            1.0
+        )
+    )
+);
+
+static assert(
+    __traits(
+        compiles,
+        linearScheduleWeighted!(double, 2)(
+            0.0,
+            1.0
+        )
+    )
+);
+
+enum double[0] ctfeEmptyPositions = [];
+
+enum Oklchd[0] ctfeEmptyScale =
+    tonesByLightness(
+        ctfeSeed,
+        ctfeEmptyPositions
+    );
+
+static assert(ctfeEmptyScale.length == 0);
+
+enum double[1] ctfeOnePosition =
+[
+    0.42
+];
+
+enum Oklchd[1] ctfeOneTone =
+    tonesByLightness(
+        ctfeSeed,
+        ctfeOnePosition
+    );
+
+static assert(ctfeOneTone.length == 1);
+static assert(ctfeOneTone[0].l == 0.42);
+static assert(ctfeOneTone[0].c == ctfeSeed.c);
+static assert(
+    ctfeOneTone[0].h.degrees ==
+    ctfeSeed.h.degrees
+);
+
+enum auto ctfeLinearTwo =
+    linearScheduleWeighted!(double, 2)(
+        0.20,
+        0.80
+    );
+
+static assert(ctfeLinearTwo[0] == 0.20);
+static assert(ctfeLinearTwo[1] == 0.80);
+
+enum auto ctfeAscending =
+    linearScheduleWeighted!(double, 5)(
+        0.10,
+        0.90
+    );
+
+static assert(nondecreasing(ctfeAscending));
+static assert(ctfeAscending[0] == 0.10);
+static assert(ctfeAscending[4] == 0.90);
+
+enum auto ctfeDescending =
+    linearScheduleWeighted!(double, 5)(
+        0.90,
+        0.10
+    );
+
+static assert(nonincreasing(ctfeDescending));
+static assert(ctfeDescending[0] == 0.90);
+static assert(ctfeDescending[4] == 0.10);
+
 struct TestState
 {
     size_t passed;
@@ -751,6 +1094,510 @@ if (isColorScalar!T)
 }
 
 
+
+void runScheduleTests(T)(
+    ref TestState state,
+    const(char)* scalarName
+)
+if (isColorScalar!T)
+{
+    printf(
+        "\n=== R0.11-B schedule / %s ===\n",
+        scalarName
+    );
+
+    const OklabHue!T hue =
+        OklabHue!T.fromDegrees(
+            cast(T)250
+        );
+
+    const Oklch!T seed =
+        Oklch!T(
+            cast(T)0.55,
+            cast(T)0.12,
+            hue
+        );
+
+    /*
+     * Explicit schedules already carry their own cardinality semantics.
+     */
+    const T[0] emptyPositions = [];
+
+    const auto emptyScale =
+        tonesByLightness(
+            seed,
+            emptyPositions
+        );
+
+    check(
+        state,
+        emptyScale.length == 0,
+        "explicit N=0 schedule produces empty scale"
+    );
+
+    const T[1] onePosition =
+    [
+        cast(T)0.42
+    ];
+
+    const auto oneTone =
+        tonesByLightness(
+            seed,
+            onePosition
+        );
+
+    check(
+        state,
+        oneTone.length == 1 &&
+        oneTone[0].l == cast(T)0.42 &&
+        oneTone[0].c == seed.c &&
+        sameHue(
+            oneTone[0].h,
+            seed.h
+        ),
+        "explicit N=1 position is unambiguous"
+    );
+
+    /*
+     * Generated inclusive schedule with N=2 is exactly the two endpoints.
+     */
+    const auto two =
+        linearScheduleWeighted!(T, 2)(
+            cast(T)0.20,
+            cast(T)0.80
+        );
+
+    check(
+        state,
+        two[0] == cast(T)0.20 &&
+        two[1] == cast(T)0.80,
+        "generated N=2 schedule preserves both endpoints"
+    );
+
+    /*
+     * N=1 has multiple defensible interpretations.
+     */
+    const auto singletonStart =
+        singletonScheduleStart(
+            cast(T)0.20,
+            cast(T)0.80
+        );
+
+    const auto singletonMidpoint =
+        singletonScheduleMidpoint(
+            cast(T)0.20,
+            cast(T)0.80
+        );
+
+    const auto singletonEnd =
+        singletonScheduleEnd(
+            cast(T)0.20,
+            cast(T)0.80
+        );
+
+    check(
+        state,
+        singletonStart[0] != singletonMidpoint[0] &&
+        singletonMidpoint[0] != singletonEnd[0] &&
+        singletonStart[0] != singletonEnd[0],
+        "generated N=1 has distinct start/midpoint/end policies"
+    );
+
+    /*
+     * Normal ascending and descending schedules.
+     */
+    const auto ascending =
+        linearScheduleWeighted!(T, 5)(
+            cast(T)0.10,
+            cast(T)0.90
+        );
+
+    check(
+        state,
+        ascending[0] == cast(T)0.10 &&
+        ascending[4] == cast(T)0.90,
+        "ascending schedule preserves exact endpoints"
+    );
+
+    check(
+        state,
+        nondecreasing(ascending),
+        "ascending schedule is nondecreasing"
+    );
+
+    const auto descending =
+        linearScheduleWeighted!(T, 5)(
+            cast(T)0.90,
+            cast(T)0.10
+        );
+
+    check(
+        state,
+        descending[0] == cast(T)0.90 &&
+        descending[4] == cast(T)0.10,
+        "descending schedule preserves exact endpoints"
+    );
+
+    check(
+        state,
+        nonincreasing(descending),
+        "descending schedule is nonincreasing"
+    );
+
+    /*
+     * Finite extended range.
+     */
+    const auto extended =
+        linearScheduleWeighted!(T, 5)(
+            cast(T)-0.50,
+            cast(T)1.50
+        );
+
+    check(
+        state,
+        extended[0] == cast(T)-0.50 &&
+        extended[4] == cast(T)1.50 &&
+        nondecreasing(extended),
+        "finite extended endpoints remain raw mathematical values"
+    );
+
+    /*
+     * Numerical range probe.
+     *
+     * Both endpoints are finite, but the full difference overflows:
+     *
+     *     (-0.75 * T.max) - (+0.75 * T.max)
+     *
+     * The mathematically expected center is zero.
+     */
+    const T largePositive =
+        T.max * cast(T)0.75;
+
+    const T largeNegative =
+        -T.max * cast(T)0.75;
+
+    check(
+        state,
+        finiteScalar(largePositive) &&
+        finiteScalar(largeNegative),
+        "range probe endpoints are finite"
+    );
+
+    const auto directLarge =
+        linearScheduleDirect!(T, 3)(
+            largePositive,
+            largeNegative
+        );
+
+    const auto weightedLarge =
+        linearScheduleWeighted!(T, 3)(
+            largePositive,
+            largeNegative
+        );
+
+    check(
+        state,
+        !finiteScalar(directLarge[1]),
+        "direct-difference formula loses finite midpoint"
+    );
+
+    check(
+        state,
+        finiteScalar(weightedLarge[1]),
+        "weighted-endpoint formula preserves finite midpoint"
+    );
+
+    check(
+        state,
+        weightedLarge[1] == cast(T)0,
+        "weighted opposite-sign midpoint is exactly zero"
+    );
+
+    check(
+        state,
+        weightedLarge[0] == largePositive &&
+        weightedLarge[2] == largeNegative,
+        "weighted range probe preserves exact endpoints"
+    );
+
+
+    /*
+     * Weighted-form idempotence probe.
+     *
+     * For equal endpoints, every generated value should mathematically equal
+     * that endpoint exactly. The weighted formula performs unnecessary
+     * multiply/add operations and may lose that property.
+     */
+    const T equalLarge =
+        T.max * cast(T)0.10;
+
+    const auto weightedEqual =
+        linearScheduleWeighted!(T, 11)(
+            equalLarge,
+            equalLarge
+        );
+
+    const auto directEqual =
+        linearScheduleDirect!(T, 11)(
+            equalLarge,
+            equalLarge
+        );
+
+    const auto hybridEqual =
+        linearScheduleHybrid!(T, 11)(
+            equalLarge,
+            equalLarge
+        );
+
+    bool weightedEqualExact = true;
+    bool directEqualExact = true;
+    bool hybridEqualExact = true;
+
+    foreach (value; weightedEqual)
+    {
+        if (value != equalLarge)
+            weightedEqualExact = false;
+    }
+
+    foreach (value; directEqual)
+    {
+        if (value != equalLarge)
+            directEqualExact = false;
+    }
+
+    foreach (value; hybridEqual)
+    {
+        if (value != equalLarge)
+            hybridEqualExact = false;
+    }
+
+    check(
+        state,
+        directEqualExact,
+        "direct formula preserves equal-endpoint constant schedule"
+    );
+
+    check(
+        state,
+        hybridEqualExact,
+        "hybrid formula preserves equal-endpoint constant schedule"
+    );
+
+    /*
+     * Do not prescribe the result here before observing the compiler.
+     *
+     * We report whether the weighted form is exact rather than requiring it
+     * to fail. A compiler is allowed to optimize the algebra differently.
+     */
+    if (weightedEqualExact)
+        printf("OBS   weighted equal-endpoint exact: YES\n");
+    else
+        printf("OBS   weighted equal-endpoint exact: NO\n");
+
+    /*
+     * Same-sign large endpoints do not require the opposite-sign workaround.
+     */
+    const T sameSignStart =
+        T.max * cast(T)0.75;
+
+    const T sameSignEnd =
+        T.max * cast(T)0.50;
+
+    const auto hybridSameSign =
+        linearScheduleHybrid!(T, 5)(
+            sameSignStart,
+            sameSignEnd
+        );
+
+    check(
+        state,
+        finiteScalar(hybridSameSign[1]) &&
+        finiteScalar(hybridSameSign[2]) &&
+        finiteScalar(hybridSameSign[3]),
+        "hybrid same-sign large interior values remain finite"
+    );
+
+    check(
+        state,
+        nonincreasing(hybridSameSign),
+        "hybrid same-sign large schedule is nonincreasing"
+    );
+
+    /*
+     * Opposite-sign case must retain the finite-range advantage already
+     * observed for the weighted candidate.
+     */
+    const auto hybridOpposite =
+        linearScheduleHybrid!(T, 3)(
+            largePositive,
+            largeNegative
+        );
+
+    check(
+        state,
+        finiteScalar(hybridOpposite[1]),
+        "hybrid opposite-sign midpoint remains finite"
+    );
+
+    check(
+        state,
+        hybridOpposite[1] == cast(T)0,
+        "hybrid symmetric opposite-sign midpoint is exactly zero"
+    );
+
+    check(
+        state,
+        hybridOpposite[0] == largePositive &&
+        hybridOpposite[2] == largeNegative,
+        "hybrid preserves exact opposite-sign endpoints"
+    );
+
+
+    /*
+     * Representative finite-domain property sweep.
+     *
+     * Reference semantics:
+     *
+     * - exact endpoints are already enforced by linearScheduleHybrid;
+     * - every interior result for finite endpoints must remain finite;
+     * - the schedule must be monotonic in the endpoint direction;
+     * - every result must remain inside the closed endpoint interval;
+     * - equal endpoints must produce an exact constant schedule.
+     *
+     * This is a deterministic representative sweep, not an exhaustive proof.
+     */
+    const T[11] representativeEndpoints =
+    [
+        -T.max * cast(T)0.75,
+        cast(T)-2,
+        cast(T)-1,
+        -T.min_normal,
+        cast(T)-0.0,
+        cast(T)0,
+        T.min_normal,
+        cast(T)0.25,
+        cast(T)1,
+        cast(T)2,
+        T.max * cast(T)0.75
+    ];
+
+    bool sweepFinite = true;
+    bool sweepMonotonic = true;
+    bool sweepBounded = true;
+    bool sweepEndpoints = true;
+    bool sweepEqualExact = true;
+
+    foreach (start; representativeEndpoints)
+    {
+        foreach (end; representativeEndpoints)
+        {
+            const auto schedule =
+                linearScheduleHybrid!(T, 17)(
+                    start,
+                    end
+                );
+
+            if (schedule[0] != start ||
+                schedule[16] != end)
+            {
+                sweepEndpoints = false;
+            }
+
+            if (start < end)
+            {
+                if (!nondecreasing(schedule))
+                    sweepMonotonic = false;
+            }
+            else if (start > end)
+            {
+                if (!nonincreasing(schedule))
+                    sweepMonotonic = false;
+            }
+
+            foreach (value; schedule)
+            {
+                if (!finiteScalar(value))
+                    sweepFinite = false;
+
+                const T lower =
+                    start < end ? start : end;
+
+                const T upper =
+                    start < end ? end : start;
+
+                if (value < lower || value > upper)
+                    sweepBounded = false;
+
+                if (start == end && value != start)
+                    sweepEqualExact = false;
+            }
+        }
+    }
+
+    check(
+        state,
+        sweepFinite,
+        "hybrid representative sweep remains finite"
+    );
+
+    check(
+        state,
+        sweepMonotonic,
+        "hybrid representative sweep remains monotonic"
+    );
+
+    check(
+        state,
+        sweepBounded,
+        "hybrid representative sweep remains within endpoints"
+    );
+
+    check(
+        state,
+        sweepEndpoints,
+        "hybrid representative sweep preserves exact endpoints"
+    );
+
+    check(
+        state,
+        sweepEqualExact,
+        "hybrid representative equal endpoints remain exact"
+    );
+
+    /*
+     * Composition with phase A.
+     */
+    const auto generatedPositions =
+        linearScheduleWeighted!(T, 5)(
+            cast(T)0.10,
+            cast(T)0.90
+        );
+
+    const auto generatedScale =
+        tonesByLightness(
+            seed,
+            generatedPositions
+        );
+
+    check(
+        state,
+        schedulePreserved(
+            generatedScale,
+            generatedPositions
+        ) &&
+        constantChroma(
+            generatedScale,
+            seed.c
+        ) &&
+        constantHue(
+            generatedScale,
+            seed.h
+        ),
+        "generated schedule composes mechanically with phase A"
+    );
+}
+
+
 void main()
 {
     printf("color-d R0.11-A — primitive decomposition\n");
@@ -775,6 +1622,16 @@ void main()
     );
 
     runScalarTests!double(
+        state,
+        "double"
+    );
+
+    runScheduleTests!float(
+        state,
+        "float"
+    );
+
+    runScheduleTests!double(
         state,
         "double"
     );
