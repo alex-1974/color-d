@@ -1,0 +1,6 @@
+name "color-d-r0-8-gamut-semantics"
+description "color-d R0.8: gamut detection, clipping and mapping semantics"
+authors "Alexander"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
