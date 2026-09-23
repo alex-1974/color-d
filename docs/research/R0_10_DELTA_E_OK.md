@@ -1,6 +1,6 @@
 # R0.10 — DeltaEOK semantics and reference coverage
 
-**Status:** RESEARCH / BEFORE EXPERIMENT
+**Status:** VALIDATED / PENDING INTEGRATION
 **Issue:** https://github.com/alex-1974/color-d/issues/6
 
 This document is the durable repository-side research contract for R0.10.
@@ -259,6 +259,267 @@ CTFE
 8. ΔEOK2 is a distinct future algorithm.
 9. The normal API supports runtime use, CTFE and UFCS.
 10. No generic ambiguous `deltaE()` enters the initial API.
+
+## Validated conclusions
+
+The executable experiment in:
+
+```text
+experiments/r0_10_delta_e_ok/
+```
+
+was validated with:
+
+```text
+DMD 2.111.0
+LDC 1.41.0
+float
+double
+Debug
+Release
+CTFE
+```
+
+The experiment commit is:
+
+```text
+7474e65 research: validate R0.10 deltaEOK semantics
+```
+
+All four final compiler/build configurations pass.
+
+### Input and API boundary
+
+The validated primitive operates directly on same-scalar Oklab values:
+
+```d
+deltaEOK(Oklab!T lhs, Oklab!T rhs)
+```
+
+The research supports:
+
+- `float` and `double`;
+- identical scalar types for both operands;
+- natural UFCS use;
+- `@safe`;
+- `pure`;
+- `nothrow`;
+- `@nogc`;
+- CTFE.
+
+No implicit conversion from another color space belongs inside `deltaEOK`.
+
+The initial API must not introduce an ambiguous generic `deltaE()`.
+
+Public API promotion remains an R1 task.
+
+### Mathematical semantics
+
+`deltaEOK` remains the ordinary Euclidean distance in Oklab Cartesian
+coordinates.
+
+The validated operation does not:
+
+- convert through OkLCh;
+- clip;
+- gamut-map;
+- normalize to a display gamut;
+- classify perceptibility;
+- apply a JND threshold.
+
+Finite extended Oklab coordinates remain valid mathematical inputs.
+
+### Numerical implementation decision
+
+The straightforward source formulation:
+
+```text
+sqrt(dL*dL + da*da + db*db)
+```
+
+is rejected as the production implementation candidate.
+
+The experiment demonstrated compiler/build-dependent finite-range behavior.
+
+For the selected extreme one-axis probes:
+
+- DMD debug overflowed large finite values and underflowed `T.min_normal`;
+- LDC debug did the same;
+- LDC release did the same;
+- DMD release happened to preserve those particular values.
+
+Therefore the direct squared-sum source expression does not provide a robust
+portable contract for the declared finite extended domain.
+
+### Raw Phobos hypot
+
+Three-argument Phobos `hypot` is numerically robust for the tested finite
+range and supports CTFE on the tested baseline.
+
+However, raw `hypot` is not accepted as the complete implementation because
+its observed simple non-finite behavior does not match the R0.10 policy.
+
+Across the final DMD/LDC debug/release matrix, the experiment observed:
+
+```text
+hypot(NaN, 0, 0)   -> not NaN
+hypot(+Inf, 0, 0)  -> NaN
+hypot(-Inf, 0, 0)  -> NaN
+```
+
+The library must not inherit those semantics accidentally.
+
+### Preferred implementation candidate
+
+The preferred R0.10 implementation direction is guarded three-argument
+Phobos `hypot`.
+
+Conceptually:
+
+```d
+const T dL = lhs.l - rhs.l;
+const T da = lhs.a - rhs.a;
+const T db = lhs.b - rhs.b;
+
+if (isNaN(dL) || isNaN(da) || isNaN(db))
+    return T.nan;
+
+if (fabs(dL) == T.infinity ||
+    fabs(da) == T.infinity ||
+    fabs(db) == T.infinity)
+{
+    return T.infinity;
+}
+
+return hypot(dL, da, db);
+```
+
+This makes color-d's special-value semantics explicit while delegating the
+finite robust Euclidean norm to Phobos.
+
+### Non-finite policy
+
+R0.10 validates the following ordering:
+
+1. any NaN component difference -> NaN;
+2. otherwise any infinite component difference -> positive infinity;
+3. otherwise compute the finite Euclidean norm.
+
+NaN therefore takes precedence when NaN and infinity coexist.
+
+No checked-result wrapper is justified by this research.
+
+### Scaled-norm fallback
+
+A custom scaled three-dimensional norm was also validated.
+
+It correctly preserved:
+
+- large finite values;
+- `T.min_normal`;
+- ordinary analytical vectors;
+- the required NaN/infinity semantics.
+
+It remains a useful research/reference fallback.
+
+It is not preferred while guarded Phobos `hypot` satisfies the same
+requirements with less custom numerical machinery.
+
+### Property validation
+
+Each final compiler/build run evaluates 4096 deterministic generated cases
+for each scalar type.
+
+The validated properties are:
+
+- identity;
+- non-negativity;
+- symmetry;
+- agreement with the wider-precision reference route;
+- triangle inequality.
+
+All final runs report zero failures.
+
+The largest observed normalized reference deviation is approximately:
+
+```text
+1.256 * T.epsilon * max(1, abs(reference))
+```
+
+The experiment uses:
+
+```text
+8 * T.epsilon * max(1, abs(reference))
+```
+
+as an operation-specific research tolerance.
+
+This is not a general color-d tolerance policy.
+
+### Alpha boundary
+
+Alpha-bearing and premultiplied colors remain outside the direct primitive
+contract.
+
+A rendered/background-resolved color must be obtained explicitly before
+ordinary perceptual color difference is measured.
+
+There is no hidden compositing background.
+
+### JND boundary
+
+The CSS Color 4 approximately `0.02` ΔEOK just-noticeable-difference value is
+contextual policy.
+
+It is not embedded in `deltaEOK`.
+
+The core operation returns a distance only and does not classify:
+
+- equal versus different;
+- perceptible versus imperceptible;
+- pass versus fail.
+
+### deltaEOK2 boundary
+
+ΔEOK2 remains a distinct algorithm.
+
+If future standards or consumer requirements justify it, it must use a
+separate explicit name:
+
+```d
+deltaEOK2
+```
+
+R0.10 does not implement it.
+
+### Squared-distance API
+
+No consumer evidence justifies:
+
+```d
+deltaEOKSquared
+```
+
+R0.10 therefore does not recommend adding it.
+
+### R0.10 decision
+
+The R1 production candidate is:
+
+```text
+direct same-scalar Oklab inputs
+        +
+explicit NaN / infinity guards
+        +
+Phobos three-argument hypot for finite values
+```
+
+No public API is frozen by R0.10.
+
+The research result is validated; repository integration and higher-level
+documentation updates remain before R0.10 is fully closed.
+
+---
 
 ## Exit criteria
 
