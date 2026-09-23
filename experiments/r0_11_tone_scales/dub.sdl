@@ -1,0 +1,7 @@
+name "color-d-r0-11-tone-scales"
+description "R0.11 research experiment for OKLCH tone-scale semantics"
+authors "Alexander Bernardi"
+copyright "Copyright © 2026, Alexander Bernardi"
+license "MIT"
+
+targetType "executable"
