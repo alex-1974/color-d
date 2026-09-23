@@ -1,0 +1,6 @@
+name "color-d-r0-9-luminance-benchmark"
+description "color-d R0.9 luminance and contrast microbenchmark"
+authors "Alexander"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
