@@ -1,0 +1,7 @@
+name "color-d-r0-10-delta-e-ok"
+description "R0.10 research experiment for deltaEOK semantics"
+authors "Alexander Bernardi"
+copyright "Copyright © 2026, Alexander Bernardi"
+license "MIT"
+
+targetType "executable"
