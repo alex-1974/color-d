@@ -22,7 +22,7 @@ Goals:
 
 No public API is frozen during R0.
 
-### Validated research through R0.9
+### Validated research through R0.10
 
 Completed research blocks:
 
@@ -35,7 +35,9 @@ Completed research blocks:
 - R0.7 — interpolation and hue-path semantics;
 - R0.8 — gamut detection, clipping and perceptual gamut-mapping semantics;
 - R0.9 — WCAG-2 relative-luminance and contrast semantics, domain validation
-  and checked-result representation.
+  and checked-result representation;
+- R0.10 — Oklab `deltaEOK` semantics, numerical robustness, special-value
+  behavior and reference coverage.
 
 R0.8 additionally established initial performance and generated-code evidence
 for Local MINDE and Ray Trace gamut mapping. Ray Trace is the stronger
@@ -52,9 +54,19 @@ two-field `{T,bool}` result showed a substantial DMD 2.111 `double`
 code-generation regression and is not preferred. `try(..., ref T)` remains a
 valid alternative. No public WCAG API or result type is frozen.
 
+R0.10 established `deltaEOK` as direct same-scalar Euclidean distance in
+Oklab, with no hidden conversion, clipping, gamut mapping, alpha resolution or
+JND classification. Finite extended Oklab values remain valid inputs.
+
+For the future production implementation, guarded three-argument Phobos
+`hypot` is the preferred research candidate: color-d explicitly handles NaN
+and infinity before delegating the finite Euclidean norm to `hypot`. The
+straightforward squared-sum implementation is not sufficiently robust across
+the tested compiler/build configurations, while a custom scaled norm remains a
+validated fallback/reference implementation. No public API is frozen.
+
 Remaining R0 work includes:
 
-- full `deltaEOK` policy and reference coverage;
 - tone-scale generation;
 - compile-time palette/theme generation and validation;
 - library-wide numerical tolerance policy;

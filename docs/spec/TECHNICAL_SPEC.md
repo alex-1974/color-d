@@ -772,6 +772,9 @@ meaning of a WCAG-2 operation.
 
 # 17. Color difference
 
+Color-d treats color-difference algorithms as explicitly named mathematical
+operations.
+
 The API should avoid a generic ambiguous:
 
 ```d
@@ -780,17 +783,197 @@ deltaE()
 
 when multiple algorithms exist.
 
-Preferred explicit names:
+Preferred explicit names include:
 
 ```d
 deltaEOK
+deltaEOK2
 deltaE76
 deltaE2000
 ```
 
 For the initial version only `deltaEOK` is required.
 
-CIELAB-based Delta-E variants may be added when CIELAB support becomes a concrete requirement.
+## 17.1 deltaEOK semantics
+
+R0.10 validates `deltaEOK` as ordinary Euclidean distance in Oklab Cartesian
+coordinates.
+
+The candidate operation has the shape:
+
+```d
+T deltaEOK(T)(Oklab!T lhs, Oklab!T rhs)
+if (isColorScalar!T);
+```
+
+The two operands use the same scalar type.
+
+The operation is naturally UFCS-capable and should support:
+
+```text
+@safe
+pure
+nothrow
+@nogc
+CTFE
+```
+
+No implicit conversion from another color space belongs inside `deltaEOK`.
+
+A caller starting from sRGB, linear sRGB, XYZ D65 or OKLCH must perform the
+required conversion explicitly.
+
+`deltaEOK` does not convert through OKLCH.
+
+## 17.2 Range semantics
+
+Finite extended Oklab coordinates are valid mathematical inputs.
+
+`deltaEOK` must not implicitly:
+
+- clip;
+- gamut-map;
+- normalize coordinates to a display gamut;
+- reject finite values merely because they are outside a nominal display
+  domain.
+
+This follows the general color-d rule that mathematically meaningful extended
+intermediate values remain visible to the caller.
+
+## 17.3 Numerical implementation
+
+R0.10 rejects the straightforward implementation:
+
+```text
+sqrt(dL*dL + da*da + db*db)
+```
+
+as the preferred production implementation.
+
+The tested DMD/LDC debug/release matrix demonstrated that intermediate
+squaring can overflow or underflow for finite component differences even when
+the final Euclidean norm remains representable. The observed behavior also
+depends on compiler/build optimization.
+
+Raw three-argument Phobos `hypot` is robust for the tested finite range, but
+its observed simple NaN/infinity behavior does not match the required
+color-d semantics.
+
+The preferred R1 implementation direction is therefore:
+
+1. compute the three Oklab component differences;
+2. explicitly handle NaN;
+3. explicitly handle infinity;
+4. delegate the fully finite three-dimensional norm to Phobos `hypot`.
+
+Conceptually:
+
+```d
+const T dL = lhs.l - rhs.l;
+const T da = lhs.a - rhs.a;
+const T db = lhs.b - rhs.b;
+
+if (isNaN(dL) || isNaN(da) || isNaN(db))
+    return T.nan;
+
+if (fabs(dL) == T.infinity ||
+    fabs(da) == T.infinity ||
+    fabs(db) == T.infinity)
+{
+    return T.infinity;
+}
+
+return hypot(dL, da, db);
+```
+
+A custom scaled three-dimensional norm was also validated and remains a
+fallback/reference implementation, but it is not preferred while guarded
+Phobos `hypot` satisfies the requirements.
+
+## 17.4 Non-finite semantics
+
+`deltaEOK` makes its special-value behavior explicit rather than inheriting it
+accidentally from a compiler or standard-library implementation.
+
+The validated ordering is:
+
+```text
+any NaN component difference
+    -> NaN
+
+otherwise any infinite component difference
+    -> +Inf
+
+otherwise
+    -> finite Euclidean norm
+```
+
+NaN therefore takes precedence if NaN and infinity occur together.
+
+No checked-result wrapper is currently justified for `deltaEOK`.
+
+## 17.5 Alpha boundary
+
+`deltaEOK` measures Oklab coordinates, not unresolved alpha-bearing colors.
+
+`Alpha!(Oklab!T)` and premultiplied color representations are not direct input
+to the primitive.
+
+If rendered appearance is to be compared, alpha/background resolution must
+occur explicitly before color-difference measurement.
+
+`deltaEOK` must not infer or silently composite against a background.
+
+## 17.6 JND and classification policy
+
+A color-difference value is a measurement, not a perceptibility decision.
+
+The approximately `0.02` ΔEOK just-noticeable-difference value used in CSS
+gamut-mapping context is policy layered above the primitive.
+
+`deltaEOK` therefore does not classify:
+
+- equal versus different;
+- perceptible versus imperceptible;
+- pass versus fail.
+
+A named JND helper requires separate consumer justification.
+
+## 17.7 deltaEOK2 and other Delta-E algorithms
+
+`deltaEOK2` is a distinct algorithm and must not be conflated with
+`deltaEOK`.
+
+It remains deferred until standards or concrete consumer requirements justify
+separate research and implementation.
+
+CIELAB-based Delta-E variants such as `deltaE76` and `deltaE2000` likewise
+remain deferred until CIELAB support becomes a concrete requirement.
+
+## 17.8 Squared-distance API
+
+R0.10 found no consumer requirement for:
+
+```d
+deltaEOKSquared
+```
+
+No such public API should be added speculatively.
+
+## 17.9 Research status
+
+R0.10 validated the mathematical contract, finite-range behavior,
+special-value policy, CTFE/UFCS shape and the preferred numerical
+implementation direction.
+
+The experiment and detailed numerical evidence live in:
+
+```text
+docs/research/R0_10_DELTA_E_OK.md
+experiments/r0_10_delta_e_ok/
+```
+
+Public API promotion remains an R1 task and is not frozen by R0.10.
 
 ---
 
