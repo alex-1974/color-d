@@ -583,20 +583,190 @@ They must not silently mean HSV/HSL manipulation.
 
 # 16. Relative luminance and contrast
 
-The library shall provide relative luminance derived from linearized sRGB.
+WCAG-2 relative luminance and general colorimetric XYZ-D65 Y are distinct
+operations and must not be silently aliased.
 
-Operations may include:
+The initial accessibility-oriented measurement is explicitly sRGB-specific and
+WCAG-2-specific.
+
+Research naming candidates include:
+
+```d
+wcag2RelativeLuminance
+wcag2ContrastRatio
+```
+
+These names remain provisional until consumer validation.
+
+Generic names such as:
 
 ```d
 relativeLuminance
 contrastRatio
 ```
 
-Encoded sRGB channel values must never be inserted directly into luminance formulas without transfer-function decoding.
+should not be frozen while multiple luminance and contrast concepts may coexist.
 
-The initial contrast API may implement current WCAG 2.x contrast ratios.
+## 16.1 WCAG-2 relative luminance
 
-Future accessibility metrics should be separate explicit algorithms rather than changing the meaning of `contrastRatio()`.
+WCAG-2 relative luminance uses the published WCAG coefficients:
+
+```text
+0.2126
+0.7152
+0.0722
+```
+
+after sRGB transfer decoding.
+
+Encoded sRGB channel values must never be inserted directly into the luminance
+formula without decoding.
+
+Within the valid sRGB domain, the already validated color-d sRGB transfer
+implementation may be reused.
+
+The WCAG coefficients must not be replaced by the more precise XYZ-D65 matrix
+coefficients merely because the resulting values are numerically close.
+
+## 16.2 Valid measurement domain
+
+A standards-facing WCAG-2 measurement requires finite sRGB or linear-sRGB
+components in:
+
+```text
+0 <= component <= 1
+```
+
+Extended color-d values outside this domain remain useful mathematical color
+values but are not valid WCAG-2 measurements.
+
+Standards-facing WCAG operations therefore require explicit domain validation.
+
+They must not silently:
+
+- clip;
+- gamut-map;
+- repair NaN or infinity;
+- reinterpret extended color values as valid WCAG input.
+
+Unchecked arithmetic may exist internally where useful, but must not be
+presented as a valid standards measurement for invalid-domain input.
+
+## 16.3 Contrast ratio
+
+For valid WCAG-2 relative luminances:
+
+```text
+L1 >= L2
+
+contrast = (L1 + 0.05) / (L2 + 0.05)
+```
+
+The valid-domain range is:
+
+```text
+1 : 1
+```
+
+through:
+
+```text
+21 : 1
+```
+
+Contrast measurement is distinct from accessibility pass/fail policy.
+
+Context-dependent concepts such as:
+
+```text
+AA
+AAA
+large text
+normal text
+non-text UI
+font size
+font weight
+```
+
+belong in a higher-level accessibility or theme layer.
+
+## 16.4 Alpha
+
+An unresolved alpha color does not have one standalone WCAG contrast ratio.
+
+The actual rendered color must be resolved against its background before
+ordinary contrast measurement.
+
+WCAG measurement must not silently infer a background or introduce hidden
+compositing policy.
+
+Premultiplied storage must not be interpreted directly as ordinary RGB input
+for contrast measurement.
+
+## 16.5 Invalid-result representation
+
+R0.9 compared several checked-result representations.
+
+A two-field result:
+
+```d
+struct Measurement(T)
+{
+    T value;
+    bool valid;
+}
+```
+
+is not the preferred candidate because DMD 2.111 showed a large,
+reproducible `double` code-generation regression for this representation.
+
+A compact single-scalar measurement is the preferred research candidate:
+
+```text
+finite scalar -> valid measurement
+NaN           -> invalid measurement
+```
+
+with validity derived from the scalar state.
+
+This preserves value semantics and keeps the representation at:
+
+```text
+float  -> 4 bytes
+double -> 8 bytes
+```
+
+A future production type must control construction so callers cannot create
+arbitrary supposedly valid measurements outside the defined result domain.
+
+A `try(..., ref T)` form remains a valid alternative if later consumer
+evidence favors it.
+
+No result representation is frozen during R0.
+
+## 16.6 Performance and compiler evidence
+
+R0.9 found that the compact scalar result and `try(..., ref T)` have similar
+encoded-sRGB and contrast performance on the measured system.
+
+DMD 2.111 showed a large regression specifically for the two-field
+`{ double, bool }` result representation.
+
+Explicit `pragma(inline, true)` did not remove that regression.
+
+Generated-code inspection showed that the relative-luminance benchmark paths
+were already integrated into the benchmark loop, so the observed difference
+cannot be explained simply by one candidate failing to inline.
+
+This is compiler/version-specific evidence and must not be generalized into a
+universal D ABI rule.
+
+## 16.7 Future contrast metrics
+
+WCAG 3 / APCA-style contrast models remain separate future research.
+
+They must use explicit separate semantics and must not silently redefine the
+meaning of a WCAG-2 operation.
 
 ---
 

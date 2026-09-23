@@ -22,7 +22,7 @@ Goals:
 
 No public API is frozen during R0.
 
-### Validated research through R0.8
+### Validated research through R0.9
 
 Completed research blocks:
 
@@ -33,16 +33,27 @@ Completed research blocks:
 - R0.5 — OKLCH and hue semantics;
 - R0.6 — alpha, premultiplication and linear-light compositing;
 - R0.7 — interpolation and hue-path semantics;
-- R0.8 — gamut detection, clipping and perceptual gamut-mapping semantics.
+- R0.8 — gamut detection, clipping and perceptual gamut-mapping semantics;
+- R0.9 — WCAG-2 relative-luminance and contrast semantics, domain validation
+  and checked-result representation.
 
 R0.8 additionally established initial performance and generated-code evidence
 for Local MINDE and Ray Trace gamut mapping. Ray Trace is the stronger
 bounded-cost / hot-path candidate on the measured system, while Local MINDE
 remains a perceptual/reference candidate. No public default mapper is frozen.
 
+R0.9 established that WCAG-2 relative luminance is distinct from XYZ-D65 Y,
+that standards-facing WCAG measurements require finite `[0,1]` sRGB-domain
+input, and that unresolved alpha must be resolved before contrast measurement.
+
+R0.9 also compared checked-result representations. A compact scalar result
+using NaN as the invalid state is the preferred research candidate. A
+two-field `{T,bool}` result showed a substantial DMD 2.111 `double`
+code-generation regression and is not preferred. `try(..., ref T)` remains a
+valid alternative. No public WCAG API or result type is frozen.
+
 Remaining R0 work includes:
 
-- relative luminance and contrast semantics;
 - full `deltaEOK` policy and reference coverage;
 - tone-scale generation;
 - compile-time palette/theme generation and validation;
@@ -82,8 +93,8 @@ Candidate scope:
 
 Candidate scope:
 
-- relative luminance
-- WCAG-style contrast ratio
+- WCAG-2 relative luminance
+- WCAG-2 contrast ratio
 - `deltaEOK`
 - OKLCH tone scales
 - perceptual gamut mapping
