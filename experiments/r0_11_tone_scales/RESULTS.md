@@ -1,8 +1,8 @@
 # R0.11 results — OKLCH tone-scale research
 
-**Status:** R0.11-A/B/C VALIDATED — R0.11 IN PROGRESS
+**Status:** R0.11-A/B/C/D VALIDATED — R0.11 IN PROGRESS
 **Research block:** R0.11 — OKLCH tone-scale generation
-**Validated phases:** R0.11-A — primitive decomposition; R0.11-B — schedule semantics; R0.11-C — chroma and hue policy
+**Validated phases:** R0.11-A — primitive decomposition; R0.11-B — schedule semantics; R0.11-C — chroma and hue policy; R0.11-D — explicit gamut composition
 
 This file records observed results.
 
@@ -1887,5 +1887,445 @@ Automatic chroma shaping, hue aesthetics and gamut-dependent adjustment remain
 separate explicit policies.
 
 R0.11-C is therefore complete.
+
+R0.11 remains in progress.
+
+---
+
+## R0.11-D results — explicit gamut composition
+
+**Status:** VALIDATED
+**Phase:** R0.11-D — explicit gamut composition
+
+R0.11-D tested composition of the raw OKLCH tone-family semantics established
+by R0.11-A through R0.11-C with the already validated R0.8 sRGB gamut layer.
+
+R0.11-D did not redesign or re-evaluate the gamut-mapping algorithms.
+
+### D.1 Reused R0.8 semantics
+
+The validated R0.8 research implementation was exposed through a reusable
+research fixture.
+
+R0.11 imported it under an explicit module alias:
+
+```d
+import gamut = r0_8_gamut_fixture;
+```
+
+The two research type systems remained deliberately distinct.
+
+A narrow adapter:
+
+```d
+toR08Oklch(...)
+```
+
+copies:
+
+```text
+L
+C
+stored H
+```
+
+from the R0.11 OKLCH representation into the R0.8 fixture representation.
+
+No gamut policy is performed by this adapter.
+
+### D.2 Mapping candidates
+
+R0.11-D reused the two validated R0.8 perceptual mapping candidates:
+
+```text
+Local MINDE
+Ray Trace
+```
+
+No public default mapper was selected.
+
+Both remain explicit downstream choices.
+
+### D.3 Observed compiler matrix
+
+The final R0.11-D candidate was executed under:
+
+```text
+DMD 2.111.0  Debug
+DMD 2.111.0  Release
+LDC 1.41.0   Debug
+LDC 1.41.0   Release
+```
+
+Each configuration executed the complete accumulated R0.11-A/B/C/D runtime
+suite:
+
+```text
+134 PASS
+0 FAIL
+```
+
+Therefore the accumulated matrix totals:
+
+```text
+4 configurations
+134 runtime checks per configuration
+
+536 PASS
+0 FAIL
+```
+
+R0.11-D contributes:
+
+```text
+13 checks per scalar type
+2 scalar types
+4 compiler/build configurations
+
+104 phase-D runtime PASS results
+0 phase-D runtime failures
+```
+
+The R0.11-D compile-time probes also compiled successfully in all four
+configurations.
+
+Observed matrix:
+
+| Compiler | Build | Accumulated result |
+|---|---|---:|
+| DMD 2.111.0 | Debug | 134/134 PASS |
+| DMD 2.111.0 | Release | 134/134 PASS |
+| LDC 1.41.0 | Debug | 134/134 PASS |
+| LDC 1.41.0 | Release | 134/134 PASS |
+
+No compiler/build disagreement was observed.
+
+### D.4 Raw family may cross the target-gamut boundary
+
+A single raw R0.11 tone family was constructed containing:
+
+```text
+one in-sRGB-gamut tone
+one out-of-sRGB-gamut tone
+```
+
+Observed:
+
+```text
+PASS  raw family may contain both in-gamut and out-of-gamut tones
+```
+
+Therefore raw tone generation does not imply target-gamut displayability.
+
+An out-of-gamut raw tone is not itself a tone-generation error.
+
+### D.5 Mapping does not mutate the raw family
+
+Both mapping methods were applied downstream of the raw family.
+
+Observed:
+
+```text
+PASS  explicit mapping does not mutate raw tone family
+```
+
+The raw OKLCH values remain independently observable and authoritative.
+
+Mapping produces a target-space result; it does not rewrite the original
+schedule.
+
+### D.6 Cardinality and index correspondence
+
+The element-wise mapping helpers produce exactly one mapping result for each
+raw tone.
+
+Observed:
+
+```text
+PASS  mapping preserves family cardinality
+```
+
+The experiment performs no insertion, deletion, sorting or re-indexing.
+
+Therefore:
+
+```text
+raw[i]
+```
+
+corresponds directly to:
+
+```text
+mapped[i]
+```
+
+for the selected mapping method.
+
+### D.7 In-gamut identity path
+
+For the already in-gamut raw tone, both R0.8 mapping algorithms reported:
+
+```text
+success == true
+iterations == 0
+```
+
+Observed:
+
+```text
+PASS  in-gamut tone uses mapper identity fast path
+```
+
+The mapped target-space value also matched ordinary target conversion:
+
+```text
+PASS  in-gamut mapped target equals ordinary target conversion
+```
+
+Thus inserting an explicit gamut-mapping stage does not force expensive or
+perceptually modifying work on already valid target colors.
+
+### D.8 Out-of-gamut mapping
+
+For the known out-of-gamut high-chroma test tone, both mapping methods:
+
+```text
+reported success
+produced an in-sRGB-gamut LinearSRgb result
+```
+
+Observed:
+
+```text
+PASS  out-of-gamut tone maps successfully with both R0.8 methods
+```
+
+This validates composition of the same raw tone family with either existing
+R0.8 method.
+
+### D.9 Mapping methods remain distinct
+
+The two mapping methods were not required to produce identical results.
+
+For the tested out-of-gamut tone they produced distinct valid target colors.
+
+Observed:
+
+```text
+PASS  mapping methods may produce distinct valid target colors
+```
+
+R0.11-D therefore reinforces the R0.8 decision not to collapse mapping policy
+into one hidden universal algorithm.
+
+### D.10 Batch mapping contains no new color mathematics
+
+The phase-D family helpers were compared against applying the selected R0.8
+mapper independently to every raw tone.
+
+Observed:
+
+```text
+PASS  Local MINDE scale mapping equals independent point-wise mapping
+PASS  Ray Trace scale mapping equals independent point-wise mapping
+```
+
+Therefore tone-family gamut composition is mechanically element-wise.
+
+R0.11-D found no additional palette-level gamut mathematics in the batch
+operation itself.
+
+### D.11 Raw L/C/H schedules remain authoritative
+
+After target mapping, the original R0.11 raw family was checked again.
+
+Observed:
+
+```text
+PASS  raw L/C/H schedule remains authoritative after target mapping
+```
+
+The exact raw schedule belongs to the tone-generation layer.
+
+Mapped target colors are downstream renderable replacements and are not
+required to retain exact raw OKLCH coordinates.
+
+### D.12 Out-of-gamut exact anchors
+
+The experiment explicitly checked an out-of-gamut raw tone whose mapped target
+result is in gamut.
+
+Observed:
+
+```text
+PASS  out-of-gamut raw anchor cannot remain exact target color
+```
+
+This confirms the structural incompatibility between:
+
+```text
+preserve an exact out-of-gamut raw color
+```
+
+and:
+
+```text
+produce an in-target-gamut replacement
+```
+
+Exact anchoring therefore belongs to the raw family unless the anchor is
+already representable in the destination gamut.
+
+### D.13 Lightness extremes may collapse
+
+R0.8 defines:
+
+```text
+L <= 0 -> target black
+L >= 1 -> target white
+```
+
+R0.11-D supplied multiple distinct raw tones at both extremes.
+
+Observed:
+
+```text
+PASS  lightness extremes may collapse to target black or white
+PASS  mapped family need not preserve raw uniqueness or component spacing
+```
+
+Consequently gamut mapping cannot be assumed to preserve:
+
+```text
+raw uniqueness
+raw chroma differences
+raw spacing
+one-to-one perceptual separation
+```
+
+These are not valid invariants of the mapped target family.
+
+### D.14 CTFE
+
+The ordinary phase-D adapter and mapping helpers were exercised at compile
+time.
+
+The CTFE probes established:
+
+```text
+mixed in/out-of-gamut raw family
+Local MINDE composition
+Ray Trace composition
+family cardinality
+in-gamut zero-iteration fast path
+successful out-of-gamut mapping
+in-gamut mapped output
+```
+
+They compiled successfully under all four compiler/build configurations.
+
+No CTFE-specific tone/gamut API is required.
+
+### D.15 Architectural result
+
+R0.11-D validates the following separation:
+
+```text
+raw tone-generation policy
+        |
+        | exact L/C/H schedule semantics
+        v
+raw OKLCH tone family
+        |
+        | explicit target + explicit mapper
+        v
+R0.8 gamut mapping
+        |
+        v
+mapped LinearSRgb target family
+```
+
+The mapping stage does not feed information back into raw tone generation.
+
+There is no validated primitive architecture of the form:
+
+```text
+generate tone
+    ↓
+detect out of gamut
+    ↓
+silently change tone-generation schedule
+```
+
+If a later higher-level palette policy wants to construct a gamut-aware chroma
+schedule, that must be explicit and separate.
+
+### D.16 Phase-D decisions
+
+R0.11-D supports the following research decisions:
+
+1. Raw tone generation remains target-gamut independent.
+2. A raw family may legitimately contain in-gamut and out-of-gamut tones.
+3. Gamut mapping is an explicit downstream operation.
+4. Target and mapping method remain explicit policy choices.
+5. Family mapping is mechanically element-wise.
+6. Mapping preserves family cardinality and index correspondence.
+7. In-gamut tones use the validated R0.8 identity/fast path.
+8. Out-of-gamut tones can be mapped by either validated R0.8 method.
+9. Local MINDE and Ray Trace may produce different valid target colors.
+10. Exact raw L/C/H properties stop at the gamut-mapping boundary.
+11. An exact out-of-gamut anchor cannot simultaneously remain exact and become
+    representable in the target gamut.
+12. Mapped colors may collapse and need not preserve raw uniqueness or spacing.
+13. No gamut mapper belongs implicitly inside the raw tone primitive.
+14. No public default mapper is established by R0.11-D.
+15. No separate tone-scale gamut algorithm is justified.
+
+### D.17 Not established by R0.11-D
+
+R0.11-D does not establish:
+
+- a default gamut mapper;
+- that Local MINDE or Ray Trace is universally preferable;
+- a gamut-aware aesthetic chroma curve;
+- automatic endpoint desaturation;
+- Display-P3 behavior;
+- Rec.2020 behavior;
+- HDR behavior;
+- image-wide rendering intent;
+- mapped-tone perceptual-spacing guarantees;
+- palette-quality heuristics;
+- a final production adapter API;
+- a final production batch-mapping API.
+
+Those remain separate consumer or research questions.
+
+### D.18 Phase-D conclusion
+
+R0.11-D validates that gamut handling composes cleanly after raw OKLCH
+tone-family construction.
+
+The raw tone family remains the authoritative result of the tone-generation
+policy.
+
+The destination-gamut layer then explicitly chooses how to obtain renderable
+target-space colors.
+
+The validated architecture is therefore:
+
+```text
+tone semantics
+    ↓
+raw OKLCH family
+    ↓
+explicit gamut policy
+    ↓
+target-space family
+```
+
+There is no evidence that gamut mapping belongs intrinsically inside the raw
+tone-scale primitive.
+
+R0.11-D is therefore complete.
 
 R0.11 remains in progress.

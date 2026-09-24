@@ -1,5 +1,7 @@
 module app;
 
+import gamut = r0_8_gamut_fixture;
+
 import core.stdc.stdio : printf;
 import std.traits : isFloatingPoint, Unqual;
 
@@ -988,6 +990,140 @@ static assert(
         ctfeChromaBase.h
     )
 );
+
+
+// --------------------------------------------------------------------------
+// R0.11-D — explicit composition with validated R0.8 gamut semantics
+// --------------------------------------------------------------------------
+
+gamut.Oklch!T toR08Oklch(T)(
+    Oklch!T color
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    return gamut.Oklch!T(
+        color.l,
+        color.c,
+        gamut.OklabHue!T(
+            color.h.degrees
+        )
+    );
+}
+
+
+gamut.MapResult!T[N] mapScaleLocalMinde(T, size_t N)(
+    const Oklch!T[N] raw
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    gamut.MapResult!T[N] result;
+
+    foreach (i; 0 .. N)
+    {
+        result[i] =
+            gamut.gamutMapLocalMinde(
+                toR08Oklch(raw[i])
+            );
+    }
+
+    return result;
+}
+
+
+gamut.MapResult!T[N] mapScaleRayTrace(T, size_t N)(
+    const Oklch!T[N] raw
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    gamut.MapResult!T[N] result;
+
+    foreach (i; 0 .. N)
+    {
+        result[i] =
+            gamut.gamutMapRayTrace(
+                toR08Oklch(raw[i])
+            );
+    }
+
+    return result;
+}
+
+
+/*
+ * Compile-time R0.11-D composition probes.
+ *
+ * Element 0 is achromatic and expected to be inside sRGB.
+ * Element 1 is the published high-chroma yellow already exercised by R0.8
+ * and expected to be outside sRGB before mapping.
+ */
+
+enum double[2] ctfeDLightness =
+[
+    0.50,
+    0.96476
+];
+
+enum double[2] ctfeDChroma =
+[
+    0.0,
+    0.24503
+];
+
+enum Oklchd ctfeDSeed =
+    Oklchd(
+        0.50,
+        0.0,
+        OklabHue!double.fromDegrees(110.23)
+    );
+
+enum auto ctfeDRaw =
+    tonesAtLightnessAndChroma(
+        ctfeDSeed,
+        ctfeDLightness,
+        ctfeDChroma
+    );
+
+static assert(is(typeof(ctfeDRaw) == Oklchd[2]));
+
+static assert(
+    gamut.inSrgbGamut(
+        toR08Oklch(ctfeDRaw[0])
+    )
+);
+
+static assert(
+    !gamut.inSrgbGamut(
+        toR08Oklch(ctfeDRaw[1])
+    )
+);
+
+enum auto ctfeDLocal =
+    mapScaleLocalMinde(ctfeDRaw);
+
+enum auto ctfeDRay =
+    mapScaleRayTrace(ctfeDRaw);
+
+static assert(ctfeDLocal.length == ctfeDRaw.length);
+static assert(ctfeDRay.length == ctfeDRaw.length);
+
+static assert(ctfeDLocal[0].success);
+static assert(ctfeDRay[0].success);
+
+static assert(ctfeDLocal[0].iterations == 0);
+static assert(ctfeDRay[0].iterations == 0);
+
+static assert(ctfeDLocal[1].success);
+static assert(ctfeDRay[1].success);
+
+static assert(gamut.inSrgbGamut(
+        ctfeDLocal[1].color
+    ));
+static assert(gamut.inSrgbGamut(
+        ctfeDRay[1].color
+    ));
 
 struct TestState
 {
@@ -2049,6 +2185,264 @@ if (isColorScalar!T)
 }
 
 
+
+void runGamutCompositionTests(T)(
+    ref TestState state,
+    const(char)* scalarName
+)
+if (isColorScalar!T)
+{
+    printf(
+        "\n=== R0.11-D gamut composition / %s ===\n",
+        scalarName
+    );
+
+    /*
+     * Construct one known in-gamut tone and the published R0.8 high-chroma
+     * yellow in the same raw R0.11 family.
+     */
+    const T[2] lightnesses =
+    [
+        cast(T)0.50,
+        cast(T)0.96476
+    ];
+
+    const T[2] chromas =
+    [
+        cast(T)0,
+        cast(T)0.24503
+    ];
+
+    const Oklch!T seed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0,
+            OklabHue!T.fromDegrees(
+                cast(T)110.23
+            )
+        );
+
+    const auto raw =
+        tonesAtLightnessAndChroma(
+            seed,
+            lightnesses,
+            chromas
+        );
+
+    const auto rawBeforeMapping = raw;
+
+    const bool firstInGamut =
+        gamut.inSrgbGamut(
+            toR08Oklch(raw[0])
+        );
+
+    const bool secondInGamut =
+        gamut.inSrgbGamut(
+            toR08Oklch(raw[1])
+        );
+
+    check(
+        state,
+        firstInGamut &&
+        !secondInGamut,
+        "raw family may contain both in-gamut and out-of-gamut tones"
+    );
+
+    const auto local =
+        mapScaleLocalMinde(raw);
+
+    const auto ray =
+        mapScaleRayTrace(raw);
+
+    check(
+        state,
+        raw == rawBeforeMapping,
+        "explicit mapping does not mutate raw tone family"
+    );
+
+    check(
+        state,
+        local.length == raw.length &&
+        ray.length == raw.length,
+        "mapping preserves family cardinality"
+    );
+
+    check(
+        state,
+        local[0].success &&
+        ray[0].success &&
+        local[0].iterations == 0 &&
+        ray[0].iterations == 0,
+        "in-gamut tone uses mapper identity fast path"
+    );
+
+    const auto directInGamutRgb =
+        gamut.toLinearSRgb(
+            toR08Oklch(raw[0])
+        );
+
+    check(
+        state,
+        local[0].color == directInGamutRgb &&
+        ray[0].color == directInGamutRgb,
+        "in-gamut mapped target equals ordinary target conversion"
+    );
+
+    check(
+        state,
+        local[1].success &&
+        ray[1].success &&
+        gamut.inSrgbGamut(
+            local[1].color
+        ) &&
+        gamut.inSrgbGamut(
+            ray[1].color
+        ),
+        "out-of-gamut tone maps successfully with both R0.8 methods"
+    );
+
+    check(
+        state,
+        local[1].color != ray[1].color,
+        "mapping methods may produce distinct valid target colors"
+    );
+
+    bool localPointwiseExact = true;
+    bool rayPointwiseExact = true;
+
+    foreach (i; 0 .. raw.length)
+    {
+        const auto r08 =
+            toR08Oklch(raw[i]);
+
+        const auto directLocal =
+            gamut.gamutMapLocalMinde(r08);
+
+        const auto directRay =
+            gamut.gamutMapRayTrace(r08);
+
+        if (local[i] != directLocal)
+            localPointwiseExact = false;
+
+        if (ray[i] != directRay)
+            rayPointwiseExact = false;
+    }
+
+    check(
+        state,
+        localPointwiseExact,
+        "Local MINDE scale mapping equals independent point-wise mapping"
+    );
+
+    check(
+        state,
+        rayPointwiseExact,
+        "Ray Trace scale mapping equals independent point-wise mapping"
+    );
+
+    check(
+        state,
+        schedulePreserved(
+            raw,
+            lightnesses
+        ) &&
+        chromaSchedulePreserved(
+            raw,
+            chromas
+        ) &&
+        constantHue(
+            raw,
+            seed.h
+        ),
+        "raw L/C/H schedule remains authoritative after target mapping"
+    );
+
+    check(
+        state,
+        !gamut.inSrgbGamut(
+            toR08Oklch(raw[1])
+        ) &&
+        gamut.inSrgbGamut(
+            local[1].color
+        ) &&
+        gamut.inSrgbGamut(
+            ray[1].color
+        ),
+        "out-of-gamut raw anchor cannot remain exact target color"
+    );
+
+    /*
+     * R0.8 defines L <= 0 as destination black and L >= 1 as destination
+     * white. Distinct raw tones may therefore collapse after mapping.
+     */
+    const Oklch!T[4] extremes =
+    [
+        Oklch!T(
+            cast(T)-0.20,
+            cast(T)0.10,
+            seed.h
+        ),
+        Oklch!T(
+            cast(T)-0.10,
+            cast(T)0.30,
+            seed.h
+        ),
+        Oklch!T(
+            cast(T)1.10,
+            cast(T)0.10,
+            seed.h
+        ),
+        Oklch!T(
+            cast(T)1.20,
+            cast(T)0.30,
+            seed.h
+        )
+    ];
+
+    const auto extremeLocal =
+        mapScaleLocalMinde(extremes);
+
+    const auto extremeRay =
+        mapScaleRayTrace(extremes);
+
+    const gamut.LinearSRgb!T black =
+        gamut.LinearSRgb!T(
+            cast(T)0,
+            cast(T)0,
+            cast(T)0
+        );
+
+    const gamut.LinearSRgb!T white =
+        gamut.LinearSRgb!T(
+            cast(T)1,
+            cast(T)1,
+            cast(T)1
+        );
+
+    check(
+        state,
+        extremeLocal[0].color == black &&
+        extremeLocal[1].color == black &&
+        extremeLocal[2].color == white &&
+        extremeLocal[3].color == white &&
+        extremeRay[0].color == black &&
+        extremeRay[1].color == black &&
+        extremeRay[2].color == white &&
+        extremeRay[3].color == white,
+        "lightness extremes may collapse to target black or white"
+    );
+
+    check(
+        state,
+        extremes[0].c != extremes[1].c &&
+        extremes[2].c != extremes[3].c &&
+        extremeLocal[0].color == extremeLocal[1].color &&
+        extremeLocal[2].color == extremeLocal[3].color,
+        "mapped family need not preserve raw uniqueness or component spacing"
+    );
+}
+
+
 void main()
 {
     printf("color-d R0.11 — tone-scale research\n");
@@ -2093,6 +2487,16 @@ void main()
     );
 
     runChromaHueTests!double(
+        state,
+        "double"
+    );
+
+    runGamutCompositionTests!float(
+        state,
+        "float"
+    );
+
+    runGamutCompositionTests!double(
         state,
         "double"
     );

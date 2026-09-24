@@ -5,3 +5,6 @@ copyright "Copyright © 2026, Alexander Bernardi"
 license "MIT"
 
 targetType "executable"
+
+sourcePaths "source" "../r0_8_gamut_semantics/fixture"
+importPaths "source" "../r0_8_gamut_semantics/fixture"

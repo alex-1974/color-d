@@ -985,4 +985,4 @@ R0.11-D does not re-evaluate:
 Those questions are either already answered by R0.8 or require separate
 consumer-driven research.
 
-No R0.11-D result is recorded until observed compiler runs exist.
+Observed R0.11-D results are recorded in `RESULTS.md` after the complete DMD/LDC Debug/Release matrix was executed.
