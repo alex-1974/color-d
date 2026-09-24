@@ -639,3 +639,350 @@ R0.11-C asks:
 12. Does raw negative chroma remain uncanonicalized?
 
 Observed R0.11-C results are recorded in `RESULTS.md` only after the compiler matrix was executed.
+
+---
+
+# R0.11-D — explicit gamut composition
+
+R0.11-A through R0.11-C established a raw tone-family layer:
+
+```text
+component operations
+        ↓
+explicit/generated scalar schedules
+        ↓
+raw OKLCH tone family
+```
+
+R0.11-D investigates how that raw family composes with the already validated
+R0.8 target-gamut layer.
+
+R0.11-D does not redesign gamut mapping.
+
+The validated R0.8 semantics remain authoritative:
+
+```text
+inGamut
+    diagnostic target-gamut membership
+
+clip
+    explicit target-coordinate saturation
+
+gamutMap
+    explicit perceptual transformation
+
+ordinary conversion
+    neither clipping nor mapping
+```
+
+The initial target remains sRGB.
+
+## D1 — Raw family precedes gamut policy
+
+Tone construction must remain possible without any target-gamut operation.
+
+Conceptually:
+
+```text
+rawToneFamily(...)
+```
+
+may contain colors that are outside sRGB.
+
+This is not an error.
+
+The caller may subsequently choose:
+
+```text
+ordinary conversion
+explicit clipping
+Local MINDE mapping
+Ray Trace mapping
+```
+
+according to its own target/output policy.
+
+R0.11-D tests gamut mapping specifically.
+
+It does not make clipping and perceptual mapping interchangeable.
+
+## D2 — Mapping is explicit and downstream
+
+The intended composition is:
+
+```text
+raw OKLCH tones
+        ↓
+explicit target + mapping method
+        ↓
+mapped target-space colors
+```
+
+not:
+
+```text
+tone generation
+        ↓
+hidden automatic gamut mapping
+```
+
+and not:
+
+```text
+generate a new chroma schedule implicitly because some tones are out of gamut
+```
+
+The raw tone family remains independently observable.
+
+## D3 — Element-wise composition
+
+For a raw family:
+
+```text
+raw[0 .. N]
+```
+
+mapping is conceptually point-wise:
+
+```text
+mapped[i] = mapper(raw[i])
+```
+
+R0.11-D asks whether this requires any additional palette mathematics.
+
+Expected structural invariants are:
+
+```text
+same number of elements
+same index correspondence
+same ordering of elements
+```
+
+This does not mean that the mapped colors preserve every raw OKLCH component.
+
+## D4 — Output space is the target space
+
+The validated R0.8 perceptual mapping candidates produce target-space
+`LinearSRgb` output.
+
+Therefore R0.11-D treats:
+
+```text
+OKLCH raw family
+```
+
+and:
+
+```text
+mapped LinearSRgb family
+```
+
+as semantically distinct representations.
+
+A mapped result is not silently converted back into a new authoritative raw
+OKLCH schedule.
+
+Round-tripping mapped output back to OKLCH may be useful for diagnostics, but
+it does not redefine the original schedule.
+
+## D5 — In-gamut identity
+
+R0.8 established an in-gamut fast path.
+
+For an already in-sRGB-gamut raw tone, R0.11-D expects:
+
+```text
+success == true
+iterations == 0
+mapped target color == ordinary target conversion
+```
+
+subject to the exact semantics of the validated R0.8 implementation.
+
+This is an important composition property because an explicit mapping stage
+must not unnecessarily alter already valid target colors.
+
+## D6 — Out-of-gamut mapping
+
+For representative finite out-of-gamut raw tones, both validated mapping
+candidates should:
+
+```text
+report success
+produce an in-sRGB-gamut target color
+```
+
+The two algorithms are not required to produce identical target colors.
+
+R0.11-D must preserve the R0.8 distinction between:
+
+```text
+Local MINDE
+Ray Trace
+```
+
+and must not infer a universal default mapper.
+
+## D7 — Raw component schedules stop at the mapping boundary
+
+Before mapping, R0.11-A through R0.11-C may establish exact properties such as:
+
+```text
+requested L preserved exactly
+requested C preserved exactly
+stored H preserved exactly
+```
+
+Those are raw-family properties.
+
+After perceptual gamut mapping, R0.11-D must not require exact preservation of:
+
+```text
+L
+C
+H
+```
+
+when the original tone was out of gamut.
+
+The purpose of gamut mapping is precisely to replace an unrepresentable target
+color with a representable one.
+
+## D8 — Raw anchoring versus mapped anchoring
+
+If a seed or scheduled tone is already inside the target gamut, mapping may
+preserve it through the R0.8 identity path.
+
+If an exact raw anchor is outside the target gamut, these two requirements
+cannot both hold:
+
+```text
+preserve the exact raw color
+produce an in-target-gamut result
+```
+
+Therefore anchor preservation belongs primarily to the raw tone family.
+
+A mapped output may preserve an anchor exactly only when target-gamut
+constraints permit it.
+
+## D9 — Lightness extremes
+
+R0.8 established explicit target behavior:
+
+```text
+L <= 0
+    -> destination black
+
+L >= 1
+    -> destination white
+```
+
+Consequently multiple distinct raw tones may collapse to the same mapped
+target color.
+
+R0.11-D therefore must not assume that mapping preserves:
+
+```text
+uniqueness
+perceptual spacing
+exact scalar spacing
+```
+
+across the mapped family.
+
+Those are separate palette-quality questions.
+
+## D10 — No feedback into raw chroma generation
+
+R0.11-C separated explicit chroma scheduling from gamut policy.
+
+R0.11-D must retain that separation.
+
+This phase does not define an algorithm such as:
+
+```text
+generate C
+test gamut
+reduce C
+regenerate scale
+repeat
+```
+
+as the primitive tone-scale operation.
+
+A future higher-level palette policy may deliberately use gamut information to
+construct a chroma schedule.
+
+That would be an explicit policy layer above the raw primitives.
+
+## D11 — Mapping-method policy
+
+R0.8 retained:
+
+```text
+Local MINDE
+```
+
+as a standards-oriented / perceptual reference candidate and:
+
+```text
+Ray Trace
+```
+
+as a bounded-cost / hot-path candidate.
+
+R0.11-D consumes both as explicit alternatives.
+
+It does not:
+
+```text
+rank them universally
+choose a public default
+hide method selection
+```
+
+## D12 — What R0.11-D should test
+
+The executable experiment should test:
+
+1. A raw tone family may contain both in-gamut and out-of-gamut tones.
+2. No gamut operation occurs during raw family generation.
+3. Mapping preserves family cardinality.
+4. Mapping preserves index correspondence.
+5. Mapping an in-gamut tone uses the identity/zero-iteration path.
+6. Mapping an out-of-gamut finite tone produces an in-gamut result.
+7. Both Local MINDE and Ray Trace compose with the same raw family.
+8. Mapper outputs may differ without violating the contract.
+9. Mapping is exactly equivalent to applying the chosen mapper independently
+   to every raw tone.
+10. Exact raw L/C/H schedule properties remain properties of the raw family,
+    not mandatory properties of mapped target colors.
+11. An out-of-gamut raw anchor cannot simultaneously remain exact and become
+    an in-gamut target color.
+12. Lightness-extreme tones may collapse to black or white.
+13. No mapper is selected implicitly by the raw tone-family operation.
+14. Mapping does not feed back into the raw chroma schedule.
+
+## D13 — Deliberately out of scope
+
+R0.11-D does not re-evaluate:
+
+- Local MINDE algorithm quality;
+- Ray Trace algorithm quality;
+- EdgeSeeker;
+- gamut-detection mathematics;
+- clipping mathematics;
+- deltaEOK;
+- mapping performance;
+- mapping iteration budgets;
+- Display-P3;
+- Rec.2020;
+- HDR;
+- image-wide rendering intent;
+- a default public mapper.
+
+Those questions are either already answered by R0.8 or require separate
+consumer-driven research.
+
+No R0.11-D result is recorded until observed compiler runs exist.
