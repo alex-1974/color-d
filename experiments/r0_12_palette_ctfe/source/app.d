@@ -3,7 +3,7 @@ module app;
 import gamut = r0_8_gamut_fixture;
 
 import std.math : hypot;
-import std.stdio : writeln;
+import std.stdio : writefln, writeln;
 import std.traits : isFloatingPoint, Unqual;
 
 
@@ -1094,6 +1094,1062 @@ if (isColorScalar!T)
 
 
 // ==========================================================================
+// R0.12-C — representation and CTFE
+// ==========================================================================
+
+/*
+ * Consumer-local aggregate.
+ *
+ * This struct does not introduce palette semantics. It merely groups the
+ * three representations needed by this experiment:
+ *
+ *     raw OKLCH
+ *     mapped linear sRGB
+ *     encoded sRGB
+ *
+ * R0.12-C tests whether ordinary D value aggregation is sufficient without a
+ * color-d-owned Palette container.
+ */
+struct PaletteBundle(T, size_t F, size_t N)
+if (isColorScalar!T)
+{
+    Oklch!T[N][F] raw;
+    MapResult!T[N][F] mapped;
+    SRgb!T[N][F] encoded;
+}
+
+
+PaletteBundle!(T, F, N) buildPaletteBundle(
+    T,
+    size_t F,
+    size_t N
+)(
+    const Oklch!T[F] seeds,
+    const T[N][F] lightnesses,
+    const T[N][F] chromas
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    PaletteBundle!(T, F, N) result;
+
+    result.raw =
+        composeRawPalette!(T, F, N)(
+            seeds,
+            lightnesses,
+            chromas
+        );
+
+    result.mapped =
+        mapPaletteRayTrace!(T, F, N)(
+            result.raw
+        );
+
+    result.encoded =
+        encodeMappedPalette!(T, F, N)(
+            result.mapped
+        );
+
+    return result;
+}
+
+
+/*
+ * Representative compile-time-known dimensions.
+ */
+enum size_t phaseCFamilies = 3;
+enum size_t phaseCTones = 5;
+
+
+Oklch!T[phaseCFamilies] phaseCSeeds(T)()
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    return
+    [
+        Oklch!T(
+            cast(T)0.55,
+            cast(T)0.12,
+            OklabHue!T(cast(T)250.0)),
+
+        Oklch!T(
+            cast(T)0.70,
+            cast(T)0.20,
+            OklabHue!T(cast(T)110.23)),
+
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0.00,
+            OklabHue!T(cast(T)-45.0))
+    ];
+}
+
+
+T[phaseCTones][phaseCFamilies] phaseCLightnesses(T)()
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    return
+    [
+        [
+            cast(T)0.15,
+            cast(T)0.35,
+            cast(T)0.55,
+            cast(T)0.75,
+            cast(T)0.90
+        ],
+        [
+            cast(T)0.20,
+            cast(T)0.50,
+            cast(T)0.80,
+            cast(T)0.96476,
+            cast(T)0.99
+        ],
+        [
+            cast(T)0.10,
+            cast(T)0.30,
+            cast(T)0.50,
+            cast(T)0.70,
+            cast(T)0.90
+        ]
+    ];
+}
+
+
+T[phaseCTones][phaseCFamilies] phaseCChromas(T)()
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    return
+    [
+        [
+            cast(T)0.06,
+            cast(T)0.10,
+            cast(T)0.12,
+            cast(T)0.10,
+            cast(T)0.06
+        ],
+        [
+            cast(T)0.10,
+            cast(T)0.18,
+            cast(T)0.22,
+            cast(T)0.24503,
+            cast(T)0.10
+        ],
+        [
+            cast(T)0.00,
+            cast(T)0.00,
+            cast(T)0.00,
+            cast(T)0.00,
+            cast(T)0.00
+        ]
+    ];
+}
+
+
+// --------------------------------------------------------------------------
+// Manifest CTFE inputs
+// --------------------------------------------------------------------------
+
+enum phaseCSeedsF =
+    phaseCSeeds!float();
+
+enum phaseCLightnessesF =
+    phaseCLightnesses!float();
+
+enum phaseCChromasF =
+    phaseCChromas!float();
+
+enum phaseCSeedsD =
+    phaseCSeeds!double();
+
+enum phaseCLightnessesD =
+    phaseCLightnesses!double();
+
+enum phaseCChromasD =
+    phaseCChromas!double();
+
+
+// --------------------------------------------------------------------------
+// Complete CTFE construction through the same ordinary function
+// --------------------------------------------------------------------------
+
+enum phaseCBundleF =
+    buildPaletteBundle!(
+        float,
+        phaseCFamilies,
+        phaseCTones
+    )(
+        phaseCSeedsF,
+        phaseCLightnessesF,
+        phaseCChromasF
+    );
+
+enum phaseCBundleD =
+    buildPaletteBundle!(
+        double,
+        phaseCFamilies,
+        phaseCTones
+    )(
+        phaseCSeedsD,
+        phaseCLightnessesD,
+        phaseCChromasD
+    );
+
+
+// --------------------------------------------------------------------------
+// Compile-time validation
+// --------------------------------------------------------------------------
+
+enum TonePair phaseCEndpointPair =
+    TonePair(
+        ToneRef(2, 0),
+        ToneRef(2, 4)
+    );
+
+
+static assert(
+    allMappingsSuccessful!(
+        float,
+        phaseCFamilies,
+        phaseCTones
+    )(phaseCBundleF.mapped)
+);
+
+static assert(
+    allMappedInGamut!(
+        float,
+        phaseCFamilies,
+        phaseCTones
+    )(phaseCBundleF.mapped)
+);
+
+static assert(
+    allEncodedInGamut!(
+        float,
+        phaseCFamilies,
+        phaseCTones
+    )(phaseCBundleF.encoded)
+);
+
+static assert(
+    allWcag2SrgbDomain!(
+        float,
+        phaseCFamilies,
+        phaseCTones
+    )(phaseCBundleF.encoded)
+);
+
+static assert(
+    nondecreasingLightness!(
+        float,
+        phaseCTones
+    )(phaseCBundleF.raw[2])
+);
+
+
+enum phaseCContrastF =
+    measureContrast!(
+        float,
+        phaseCFamilies,
+        phaseCTones
+    )(
+        phaseCBundleF.encoded,
+        phaseCEndpointPair
+    );
+
+enum phaseCDistanceF =
+    measureDeltaEOK!(
+        float,
+        phaseCFamilies,
+        phaseCTones
+    )(
+        phaseCBundleF.encoded,
+        phaseCEndpointPair
+    );
+
+static assert(
+    phaseCContrastF >= 4.5f
+);
+
+static assert(
+    !(phaseCContrastF >= 18.0f)
+);
+
+static assert(
+    phaseCDistanceF >= 0.5f
+);
+
+static assert(
+    !(phaseCDistanceF >= 0.9f)
+);
+
+
+static assert(
+    allMappingsSuccessful!(
+        double,
+        phaseCFamilies,
+        phaseCTones
+    )(phaseCBundleD.mapped)
+);
+
+static assert(
+    allMappedInGamut!(
+        double,
+        phaseCFamilies,
+        phaseCTones
+    )(phaseCBundleD.mapped)
+);
+
+static assert(
+    allEncodedInGamut!(
+        double,
+        phaseCFamilies,
+        phaseCTones
+    )(phaseCBundleD.encoded)
+);
+
+static assert(
+    allWcag2SrgbDomain!(
+        double,
+        phaseCFamilies,
+        phaseCTones
+    )(phaseCBundleD.encoded)
+);
+
+static assert(
+    nondecreasingLightness!(
+        double,
+        phaseCTones
+    )(phaseCBundleD.raw[2])
+);
+
+
+enum phaseCContrastD =
+    measureContrast!(
+        double,
+        phaseCFamilies,
+        phaseCTones
+    )(
+        phaseCBundleD.encoded,
+        phaseCEndpointPair
+    );
+
+enum phaseCDistanceD =
+    measureDeltaEOK!(
+        double,
+        phaseCFamilies,
+        phaseCTones
+    )(
+        phaseCBundleD.encoded,
+        phaseCEndpointPair
+    );
+
+static assert(
+    phaseCContrastD >= 4.5
+);
+
+static assert(
+    !(phaseCContrastD >= 18.0)
+);
+
+static assert(
+    phaseCDistanceD >= 0.5
+);
+
+static assert(
+    !(phaseCDistanceD >= 0.9)
+);
+
+
+// --------------------------------------------------------------------------
+// Representation shape
+// --------------------------------------------------------------------------
+
+static assert(
+    phaseCBundleF.raw.length ==
+        phaseCFamilies
+);
+
+static assert(
+    phaseCBundleF.raw[0].length ==
+        phaseCTones
+);
+
+static assert(
+    phaseCBundleD.encoded.length ==
+        phaseCFamilies
+);
+
+static assert(
+    phaseCBundleD.encoded[0].length ==
+        phaseCTones
+);
+
+
+// --------------------------------------------------------------------------
+// static immutable storage
+//
+// These initializers invoke the same ordinary build function. At module
+// scope they must be statically initializable; no separate CTFE API exists.
+// --------------------------------------------------------------------------
+
+static immutable PaletteBundle!(
+    float,
+    phaseCFamilies,
+    phaseCTones
+) phaseCStoredF =
+    buildPaletteBundle!(
+        float,
+        phaseCFamilies,
+        phaseCTones
+    )(
+        phaseCSeedsF,
+        phaseCLightnessesF,
+        phaseCChromasF
+    );
+
+
+static immutable PaletteBundle!(
+    double,
+    phaseCFamilies,
+    phaseCTones
+) phaseCStoredD =
+    buildPaletteBundle!(
+        double,
+        phaseCFamilies,
+        phaseCTones
+    )(
+        phaseCSeedsD,
+        phaseCLightnessesD,
+        phaseCChromasD
+    );
+
+
+// --------------------------------------------------------------------------
+// Runtime / CTFE numerical diagnostics
+// --------------------------------------------------------------------------
+
+T absoluteDifference(T)(
+    T a,
+    T b
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    const T d = a - b;
+
+    return d < cast(T)0
+        ? -d
+        : d;
+}
+
+
+void updateMaximum(T)(
+    ref T current,
+    T candidate
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    if (candidate > current)
+        current = candidate;
+}
+
+
+/*
+ * Development diagnostic only.
+ *
+ * Exact comparison is intentional here. We are trying to identify the
+ * numerical boundary at which runtime and CTFE cease to be bit-for-bit
+ * equivalent. No tolerance policy is introduced by this helper.
+ */
+void diagnoseBundleDifference(
+    T,
+    size_t F,
+    size_t N
+)(
+    const PaletteBundle!(T, F, N) lhs,
+    const PaletteBundle!(T, F, N) rhs,
+    string label
+)
+if (isColorScalar!T)
+{
+    size_t rawToneMismatches = 0;
+    size_t mappedToneMismatches = 0;
+    size_t encodedToneMismatches = 0;
+    size_t metadataMismatches = 0;
+
+    T maxRawDifference = cast(T)0;
+    T maxMappedDifference = cast(T)0;
+    T maxEncodedDifference = cast(T)0;
+
+    bool printedFirstRaw = false;
+    bool printedFirstMapped = false;
+    bool printedFirstEncoded = false;
+    bool printedFirstMetadata = false;
+
+    foreach (f; 0 .. F)
+    {
+        foreach (i; 0 .. N)
+        {
+            const auto lr = lhs.raw[f][i];
+            const auto rr = rhs.raw[f][i];
+
+            const T rawDL =
+                absoluteDifference!T(
+                    lr.l,
+                    rr.l
+                );
+
+            const T rawDC =
+                absoluteDifference!T(
+                    lr.c,
+                    rr.c
+                );
+
+            const T rawDH =
+                absoluteDifference!T(
+                    lr.h.degrees,
+                    rr.h.degrees
+                );
+
+            updateMaximum!T(
+                maxRawDifference,
+                rawDL
+            );
+
+            updateMaximum!T(
+                maxRawDifference,
+                rawDC
+            );
+
+            updateMaximum!T(
+                maxRawDifference,
+                rawDH
+            );
+
+            if (rawDL != cast(T)0 ||
+                rawDC != cast(T)0 ||
+                rawDH != cast(T)0)
+            {
+                ++rawToneMismatches;
+
+                if (!printedFirstRaw)
+                {
+                    printedFirstRaw = true;
+
+                    writefln(
+                        "DIAG  %s first raw mismatch: family=%s tone=%s "
+                        ~ "dL=%.17e dC=%.17e dH=%.17e",
+                        label,
+                        f,
+                        i,
+                        cast(double)rawDL,
+                        cast(double)rawDC,
+                        cast(double)rawDH
+                    );
+                }
+            }
+
+            const auto lm = lhs.mapped[f][i];
+            const auto rm = rhs.mapped[f][i];
+
+            if (lm.iterations != rm.iterations ||
+                lm.success != rm.success)
+            {
+                ++metadataMismatches;
+
+                if (!printedFirstMetadata)
+                {
+                    printedFirstMetadata = true;
+
+                    writefln(
+                        "DIAG  %s first metadata mismatch: family=%s tone=%s "
+                        ~ "iterations=%s/%s success=%s/%s",
+                        label,
+                        f,
+                        i,
+                        lm.iterations,
+                        rm.iterations,
+                        lm.success,
+                        rm.success
+                    );
+                }
+            }
+
+            const T mappedDR =
+                absoluteDifference!T(
+                    lm.color.r,
+                    rm.color.r
+                );
+
+            const T mappedDG =
+                absoluteDifference!T(
+                    lm.color.g,
+                    rm.color.g
+                );
+
+            const T mappedDB =
+                absoluteDifference!T(
+                    lm.color.b,
+                    rm.color.b
+                );
+
+            updateMaximum!T(
+                maxMappedDifference,
+                mappedDR
+            );
+
+            updateMaximum!T(
+                maxMappedDifference,
+                mappedDG
+            );
+
+            updateMaximum!T(
+                maxMappedDifference,
+                mappedDB
+            );
+
+            if (mappedDR != cast(T)0 ||
+                mappedDG != cast(T)0 ||
+                mappedDB != cast(T)0)
+            {
+                ++mappedToneMismatches;
+
+                if (!printedFirstMapped)
+                {
+                    printedFirstMapped = true;
+
+                    writefln(
+                        "DIAG  %s first mapped mismatch: family=%s tone=%s "
+                        ~ "dr=%.17e dg=%.17e db=%.17e",
+                        label,
+                        f,
+                        i,
+                        cast(double)mappedDR,
+                        cast(double)mappedDG,
+                        cast(double)mappedDB
+                    );
+
+                    writefln(
+                        "DIAG  %s mapped lhs=(%.17e, %.17e, %.17e)",
+                        label,
+                        cast(double)lm.color.r,
+                        cast(double)lm.color.g,
+                        cast(double)lm.color.b
+                    );
+
+                    writefln(
+                        "DIAG  %s mapped rhs=(%.17e, %.17e, %.17e)",
+                        label,
+                        cast(double)rm.color.r,
+                        cast(double)rm.color.g,
+                        cast(double)rm.color.b
+                    );
+                }
+            }
+
+            const auto le = lhs.encoded[f][i];
+            const auto re = rhs.encoded[f][i];
+
+            const T encodedDR =
+                absoluteDifference!T(
+                    le.r,
+                    re.r
+                );
+
+            const T encodedDG =
+                absoluteDifference!T(
+                    le.g,
+                    re.g
+                );
+
+            const T encodedDB =
+                absoluteDifference!T(
+                    le.b,
+                    re.b
+                );
+
+            updateMaximum!T(
+                maxEncodedDifference,
+                encodedDR
+            );
+
+            updateMaximum!T(
+                maxEncodedDifference,
+                encodedDG
+            );
+
+            updateMaximum!T(
+                maxEncodedDifference,
+                encodedDB
+            );
+
+            if (encodedDR != cast(T)0 ||
+                encodedDG != cast(T)0 ||
+                encodedDB != cast(T)0)
+            {
+                ++encodedToneMismatches;
+
+                if (!printedFirstEncoded)
+                {
+                    printedFirstEncoded = true;
+
+                    writefln(
+                        "DIAG  %s first encoded mismatch: family=%s tone=%s "
+                        ~ "dr=%.17e dg=%.17e db=%.17e",
+                        label,
+                        f,
+                        i,
+                        cast(double)encodedDR,
+                        cast(double)encodedDG,
+                        cast(double)encodedDB
+                    );
+
+                    writefln(
+                        "DIAG  %s encoded lhs=(%.17e, %.17e, %.17e)",
+                        label,
+                        cast(double)le.r,
+                        cast(double)le.g,
+                        cast(double)le.b
+                    );
+
+                    writefln(
+                        "DIAG  %s encoded rhs=(%.17e, %.17e, %.17e)",
+                        label,
+                        cast(double)re.r,
+                        cast(double)re.g,
+                        cast(double)re.b
+                    );
+                }
+            }
+        }
+    }
+
+    writefln(
+        "DIAG  %s summary: raw=%s mapped=%s encoded=%s metadata=%s",
+        label,
+        rawToneMismatches,
+        mappedToneMismatches,
+        encodedToneMismatches,
+        metadataMismatches
+    );
+
+    writefln(
+        "DIAG  %s maxima: raw=%.17e mapped=%.17e encoded=%.17e",
+        label,
+        cast(double)maxRawDifference,
+        cast(double)maxMappedDifference,
+        cast(double)maxEncodedDifference
+    );
+}
+
+
+
+// --------------------------------------------------------------------------
+// Runtime / CTFE agreement
+// --------------------------------------------------------------------------
+
+bool sameMappingMetadata(T, size_t F, size_t N)(
+    const MapResult!T[N][F] lhs,
+    const MapResult!T[N][F] rhs
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    foreach (f; 0 .. F)
+    {
+        foreach (i; 0 .. N)
+        {
+            if (lhs[f][i].iterations != rhs[f][i].iterations ||
+                lhs[f][i].success != rhs[f][i].success)
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+
+/*
+ * R0.12-C does not introduce a numerical tolerance.
+ *
+ * Development diagnostics established that mapped and encoded floating-point
+ * components can differ between runtime and CTFE while:
+ *
+ *     raw values remain exact,
+ *     Ray Trace metadata remains exact,
+ *     validation classifications remain the same.
+ *
+ * Exact numeric CTFE/runtime tolerance policy belongs to R0.13.
+ */
+void checkPhaseCAgreement(
+    T,
+    size_t F,
+    size_t N
+)(
+    ref CheckTotals totals,
+    string scalarName,
+    const PaletteBundle!(T, F, N) runtimeBundle,
+    const PaletteBundle!(T, F, N) ctfeBundle,
+    const PaletteBundle!(T, F, N) storedBundle
+)
+if (isColorScalar!T)
+{
+    check(
+        totals,
+        sameRawPalette!(T, F, N)(
+            runtimeBundle.raw,
+            ctfeBundle.raw
+        ),
+        scalarName ~
+            ": runtime raw palette equals CTFE raw palette exactly"
+    );
+
+    check(
+        totals,
+        sameMappingMetadata!(T, F, N)(
+            runtimeBundle.mapped,
+            ctfeBundle.mapped
+        ),
+        scalarName ~
+            ": runtime and CTFE Ray Trace metadata agree exactly"
+    );
+
+    check(
+        totals,
+        allMappingsSuccessful!(T, F, N)(
+            runtimeBundle.mapped
+        ) ==
+        allMappingsSuccessful!(T, F, N)(
+            ctfeBundle.mapped
+        ),
+        scalarName ~
+            ": runtime and CTFE mapping-success classification agrees"
+    );
+
+    check(
+        totals,
+        allMappedInGamut!(T, F, N)(
+            runtimeBundle.mapped
+        ) ==
+        allMappedInGamut!(T, F, N)(
+            ctfeBundle.mapped
+        ),
+        scalarName ~
+            ": runtime and CTFE mapped-gamut classification agrees"
+    );
+
+    check(
+        totals,
+        allEncodedInGamut!(T, F, N)(
+            runtimeBundle.encoded
+        ) ==
+        allEncodedInGamut!(T, F, N)(
+            ctfeBundle.encoded
+        ),
+        scalarName ~
+            ": runtime and CTFE encoded-gamut classification agrees"
+    );
+
+    check(
+        totals,
+        allWcag2SrgbDomain!(T, F, N)(
+            runtimeBundle.encoded
+        ) ==
+        allWcag2SrgbDomain!(T, F, N)(
+            ctfeBundle.encoded
+        ),
+        scalarName ~
+            ": runtime and CTFE WCAG-domain classification agrees"
+    );
+
+    const T runtimeContrast =
+        measureContrast!(T, F, N)(
+            runtimeBundle.encoded,
+            phaseCEndpointPair
+        );
+
+    const T ctfeContrast =
+        measureContrast!(T, F, N)(
+            ctfeBundle.encoded,
+            phaseCEndpointPair
+        );
+
+    const bool contrastPolicyAgreement =
+        (runtimeContrast >= cast(T)4.5) ==
+            (ctfeContrast >= cast(T)4.5) &&
+        (runtimeContrast >= cast(T)18.0) ==
+            (ctfeContrast >= cast(T)18.0);
+
+    check(
+        totals,
+        contrastPolicyAgreement,
+        scalarName ~
+            ": runtime and CTFE contrast-policy outcomes agree"
+    );
+
+    const T runtimeDistance =
+        measureDeltaEOK!(T, F, N)(
+            runtimeBundle.encoded,
+            phaseCEndpointPair
+        );
+
+    const T ctfeDistance =
+        measureDeltaEOK!(T, F, N)(
+            ctfeBundle.encoded,
+            phaseCEndpointPair
+        );
+
+    const bool distancePolicyAgreement =
+        (runtimeDistance >= cast(T)0.5) ==
+            (ctfeDistance >= cast(T)0.5) &&
+        (runtimeDistance >= cast(T)0.9) ==
+            (ctfeDistance >= cast(T)0.9);
+
+    check(
+        totals,
+        distancePolicyAgreement,
+        scalarName ~
+            ": runtime and CTFE deltaEOK-policy outcomes agree"
+    );
+
+    check(
+        totals,
+        sameRawPalette!(T, F, N)(
+            ctfeBundle.raw,
+            storedBundle.raw
+        ),
+        scalarName ~
+            ": enum CTFE and static immutable raw palettes are exact"
+    );
+
+    check(
+        totals,
+        sameMappedPalette!(T, F, N)(
+            ctfeBundle.mapped,
+            storedBundle.mapped
+        ),
+        scalarName ~
+            ": enum CTFE and static immutable mapped palettes are exact"
+    );
+
+    check(
+        totals,
+        sameEncodedPalette!(T, F, N)(
+            ctfeBundle.encoded,
+            storedBundle.encoded
+        ),
+        scalarName ~
+            ": enum CTFE and static immutable encoded palettes are exact"
+    );
+}
+
+
+void runPhaseC(T)(
+    ref CheckTotals totals,
+    string scalarName
+)
+if (isColorScalar!T)
+{
+    const auto seeds =
+        phaseCSeeds!T();
+
+    const auto lightnesses =
+        phaseCLightnesses!T();
+
+    const auto chromas =
+        phaseCChromas!T();
+
+    const auto runtimeBundle =
+        buildPaletteBundle!(
+            T,
+            phaseCFamilies,
+            phaseCTones
+        )(
+            seeds,
+            lightnesses,
+            chromas
+        );
+
+    writeln();
+    writeln("=== R0.12-C ", scalarName, " ===");
+
+    static if (is(T == float))
+    {
+        diagnoseBundleDifference!(
+            T,
+            phaseCFamilies,
+            phaseCTones
+        )(
+            runtimeBundle,
+            phaseCBundleF,
+            "float runtime vs enum CTFE"
+        );
+
+        diagnoseBundleDifference!(
+            T,
+            phaseCFamilies,
+            phaseCTones
+        )(
+            phaseCBundleF,
+            phaseCStoredF,
+            "float enum CTFE vs static immutable"
+        );
+
+        checkPhaseCAgreement!(
+            T,
+            phaseCFamilies,
+            phaseCTones
+        )(
+            totals,
+            scalarName,
+            runtimeBundle,
+            phaseCBundleF,
+            phaseCStoredF
+        );
+    }
+    else
+    {
+        diagnoseBundleDifference!(
+            T,
+            phaseCFamilies,
+            phaseCTones
+        )(
+            runtimeBundle,
+            phaseCBundleD,
+            "double runtime vs enum CTFE"
+        );
+
+        diagnoseBundleDifference!(
+            T,
+            phaseCFamilies,
+            phaseCTones
+        )(
+            phaseCBundleD,
+            phaseCStoredD,
+            "double enum CTFE vs static immutable"
+        );
+
+        checkPhaseCAgreement!(
+            T,
+            phaseCFamilies,
+            phaseCTones
+        )(
+            totals,
+            scalarName,
+            runtimeBundle,
+            phaseCBundleD,
+            phaseCStoredD
+        );
+    }
+}
+
+
+// ==========================================================================
 // Test harness
 // ==========================================================================
 
@@ -1409,9 +2465,31 @@ int main()
         " FAIL"
     );
 
+    CheckTotals phaseC;
+
+    runPhaseC!float(
+        phaseC,
+        "float"
+    );
+
+    runPhaseC!double(
+        phaseC,
+        "double"
+    );
+
+    writeln();
+    writeln(
+        "R0.12-C: ",
+        phaseC.pass,
+        " PASS, ",
+        phaseC.fail,
+        " FAIL"
+    );
+
     return
         phaseA.fail == 0 &&
-        phaseB.fail == 0
+        phaseB.fail == 0 &&
+        phaseC.fail == 0
             ? 0
             : 1;
 }

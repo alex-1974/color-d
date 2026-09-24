@@ -929,10 +929,566 @@ Those remain later R0.12 or R0.13 concerns.
 
 R0.12-B is complete.
 
+R0.12-C follows below.
+
+R0.12 as a whole remains in progress.
+
+---
+
+# R0.12-C — Representation and CTFE
+
+**Status:** VALIDATED
+**Phase:** R0.12-C
+
+R0.12-C tests whether the already composed palette pipeline can use ordinary D
+value representations at compile time and runtime without a dedicated CTFE API
+or a color-d-owned palette container.
+
+It also tests what form of runtime/CTFE agreement is actually supported by the
+observed floating-point behavior.
+
+No public API is established by this phase.
+
+---
+
+## C.1 Final tested source
+
+The final R0.12-C source had SHA-256:
+
+```text
+d98344ab479f22a8a2abbeb8f69801ea70a7aaa748a847c51efc3a0e05fcec52
+```
+
+File:
+
+```text
+experiments/r0_12_palette_ctfe/source/app.d
+```
+
+The hash was recorded before the final compiler matrix and verified unchanged
+after all four forced builds.
+
+---
+
+## C.2 Compiler matrix
+
+The final source was force-built and executed under:
+
+```text
+DMD 2.111.0  Debug
+DMD 2.111.0  Release
+LDC 1.41.0   Debug
+LDC 1.41.0   Release
+```
+
+Observed in every configuration:
+
+```text
+R0.12-A: 18 PASS, 0 FAIL
+R0.12-B: 28 PASS, 0 FAIL
+R0.12-C: 22 PASS, 0 FAIL
+exit 0
+```
+
+R0.12-C matrix:
+
+| Compiler | Build | C result |
+|---|---|---:|
+| DMD 2.111.0 | Debug | 22/22 PASS |
+| DMD 2.111.0 | Release | 22/22 PASS |
+| LDC 1.41.0 | Debug | 22/22 PASS |
+| LDC 1.41.0 | Release | 22/22 PASS |
+
+Therefore:
+
+```text
+22 C checks per configuration
+4 configurations
+
+88 R0.12-C PASS
+0 R0.12-C FAIL
+```
+
+Accumulated through R0.12-C:
+
+```text
+R0.12-A   72 PASS
+R0.12-B  112 PASS
+R0.12-C   88 PASS
+
+total    272 PASS
+           0 FAIL
+```
+
+The compile-time `static assert` checks are additional compile-success evidence
+and are not counted in the runtime PASS totals.
+
+---
+
+## C.3 Representation under test
+
+The experiment continues to use ordinary fixed-size D arrays:
+
+```text
+Oklch[N][F]
+MapResult[N][F]
+SRgb[N][F]
+```
+
+A consumer-local research struct groups those three representations:
+
+```text
+PaletteBundle
+    raw
+    mapped
+    encoded
+```
+
+The struct adds no palette policy or color semantics.
+
+It is only an ordinary value aggregate used to test whether a dedicated
+color-d palette container is necessary.
+
+---
+
+## C.4 Same ordinary build function
+
+The complete tested construction path is represented by one ordinary function:
+
+```text
+buildPaletteBundle(...)
+```
+
+Conceptually:
+
+```text
+seeds + schedules
+        ↓
+raw OKLCH palette
+        ↓
+explicit Ray Trace mapping
+        ↓
+mapped linear sRGB
+        ↓
+explicit sRGB encoding
+```
+
+The same function is used for:
+
+```text
+runtime construction
+enum CTFE construction
+static immutable initialization
+```
+
+No separate compile-time builder or CTFE-specific API is required by the tested
+shape.
+
+---
+
+## C.5 Compile-time construction
+
+Both scalar types successfully construct the complete bundle as manifest
+compile-time values:
+
+```text
+enum phaseCBundleF
+enum phaseCBundleD
+```
+
+Those values include:
+
+```text
+raw palette
+mapped palette
+encoded palette
+```
+
+Therefore the full tested construction pipeline executes under CTFE.
+
+---
+
+## C.6 Compile-time validation
+
+Compile-time `static assert` checks successfully validate properties including:
+
+```text
+Ray Trace mapping success
+mapped linear-sRGB gamut
+encoded sRGB gamut
+WCAG sRGB domain
+raw lightness ordering
+caller-selected contrast policy
+caller-selected deltaEOK policy
+```
+
+The experiment therefore requires no separate runtime-only validation path for
+these tested operations.
+
+A successful compiler matrix is the evidence for these assertions; they do not
+produce runtime PASS lines.
+
+---
+
+## C.7 static immutable storage
+
+The same ordinary build function also initializes module-scope:
+
+```text
+static immutable PaletteBundle!(...)
+```
+
+for both:
+
+```text
+float
+double
+```
+
+The initialization compiled successfully in every final matrix configuration.
+
+Therefore a compile-time-built palette result can be stored directly as an
+ordinary statically initialized immutable value in the tested representation.
+
+---
+
+## C.8 enum CTFE versus static immutable
+
+The experiment compares the manifest compile-time result with the
+`static immutable` result.
+
+For both scalar types the diagnostic result was:
+
+```text
+raw      0 mismatching tones
+mapped   0 mismatching tones
+encoded  0 mismatching tones
+metadata 0 mismatches
+```
+
+Maximum component difference:
+
+```text
+raw      0
+mapped   0
+encoded  0
+```
+
+The corresponding exact-equality checks all pass.
+
+Therefore, in this experiment:
+
+```text
+enum CTFE result == static immutable result
+```
+
+exactly for the complete stored bundle.
+
+---
+
+## C.9 Runtime versus CTFE raw representation
+
+Runtime construction and CTFE construction produce exactly equal raw OKLCH
+palette values.
+
+Observed for both scalar types and all four configurations:
+
+```text
+PASS  runtime raw palette equals CTFE raw palette exactly
+```
+
+The diagnostic maximum raw difference is:
+
+```text
+0
+```
+
+Therefore the explicit input/schedule composition itself is bit-for-bit stable
+between runtime and CTFE in the tested shape.
+
+---
+
+## C.10 Runtime versus CTFE mapped values
+
+Exact equality does not hold after the floating-point conversion and Ray Trace
+mapping pipeline.
+
+All 15 tested tones show at least one mapped component difference between
+runtime and CTFE.
+
+Observed maximum absolute component differences were:
+
+| Scalar | mapped maximum |
+|---|---:|
+| float | 2.92062759399414062e-06 |
+| double | 1.33226762955018785e-15 |
+
+These maxima were the same in all four tested compiler/build configurations.
+
+The experiment deliberately does not introduce a tolerance to turn these
+numeric differences into approximate equality.
+
+Tolerance policy belongs to R0.13.
+
+---
+
+## C.11 Runtime versus CTFE encoded values
+
+The later sRGB encoding likewise is not bit-for-bit identical between runtime
+and CTFE.
+
+All 15 tested tones show at least one encoded component difference.
+
+Observed maximum absolute component differences were:
+
+| Scalar | encoded maximum |
+|---|---:|
+| float | 1.54972076416015625e-06 |
+| double | 8.88178419700125232e-16 |
+
+Again, no R0.12 tolerance is inferred from these measurements.
+
+The values are observations of this experiment, not proposed library-wide
+epsilon constants.
+
+---
+
+## C.12 Algorithmic-path agreement
+
+Despite the numeric component drift, the Ray Trace metadata agrees exactly
+between runtime and CTFE.
+
+For both scalar types:
+
+```text
+metadata mismatches = 0
+```
+
+The exact metadata check covers:
+
+```text
+iterations
+success
+```
+
+Observed:
+
+```text
+PASS  runtime and CTFE Ray Trace metadata agree exactly
+```
+
+Therefore the tested runtime/CTFE differences do not indicate a different
+Ray Trace success state or iteration path.
+
+---
+
+## C.13 Validation-outcome agreement
+
+Runtime and CTFE also agree on all tested semantic classifications and caller
+policy outcomes:
+
+```text
+mapping-success classification
+mapped-gamut classification
+encoded-gamut classification
+WCAG-domain classification
+contrast-policy outcomes
+deltaEOK-policy outcomes
+```
+
+All corresponding checks pass for both scalar types in every final matrix
+configuration.
+
+Therefore the observed floating-point drift does not change any tested
+validation decision.
+
+---
+
+## C.14 Build-mode observation
+
+Individual low-order runtime/CTFE component differences are not necessarily
+identical across build modes.
+
+In particular, DMD Release showed a different first observed `double`
+component-difference pattern than DMD Debug.
+
+However:
+
+```text
+raw exactness remained unchanged
+Ray Trace metadata remained exact
+all tested classifications remained unchanged
+all caller policy outcomes remained unchanged
+maximum observed mapped drift remained unchanged
+maximum observed encoded drift remained unchanged
+```
+
+This reinforces that bit-for-bit equality of post-conversion floating-point
+values is not an appropriate general runtime/CTFE contract for the tested
+pipeline.
+
+R0.12-C does not attempt to explain or standardize compiler floating-point
+implementation details.
+
+---
+
+## C.15 Meaning of runtime/CTFE agreement
+
+The evidence supports a more precise definition of agreement for this pipeline.
+
+The tested invariant set is:
+
+```text
+raw values:
+    exact runtime/CTFE equality
+
+algorithmic metadata:
+    exact runtime/CTFE equality
+
+validation classifications:
+    same outcomes
+
+caller acceptance policies:
+    same outcomes
+
+enum CTFE vs static immutable:
+    exact equality
+```
+
+For post-conversion numeric values:
+
+```text
+bit-for-bit runtime/CTFE equality is not observed
+```
+
+R0.12-C therefore does not establish exact numeric equality as a required
+contract for such floating-point transformations.
+
+---
+
+## C.16 CTFE API implication
+
+The same ordinary functions successfully serve runtime and compile-time use.
+
+The experiment provides no evidence that color-d needs separate APIs such as:
+
+```text
+buildPaletteCTFE
+validatePaletteCTFE
+CtfePalette
+CompileTimePalette
+```
+
+CTFE is a property of the ordinary operations rather than a separate palette
+abstraction in the tested design.
+
+---
+
+## C.17 Container implication
+
+The tested pipeline works with:
+
+```text
+ordinary static arrays
++
+a consumer-local ordinary aggregate
+```
+
+No experiment result requires a dedicated public:
+
+```text
+Palette
+PaletteBuilder
+PaletteStorage
+PaletteView
+```
+
+type.
+
+This does not prove that no convenience abstraction could ever be useful.
+
+It means R0.12-C provides no mathematical or CTFE requirement for one.
+
+---
+
+## C.18 Tolerance boundary
+
+The observed runtime/CTFE floating-point drift is intentionally not converted
+into a new epsilon policy.
+
+R0.12-C establishes the existence and measured magnitude of the drift for this
+fixture.
+
+It does not establish:
+
+```text
+absolute tolerance
+relative tolerance
+ULP tolerance
+scalar-specific tolerance
+compiler-specific tolerance
+```
+
+Those questions belong to R0.13 / GitHub #9.
+
+---
+
+## C.19 Phase-C conclusions
+
+R0.12-C supports the following conclusions:
+
+1. The complete tested palette pipeline executes under CTFE.
+2. Compile-time palette validation works with ordinary predicates and
+   measurements.
+3. The same ordinary build function serves runtime and CTFE use.
+4. The complete result can initialize `static immutable` storage.
+5. `enum` CTFE and `static immutable` results are exactly equal in the tested
+   representation.
+6. Raw runtime and CTFE palette values are exactly equal.
+7. Runtime and CTFE Ray Trace `iterations` and `success` agree exactly.
+8. Runtime and CTFE agree on all tested gamut/domain classifications.
+9. Runtime and CTFE agree on the tested contrast-policy decisions.
+10. Runtime and CTFE agree on the tested deltaEOK-policy decisions.
+11. Post-conversion mapped values are not bit-for-bit runtime/CTFE identical.
+12. Post-conversion encoded values are not bit-for-bit runtime/CTFE identical.
+13. The observed numeric drift is scalar-dependent and can show low-order
+    build-mode variation.
+14. No tolerance is invented in R0.12 to hide that observation.
+15. Ordinary fixed-size arrays are sufficient for the tested representation.
+16. A consumer-local ordinary aggregate is sufficient for grouping stages.
+17. No dedicated CTFE palette API is justified by phase-C evidence.
+18. No dedicated public palette container is justified by phase-C evidence.
+19. No public API is frozen.
+
+---
+
+## C.20 Not established by R0.12-C
+
+R0.12-C does not yet establish:
+
+- a universal numerical tolerance;
+- exact runtime/CTFE equality after transcendental floating-point operations;
+- ULP guarantees;
+- compiler-independent bit patterns;
+- compile-time cost/scaling behavior;
+- larger-cardinality behavior;
+- pathological CTFE resource behavior;
+- final edge/property coverage;
+- final public palette API;
+- final production template ergonomics.
+
+Those remain later R0.12 or R0.13 concerns.
+
+---
+
+## C.21 Phase-C status
+
+R0.12-C is complete.
+
 The next phase is:
 
 ```text
-R0.12-C — Representation and CTFE
+R0.12-D — Coarse CTFE cost
 ```
 
 R0.12 as a whole remains in progress.
