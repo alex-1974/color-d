@@ -986,3 +986,405 @@ Those questions are either already answered by R0.8 or require separate
 consumer-driven research.
 
 Observed R0.11-D results are recorded in `RESULTS.md` after the complete DMD/LDC Debug/Release matrix was executed.
+
+---
+
+# R0.11-E — representation and CTFE
+
+R0.11-A through R0.11-D established the mathematical and compositional
+semantics of raw OKLCH tone families.
+
+R0.11-E investigates representation and execution form.
+
+It does not introduce new tone mathematics.
+
+The central question is whether the same element-wise tone semantics can be
+expressed cleanly for:
+
+```text
+compile-time-known cardinality
+runtime-known cardinality
+```
+
+without requiring allocation in the low-level primitive.
+
+## E1 — Fixed-size static-array form
+
+For a compile-time-known element count `N`, the natural D representation is:
+
+```d
+Oklch!T[N]
+```
+
+Candidate operations may return a static array by value.
+
+R0.11-E should determine whether this form:
+
+```text
+supports ordinary runtime execution
+supports CTFE
+preserves exact element-wise semantics
+remains @safe pure nothrow @nogc
+requires no heap allocation
+```
+
+for representative scale sizes.
+
+This phase does not assume that returning a static array is the only production
+API.
+
+## E2 — Caller-provided output form
+
+For runtime-sized tone families, a natural allocation-free representation is a
+caller-provided mutable slice:
+
+```d
+Oklch!T[] output
+```
+
+Conceptually:
+
+```d
+void tones(
+    Oklch!T seed,
+    const(T)[] lightnesses,
+    const(T)[] chromas,
+    Oklch!T[] output);
+```
+
+The low-level operation writes into storage owned by the caller.
+
+The primitive itself therefore need not allocate.
+
+R0.11-E should test the D semantics of this form rather than merely assuming
+them.
+
+## E3 — Shared element semantics
+
+The static-array and caller-output forms must not become two independent tone
+algorithms.
+
+For every valid element index:
+
+```text
+staticResult[i]
+==
+callerOutput[i]
+==
+scalar composition for element i
+```
+
+The representation layer must not change the color semantics validated in
+R0.11-A through R0.11-D.
+
+## E4 — No allocation requirement
+
+The low-level representation candidates should remain compatible with:
+
+```d
+@nogc
+```
+
+R0.11-E does not require that every future high-level convenience API be
+allocation-free.
+
+It asks only whether the reusable low-level primitive can be allocation-free.
+
+A later convenience API may allocate explicitly if consumer evidence justifies
+it.
+
+## E5 — CTFE is a property of ordinary functions
+
+R0.11 has consistently treated CTFE as use of the normal API at compile time,
+not as a separate API family.
+
+R0.11-E must retain that rule.
+
+The static-array form should be exercised directly through `enum` or
+`static assert`.
+
+The caller-output form should also be tested at CTFE where D permits it.
+
+R0.11-E must not assume in advance that mutable slices imply runtime-only use.
+
+## E6 — Runtime-sized schedules
+
+A runtime-sized schedule cannot produce a return type whose static-array length
+depends on a runtime value.
+
+Therefore runtime cardinality requires another storage strategy.
+
+The initial candidate is:
+
+```text
+caller-owned output slice
+```
+
+rather than:
+
+```text
+hidden heap allocation
+dynamic-array return owned by the primitive
+```
+
+R0.11-E should establish whether the caller-output form is sufficient for the
+low-level layer.
+
+## E7 — Length contract
+
+Caller-provided schedules and output storage introduce a representational
+precondition.
+
+For a component-based scale:
+
+```text
+lightness count
+chroma count
+output count
+```
+
+must agree.
+
+R0.11-E should investigate the mechanical contract for mismatched lengths.
+
+This phase should not silently truncate with `zip`-style shortest-range
+semantics unless evidence supports that policy.
+
+Likewise, the low-level primitive should not silently allocate replacement
+storage.
+
+The experiment should make the mismatch behavior explicit.
+
+## E8 — Empty output
+
+A zero-length runtime schedule should be representable naturally:
+
+```text
+input length  = 0
+output length = 0
+```
+
+and should perform no writes.
+
+This should agree with the explicit zero-length static-array behavior already
+observed in R0.11-B.
+
+## E9 — Aliasing
+
+Caller-provided output raises an issue absent from return-by-value static
+arrays: aliasing.
+
+R0.11-E should test whether meaningful input/output aliasing can occur and
+whether the primitive needs an aliasing contract.
+
+For the current tone primitives, schedules contain scalar values and output
+contains `Oklch!T`, so direct element-type aliasing is structurally limited.
+
+The experiment should record the actual D behavior rather than invent a broad
+aliasing abstraction prematurely.
+
+## E10 — Representation should not encode policy
+
+Neither representation form should imply:
+
+```text
+gamut mapping
+clipping
+chroma shaping
+hue normalization
+anchoring policy
+semantic theme roles
+```
+
+Representation is orthogonal to the tone semantics already validated.
+
+## E11 — Candidate static API shape
+
+A research candidate may be equivalent to:
+
+```d
+Oklch!T[N] tonesAtLightnessAndChroma(T, size_t N)(
+    Oklch!T seed,
+    const T[N] lightnesses,
+    const T[N] chromas);
+```
+
+This is already close to the R0.11 research implementation.
+
+R0.11-E evaluates its representation properties rather than treating its name
+or signature as frozen public API.
+
+## E12 — Candidate caller-output shape
+
+A corresponding research candidate may be equivalent to:
+
+```d
+void tonesAtLightnessAndChromaInto(T)(
+    Oklch!T seed,
+    const(T)[] lightnesses,
+    const(T)[] chromas,
+    Oklch!T[] output);
+```
+
+The experiment should establish whether this can retain:
+
+```d
+@safe
+pure
+nothrow
+@nogc
+```
+
+and produce the exact same elements as the fixed-size form.
+
+Names remain provisional.
+
+## E13 — Return value for caller-output form
+
+R0.11-E should compare only simple possibilities justified by actual use:
+
+```text
+void
+bool success
+written-count
+```
+
+A richer result object should not be introduced unless the experiment exposes
+a concrete need.
+
+If equal lengths are a caller precondition that can be expressed cleanly, a
+`void` low-level primitive may be sufficient.
+
+If runtime mismatch requires explicit non-throwing handling, a small status
+form may be justified.
+
+This is a D/API question to be measured in the experiment.
+
+## E14 — Runtime/CTFE equivalence
+
+For representative schedules, R0.11-E should compare:
+
+```text
+compile-time static-array result
+runtime static-array result
+runtime caller-output result
+compile-time caller-output result, if supported
+```
+
+All applicable forms must yield identical raw `Oklch` elements.
+
+The comparison should cover both:
+
+```text
+float
+double
+```
+
+## E15 — Size range
+
+The experiment should cover more than one cardinality.
+
+At minimum:
+
+```text
+N = 0
+N = 1
+small representative palette
+larger representative palette
+```
+
+The purpose is not benchmarking arbitrary giant arrays.
+
+It is to expose representation or compiler behavior that depends on size.
+
+## E16 — Performance scope
+
+R0.11-E is primarily a representation and compiler-semantics phase.
+
+It should record gross anomalies if they appear, but it does not automatically
+become a microbenchmark project.
+
+Targeted generated-code or benchmark work is justified only if the candidate
+representations show a meaningful ambiguity or regression.
+
+## E17 — Compiler matrix
+
+Use the established historical baseline:
+
+```text
+DMD 2.111.0
+LDC 1.41.0
+```
+
+with:
+
+```text
+Debug
+Release
+float
+double
+CTFE
+```
+
+Do not broaden compiler coverage unless R0.11-E reveals a compiler-specific
+problem.
+
+## E18 — What R0.11-E should test
+
+The executable experiment should determine:
+
+1. Static-array return works for `N = 0`.
+2. Static-array return works for `N = 1`.
+3. Static-array return works for representative larger `N`.
+4. Static-array output equals repeated scalar composition.
+5. Static-array form works at CTFE.
+6. Caller-provided output works for runtime-sized schedules.
+7. Caller-output form performs no hidden allocation in the primitive.
+8. Caller-output form can retain `@safe pure nothrow @nogc`.
+9. Caller-output elements equal static-array elements.
+10. Caller-output elements equal repeated scalar composition.
+11. Empty caller-output schedules perform no writes.
+12. Length mismatch behavior is explicit and deterministic.
+13. Caller-output form can be exercised at CTFE if supported by D.
+14. Runtime and CTFE results agree.
+15. `float` and `double` expose the same representation semantics.
+16. No additional container abstraction is required unless these candidates
+    fail.
+
+## E19 — Deliberately out of scope
+
+R0.11-E does not decide:
+
+- final public function names;
+- dynamic-array convenience allocation;
+- ranges or lazy tone generation;
+- arbitrary output-range abstractions;
+- SIMD/batch APIs;
+- GPU representations;
+- palette/theme objects;
+- semantic color tokens;
+- gamut mapping;
+- color-quality heuristics;
+- library-wide numerical tolerances.
+
+Those require separate evidence.
+
+## E20 — Strong hypotheses entering the experiment
+
+R0.11-E begins with these hypotheses:
+
+1. `Oklch!T[N]` is the simplest form when cardinality is known statically.
+2. Caller-provided `Oklch!T[]` is sufficient for runtime-sized low-level
+   generation.
+3. Both forms can use exactly the same scalar tone semantics.
+4. The low-level primitive need not allocate.
+5. Both forms can remain `@safe pure nothrow @nogc`.
+6. Static-array generation works naturally at CTFE.
+7. Caller-output generation may also work at CTFE and should be tested.
+8. Silent shortest-input truncation is undesirable for mismatched schedules.
+9. No custom tone-scale container is justified initially.
+10. No range abstraction is justified initially.
+11. Representation must remain independent of gamut and palette policy.
+12. Public API choice remains provisional until R0.12 and consumer review.
+
+No R0.11-E result is recorded until observed compiler runs exist.
