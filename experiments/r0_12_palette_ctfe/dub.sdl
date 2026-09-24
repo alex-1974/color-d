@@ -1,0 +1,10 @@
+name "color-d-r0-12-palette-ctfe"
+description "R0.12 research experiment for palette composition and CTFE"
+authors "Alexander Bernardi"
+copyright "Copyright © 2026, Alexander Bernardi"
+license "MIT"
+
+targetType "executable"
+
+sourcePaths "source" "../r0_8_gamut_semantics/fixture"
+importPaths "source" "../r0_8_gamut_semantics/fixture"
