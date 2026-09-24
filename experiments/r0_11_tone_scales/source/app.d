@@ -814,6 +814,181 @@ static assert(nonincreasing(ctfeDescending));
 static assert(ctfeDescending[0] == 0.90);
 static assert(ctfeDescending[4] == 0.10);
 
+
+// --------------------------------------------------------------------------
+// R0.11-C — chroma and hue policy
+// --------------------------------------------------------------------------
+
+Oklch!T withChroma(T)(
+    Oklch!T color,
+    T chroma
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    color.c = chroma;
+    return color;
+}
+
+
+Oklch!T withHue(T)(
+    Oklch!T color,
+    OklabHue!T hue
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    color.h = hue;
+    return color;
+}
+
+
+Oklch!T[N] tonesAtLightnessAndChroma(T, size_t N)(
+    Oklch!T seed,
+    const T[N] lightnesses,
+    const T[N] chromas
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    Oklch!T[N] result;
+
+    foreach (i; 0 .. N)
+    {
+        result[i] =
+            withChroma(
+                withLightness(
+                    seed,
+                    lightnesses[i]
+                ),
+                chromas[i]
+            );
+    }
+
+    return result;
+}
+
+
+bool chromaSchedulePreserved(T, size_t N)(
+    const Oklch!T[N] tones,
+    const T[N] chromas
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    foreach (i; 0 .. N)
+    {
+        if (tones[i].c != chromas[i])
+            return false;
+    }
+
+    return true;
+}
+
+
+/*
+ * Compile-time R0.11-C probes.
+ */
+
+enum Oklchd ctfeChromaBase =
+    Oklchd(
+        0.55,
+        0.12,
+        OklabHue!double.fromDegrees(250.0)
+    );
+
+enum auto ctfeChangedChroma =
+    withChroma(
+        ctfeChromaBase,
+        0.30
+    );
+
+static assert(ctfeChangedChroma.l == ctfeChromaBase.l);
+static assert(ctfeChangedChroma.c == 0.30);
+static assert(
+    ctfeChangedChroma.h.degrees ==
+    ctfeChromaBase.h.degrees
+);
+
+enum auto ctfeChangedHue =
+    withHue(
+        ctfeChromaBase,
+        OklabHue!double.fromDegrees(725.0)
+    );
+
+static assert(ctfeChangedHue.l == ctfeChromaBase.l);
+static assert(ctfeChangedHue.c == ctfeChromaBase.c);
+static assert(ctfeChangedHue.h.degrees == 725.0);
+
+enum auto ctfePowerless =
+    withChroma(
+        ctfeChromaBase,
+        0.0
+    );
+
+static assert(ctfePowerless.c == 0.0);
+static assert(
+    ctfePowerless.h.degrees ==
+    ctfeChromaBase.h.degrees
+);
+
+enum auto ctfeRestored =
+    withChroma(
+        ctfePowerless,
+        ctfeChromaBase.c
+    );
+
+static assert(
+    ctfeRestored.h.degrees ==
+    ctfeChromaBase.h.degrees
+);
+
+enum double[5] ctfeCPositions =
+[
+    0.10,
+    0.30,
+    0.50,
+    0.70,
+    0.90
+];
+
+enum double[5] ctfeChromas =
+[
+    0.02,
+    0.06,
+    0.12,
+    0.08,
+    0.03
+];
+
+enum auto ctfeComponentScale =
+    tonesAtLightnessAndChroma(
+        ctfeChromaBase,
+        ctfeCPositions,
+        ctfeChromas
+    );
+
+static assert(
+    schedulePreserved(
+        ctfeComponentScale,
+        ctfeCPositions
+    )
+);
+
+static assert(
+    chromaSchedulePreserved(
+        ctfeComponentScale,
+        ctfeChromas
+    )
+);
+
+static assert(
+    constantHue(
+        ctfeComponentScale,
+        ctfeChromaBase.h
+    )
+);
+
 struct TestState
 {
     size_t passed;
@@ -1598,9 +1773,285 @@ if (isColorScalar!T)
 }
 
 
+
+void runChromaHueTests(T)(
+    ref TestState state,
+    const(char)* scalarName
+)
+if (isColorScalar!T)
+{
+    printf(
+        "\n=== R0.11-C chroma/hue / %s ===\n",
+        scalarName
+    );
+
+    const OklabHue!T hue =
+        OklabHue!T.fromDegrees(
+            cast(T)250
+        );
+
+    const Oklch!T seed =
+        Oklch!T(
+            cast(T)0.55,
+            cast(T)0.12,
+            hue
+        );
+
+    const auto changedChroma =
+        withChroma(
+            seed,
+            cast(T)0.30
+        );
+
+    check(
+        state,
+        changedChroma.l == seed.l &&
+        changedChroma.c == cast(T)0.30 &&
+        sameHue(
+            changedChroma.h,
+            seed.h
+        ),
+        "withChroma replaces only C"
+    );
+
+    const OklabHue!T rawHue =
+        OklabHue!T.fromDegrees(
+            cast(T)725
+        );
+
+    const auto changedHue =
+        withHue(
+            seed,
+            rawHue
+        );
+
+    check(
+        state,
+        changedHue.l == seed.l &&
+        changedHue.c == seed.c &&
+        sameHue(
+            changedHue.h,
+            rawHue
+        ),
+        "withHue replaces only H"
+    );
+
+    const T[5] lightnesses =
+    [
+        cast(T)0.10,
+        cast(T)0.30,
+        cast(T)0.50,
+        cast(T)0.70,
+        cast(T)0.90
+    ];
+
+    const T[5] chromas =
+    [
+        cast(T)0.02,
+        cast(T)0.06,
+        cast(T)0.12,
+        cast(T)0.08,
+        cast(T)0.03
+    ];
+
+    const auto componentScale =
+        tonesAtLightnessAndChroma(
+            seed,
+            lightnesses,
+            chromas
+        );
+
+    check(
+        state,
+        schedulePreserved(
+            componentScale,
+            lightnesses
+        ),
+        "explicit component scale preserves L schedule"
+    );
+
+    check(
+        state,
+        chromaSchedulePreserved(
+            componentScale,
+            chromas
+        ),
+        "explicit component scale preserves C schedule"
+    );
+
+    check(
+        state,
+        constantHue(
+            componentScale,
+            seed.h
+        ),
+        "explicit component scale preserves seed hue"
+    );
+
+    bool scalarCompositionExact = true;
+
+    foreach (i; 0 .. lightnesses.length)
+    {
+        const auto expected =
+            withChroma(
+                withLightness(
+                    seed,
+                    lightnesses[i]
+                ),
+                chromas[i]
+            );
+
+        if (!sameTone(
+            componentScale[i],
+            expected
+        ))
+        {
+            scalarCompositionExact = false;
+        }
+    }
+
+    check(
+        state,
+        scalarCompositionExact,
+        "component scale equals repeated scalar composition"
+    );
+
+    const T[5] constantChromas =
+    [
+        seed.c,
+        seed.c,
+        seed.c,
+        seed.c,
+        seed.c
+    ];
+
+    const auto explicitConstant =
+        tonesAtLightnessAndChroma(
+            seed,
+            lightnesses,
+            constantChromas
+        );
+
+    const auto phaseAConstant =
+        tonesByLightness(
+            seed,
+            lightnesses
+        );
+
+    check(
+        state,
+        sameScale(
+            explicitConstant,
+            phaseAConstant
+        ),
+        "constant chroma is an explicit constant C schedule"
+    );
+
+    const auto generatedChromas =
+        linearScheduleHybrid!(T, 5)(
+            cast(T)0.02,
+            cast(T)0.10
+        );
+
+    const auto generatedChromaScale =
+        tonesAtLightnessAndChroma(
+            seed,
+            lightnesses,
+            generatedChromas
+        );
+
+    check(
+        state,
+        chromaSchedulePreserved(
+            generatedChromaScale,
+            generatedChromas
+        ) &&
+        schedulePreserved(
+            generatedChromaScale,
+            lightnesses
+        ) &&
+        constantHue(
+            generatedChromaScale,
+            seed.h
+        ),
+        "generated scalar schedule composes mechanically as chroma"
+    );
+
+    const auto powerless =
+        withChroma(
+            seed,
+            cast(T)0
+        );
+
+    check(
+        state,
+        powerless.c == cast(T)0 &&
+        sameHue(
+            powerless.h,
+            seed.h
+        ),
+        "zero chroma preserves stored powerless hue"
+    );
+
+    const auto restored =
+        withChroma(
+            powerless,
+            seed.c
+        );
+
+    check(
+        state,
+        restored.c == seed.c &&
+        sameHue(
+            restored.h,
+            seed.h
+        ),
+        "restoring chroma preserves previously stored hue"
+    );
+
+    const Oklch!T powerlessOtherHue =
+        Oklch!T(
+            seed.l,
+            cast(T)0,
+            OklabHue!T.fromDegrees(
+                cast(T)40
+            )
+        );
+
+    check(
+        state,
+        powerless.h.degrees !=
+            powerlessOtherHue.h.degrees,
+        "powerless hues remain representationally distinct"
+    );
+
+    check(
+        state,
+        changedHue.h.degrees == cast(T)725,
+        "raw hue replacement does not normalize"
+    );
+
+    const auto negativeChroma =
+        withChroma(
+            seed,
+            cast(T)-0.10
+        );
+
+    check(
+        state,
+        negativeChroma.c == cast(T)-0.10 &&
+        sameHue(
+            negativeChroma.h,
+            seed.h
+        ),
+        "raw negative chroma is not implicitly canonicalized"
+    );
+}
+
+
 void main()
 {
-    printf("color-d R0.11-A — primitive decomposition\n");
+    printf("color-d R0.11 — tone-scale research\n");
 
     version (LDC)
         printf("compiler family: LDC\n");
@@ -1632,6 +2083,16 @@ void main()
     );
 
     runScheduleTests!double(
+        state,
+        "double"
+    );
+
+    runChromaHueTests!float(
+        state,
+        "float"
+    );
+
+    runChromaHueTests!double(
         state,
         "double"
     );

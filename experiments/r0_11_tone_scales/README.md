@@ -454,3 +454,188 @@ R0.11-B asks:
     R0.11-A `withLightness` model?
 
 Observed R0.11-B results are recorded in `RESULTS.md` only after the compiler matrix was executed.
+
+---
+
+# R0.11-C — Chroma and hue policy
+
+R0.11-A established scalar lightness replacement as the lowest useful raw
+tone operation.
+
+R0.11-B separated explicit positions from generated scalar schedules.
+
+R0.11-C now asks whether chroma and hue introduce additional tone-scale
+mathematics or whether they remain explicit scalar/component policy.
+
+## C1 — Scalar component operations
+
+The first candidates are conceptually:
+
+```d
+withChroma(color, chroma)
+withHue(color, hue)
+```
+
+Their intended raw semantics are deliberately narrow:
+
+```text
+withChroma:
+    replace C
+    preserve L
+    preserve stored H
+
+withHue:
+    replace stored H
+    preserve L
+    preserve C
+```
+
+No:
+
+- gamut mapping;
+- clipping;
+- canonicalization;
+- hue normalization;
+- achromatic hue erasure
+
+is implied by these raw operations.
+
+## C2 — Explicit chroma schedules
+
+Given:
+
+```text
+L[0 .. N]
+C[0 .. N]
+```
+
+a raw scale may be formed mechanically as:
+
+```text
+result[i] =
+    withChroma(
+        withLightness(seed, L[i]),
+        C[i]
+    )
+```
+
+The experiment asks whether this introduces any additional color mathematics.
+
+The principal hypothesis is that it does not.
+
+## C3 — Constant chroma
+
+A constant-chroma tone family is then merely the special case:
+
+```text
+C[i] = constant
+```
+
+for every requested position.
+
+If so, constant chroma should not require a separate mathematical primitive.
+
+## C4 — Generated chroma schedules
+
+R0.11-B's finite scalar schedule machinery can also produce a sequence of
+chroma values.
+
+R0.11-C tests whether such a generated scalar sequence can be consumed
+mechanically as chroma data.
+
+This does not imply that a generic scalar schedule helper belongs in the final
+public color API.
+
+## C5 — Powerless hue
+
+At:
+
+```text
+C == 0
+```
+
+hue is perceptually powerless.
+
+R0.11-C does not reinterpret that as:
+
+```text
+hue is absent
+```
+
+or:
+
+```text
+hue must become zero
+```
+
+The experiment tests whether the stored hue can remain intact while chroma is
+zero and become meaningful again if chroma is restored.
+
+This follows the raw OKLCH representation direction already established in
+R0.5.
+
+## C6 — Raw hue
+
+Raw hue storage is not normalized implicitly.
+
+For example:
+
+```text
+725 degrees
+```
+
+may remain stored as:
+
+```text
+725 degrees
+```
+
+until an explicitly requested normalization operation is applied.
+
+Tone-scale generation must not silently change that representation.
+
+## C7 — Negative chroma
+
+R0.5 already separated raw representation from canonicalization.
+
+R0.11-C therefore tests that raw component replacement does not silently
+canonicalize a negative chroma value.
+
+Canonicalization remains a separate explicit operation.
+
+This phase does not reopen R0.5's canonicalization semantics.
+
+## C8 — What is deliberately not tested here
+
+R0.11-C does not yet choose:
+
+- an aesthetic chroma curve;
+- automatic chroma reduction near light/dark extremes;
+- maximum in-gamut chroma;
+- a gamut-dependent chroma cap;
+- a default gamut mapper;
+- hue rotation for palette aesthetics;
+- perceptually equal chroma spacing.
+
+Those are either higher-level palette policy or belong to explicit gamut
+composition.
+
+## C9 — Questions
+
+R0.11-C asks:
+
+1. Is `withChroma` an independent scalar component operation?
+2. Is `withHue` an independent scalar component operation?
+3. Can explicit lightness and chroma schedules be zipped mechanically?
+4. Does that zip preserve the requested L and C values exactly?
+5. Does it preserve the seed hue exactly?
+6. Is the zipped operation exactly equivalent to repeated scalar composition?
+7. Is constant chroma merely an explicit constant C schedule?
+8. Can a generated scalar schedule be consumed as chroma without new color
+   mathematics?
+9. Does setting chroma to zero preserve stored powerless hue?
+10. Can chroma later be restored without losing that stored hue?
+11. Does raw hue remain unnormalized?
+12. Does raw negative chroma remain uncanonicalized?
+
+Observed R0.11-C results are recorded in `RESULTS.md` only after the compiler matrix was executed.

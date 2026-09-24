@@ -1,8 +1,8 @@
 # R0.11 results — OKLCH tone-scale research
 
-**Status:** R0.11-A/B VALIDATED — R0.11 IN PROGRESS
+**Status:** R0.11-A/B/C VALIDATED — R0.11 IN PROGRESS
 **Research block:** R0.11 — OKLCH tone-scale generation
-**Validated phases:** R0.11-A — primitive decomposition; R0.11-B — schedule semantics
+**Validated phases:** R0.11-A — primitive decomposition; R0.11-B — schedule semantics; R0.11-C — chroma and hue policy
 
 This file records observed results.
 
@@ -1401,5 +1401,491 @@ The complete historical DMD/LDC matrix passed with no hybrid-property
 disagreement.
 
 R0.11-B is therefore complete.
+
+R0.11 remains in progress.
+
+---
+
+## R0.11-C results — chroma and hue policy
+
+**Status:** VALIDATED
+**Phase:** R0.11-C — chroma and hue policy
+
+R0.11-C studied whether chroma and hue require additional tone-scale
+mathematics after R0.11-A and R0.11-B had already separated scalar component
+operations from schedule generation.
+
+No public API is established by these results.
+
+### C.1 Observed compiler matrix
+
+The final R0.11-C candidate was executed under:
+
+```text
+DMD 2.111.0  Debug
+DMD 2.111.0  Release
+LDC 1.41.0   Debug
+LDC 1.41.0   Release
+```
+
+Each configuration executed the complete accumulated R0.11-A/B/C runtime
+suite:
+
+```text
+108 PASS
+0 FAIL
+```
+
+Therefore the accumulated matrix totals:
+
+```text
+4 configurations
+108 runtime checks per configuration
+
+432 PASS
+0 FAIL
+```
+
+R0.11-C contributes:
+
+```text
+13 checks per scalar type
+2 scalar types
+4 compiler/build configurations
+
+104 phase-C runtime PASS results
+0 phase-C runtime failures
+```
+
+The compile-time R0.11-C probes also compiled successfully in all four
+configurations.
+
+Observed matrix:
+
+| Compiler | Build | Accumulated result |
+|---|---|---:|
+| DMD 2.111.0 | Debug | 108/108 PASS |
+| DMD 2.111.0 | Release | 108/108 PASS |
+| LDC 1.41.0 | Debug | 108/108 PASS |
+| LDC 1.41.0 | Release | 108/108 PASS |
+
+No compiler/build disagreement was observed in the phase-C properties.
+
+### C.2 Scalar `withChroma`
+
+The experiment introduced the research-local scalar operation:
+
+```d
+withChroma(color, chroma)
+```
+
+with raw semantics:
+
+```text
+replace C
+preserve L
+preserve stored H
+```
+
+Observed for both supported scalar types and all compiler/build
+configurations:
+
+```text
+PASS  withChroma replaces only C
+```
+
+No:
+
+- clipping;
+- gamut mapping;
+- hue modification;
+- hue normalization;
+- chroma canonicalization
+
+is performed by this operation.
+
+### C.3 Scalar `withHue`
+
+The experiment also introduced:
+
+```d
+withHue(color, hue)
+```
+
+with raw semantics:
+
+```text
+replace stored H
+preserve L
+preserve C
+```
+
+Observed:
+
+```text
+PASS  withHue replaces only H
+```
+
+in the complete matrix.
+
+R0.11-C therefore found no need to couple raw hue replacement to tone-scale
+generation.
+
+### C.4 Explicit lightness and chroma schedules
+
+The experiment formed a raw component scale from:
+
+```text
+L[0 .. N]
+C[0 .. N]
+one stored seed hue
+```
+
+using repeated scalar composition conceptually equivalent to:
+
+```text
+withChroma(
+    withLightness(seed, L[i]),
+    C[i]
+)
+```
+
+Observed:
+
+```text
+PASS  explicit component scale preserves L schedule
+PASS  explicit component scale preserves C schedule
+PASS  explicit component scale preserves seed hue
+```
+
+The requested lightness and chroma values are copied exactly.
+
+No additional nonlinear color computation is involved.
+
+### C.5 Equivalence to scalar composition
+
+For every tested element, the batch/component candidate was compared with
+explicit repeated scalar operations.
+
+Observed:
+
+```text
+PASS  component scale equals repeated scalar composition
+```
+
+Therefore R0.11-C found no additional color mathematics in the batch
+lightness/chroma zip itself.
+
+As with R0.11-A, a future batch helper may still be useful for ergonomics or
+CTFE, but that is separate from mathematical necessity.
+
+### C.6 Constant chroma
+
+The experiment represented constant chroma as:
+
+```text
+C[i] = seed.c
+```
+
+for all positions.
+
+That explicit constant-C schedule was compared with the R0.11-A operation that
+changes only lightness.
+
+Observed:
+
+```text
+PASS  constant chroma is an explicit constant C schedule
+```
+
+Therefore constant chroma does not require a distinct tone-generation
+primitive.
+
+It is a special case of explicit component scheduling.
+
+### C.7 Generated scalar schedule used as chroma
+
+R0.11-B's validated research schedule candidate was used to create a sequence
+of chroma values.
+
+That sequence was then consumed mechanically as component data.
+
+Observed:
+
+```text
+PASS  generated scalar schedule composes mechanically as chroma
+```
+
+while preserving:
+
+```text
+requested L values
+generated C values
+stored seed hue
+```
+
+This does not establish that arbitrary linear chroma ramps are aesthetically
+desirable.
+
+It establishes only that schedule generation and component application compose
+cleanly.
+
+### C.8 Powerless hue at zero chroma
+
+R0.11-C explicitly tested:
+
+```text
+C = 0
+```
+
+The stored hue was retained.
+
+Observed:
+
+```text
+PASS  zero chroma preserves stored powerless hue
+```
+
+The experiment also created two zero-chroma values carrying different stored
+hues.
+
+Observed:
+
+```text
+PASS  powerless hues remain representationally distinct
+```
+
+Thus perceptual powerlessness is not treated as representational absence.
+
+This is consistent with the raw OKLCH direction inherited from R0.5.
+
+### C.9 Restoring chroma
+
+After reducing chroma to zero, the experiment restored the original nonzero
+chroma without replacing hue.
+
+Observed:
+
+```text
+PASS  restoring chroma preserves previously stored hue
+```
+
+The stored powerless hue therefore survives a temporary zero-chroma state and
+can become meaningful again when chroma becomes nonzero.
+
+R0.11-C found no justification for silently erasing hue at `C == 0`.
+
+### C.10 Raw hue remains unnormalized
+
+The phase-C probe explicitly stored:
+
+```text
+H = 725 degrees
+```
+
+through `withHue`.
+
+Observed:
+
+```text
+PASS  raw hue replacement does not normalize
+```
+
+The stored value remained exactly:
+
+```text
+725 degrees
+```
+
+No implicit positive or signed hue normalization is part of raw component
+replacement.
+
+Normalization remains an explicit operation/policy.
+
+### C.11 Negative chroma remains raw
+
+The experiment applied:
+
+```text
+C = -0.10
+```
+
+through `withChroma`.
+
+Observed:
+
+```text
+PASS  raw negative chroma is not implicitly canonicalized
+```
+
+The stored chroma remained negative and the stored hue remained unchanged.
+
+R0.11-C therefore does not reopen or duplicate the explicit canonicalization
+semantics established earlier in R0.5.
+
+### C.12 CTFE and attributes
+
+The phase-C operations were exercised through compile-time probes using the
+same ordinary functions as runtime.
+
+The probes validated:
+
+- scalar chroma replacement;
+- scalar hue replacement;
+- zero-chroma hue preservation;
+- chroma restoration;
+- explicit L/C component scale construction;
+- L schedule preservation;
+- C schedule preservation;
+- hue preservation.
+
+They compiled successfully in all four historical compiler/build
+configurations.
+
+The research candidates retain the intended core attributes:
+
+```d
+@safe
+pure
+nothrow
+@nogc
+```
+
+No CTFE-specific API is required.
+
+### C.13 Architectural boundary
+
+After R0.11-C, the low-level decomposition is:
+
+```text
+withLightness(color, L)
+withChroma(color, C)
+withHue(color, H)
+
+        ↓
+
+explicit component values / schedules
+
+        ↓
+
+mechanical raw OKLCH construction
+```
+
+The following operations are not implied by that layer:
+
+```text
+aesthetic chroma shaping
+automatic endpoint desaturation
+gamut-dependent chroma reduction
+hue-path interpolation
+hue normalization
+canonicalization
+gamut mapping
+target-space conversion
+```
+
+Those concerns require explicit higher-level policy or already belong to
+separate validated subsystems.
+
+### C.14 Chroma-shaping conclusion
+
+R0.11-C found no mathematical basis for automatically reducing chroma merely
+because a tone becomes very light or very dark.
+
+Such behavior may be useful for:
+
+- palette aesthetics;
+- target-gamut feasibility;
+- UI design systems;
+- consumer-specific palette constraints.
+
+But those are policy inputs, not intrinsic properties of raw OKLCH tone-scale
+construction.
+
+Therefore a future low-level tone-scale primitive should not silently invent a
+chroma curve.
+
+### C.15 Hue-policy conclusion
+
+Likewise, R0.11-C found no need for raw tone generation to:
+
+- normalize hue;
+- erase powerless hue;
+- rotate hue aesthetically;
+- choose an interpolation hue path.
+
+If a scale intentionally varies hue, the values or interpolation policy should
+be explicit.
+
+Hue interpolation remains conceptually separate from simple raw component
+replacement.
+
+### C.16 Phase-C decisions
+
+R0.11-C supports the following research decisions.
+
+Accepted:
+
+1. `withChroma` is a meaningful independent scalar component operation.
+2. `withHue` is a meaningful independent scalar component operation.
+3. Explicit L and C schedules can be combined mechanically.
+4. The component zip is exactly reducible to repeated scalar composition.
+5. Constant chroma is only a constant C schedule.
+6. A generated scalar schedule can be consumed mechanically as chroma data.
+7. Zero chroma does not require erasing stored hue.
+8. Different stored hues may remain representationally distinct at zero
+   chroma.
+9. Restoring chroma can reuse the previously stored hue.
+10. Raw hue replacement does not normalize implicitly.
+11. Raw negative chroma does not canonicalize implicitly.
+12. No implicit chroma-shaping curve belongs in the lowest raw tone layer.
+13. No implicit gamut-aware chroma reduction belongs in this phase.
+14. No separate constant-chroma mathematical primitive is justified.
+
+### C.17 Not established by R0.11-C
+
+R0.11-C does not establish:
+
+- a preferred aesthetic chroma curve;
+- perceptually optimal chroma variation;
+- a default maximum chroma;
+- gamut-dependent chroma caps;
+- automatic endpoint desaturation;
+- a default gamut mapper;
+- hue-rotation aesthetics;
+- a new hue-interpolation algorithm;
+- public batch-helper names or signatures;
+- final runtime output representation;
+- final NaN/infinity policy.
+
+Those remain outside phase C or belong to later R0.11 work.
+
+### C.18 Phase-C conclusion
+
+R0.11-C validates that chroma and hue remain composable raw component
+semantics rather than hidden tone-scale policy.
+
+The current decomposition is:
+
+```text
+explicit or generated scalar component values
+                ↓
+withLightness / withChroma / withHue
+                ↓
+raw OKLCH tone family
+```
+
+Constant chroma is merely a constant component schedule.
+
+Powerless hue remains stored rather than being erased.
+
+Raw hue remains unnormalized.
+
+Raw negative chroma remains uncanonicalized.
+
+Automatic chroma shaping, hue aesthetics and gamut-dependent adjustment remain
+separate explicit policies.
+
+R0.11-C is therefore complete.
 
 R0.11 remains in progress.
