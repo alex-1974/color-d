@@ -1485,10 +1485,443 @@ Those remain later R0.12 or R0.13 concerns.
 
 R0.12-C is complete.
 
+R0.12-D follows below.
+
+R0.12 as a whole remains in progress.
+
+---
+
+# R0.12-D — Coarse CTFE cost
+
+**Status:** VALIDATED
+**Phase:** R0.12-D
+
+R0.12-D tests only whether the palette construction pipeline shows an obvious
+pathological compile-time cost increase at representative palette sizes.
+
+It is not a compiler benchmark and does not establish a public performance
+guarantee.
+
+---
+
+## D.1 Measurement shape
+
+The cost experiment is isolated from the R0.12 A/B/C runtime test harness.
+
+It uses compile-only probes containing the same general pipeline:
+
+```text
+compile-time seeds and schedules
+        ↓
+raw OKLCH palette
+        ↓
+Ray Trace gamut mapping
+        ↓
+linear-sRGB result
+        ↓
+encoded sRGB result
+```
+
+The measured scalar type is:
+
+```text
+double
+```
+
+The tested palette sizes are:
+
+| Probe | Families | Tones/family | Total tones |
+|---|---:|---:|---:|
+| baseline | — | — | 0 |
+| 15 | 3 | 5 | 15 |
+| 60 | 6 | 10 | 60 |
+| 240 | 12 | 20 | 240 |
+
+Thus:
+
+```text
+15 → 60  = 4× more tones
+60 → 240 = 4× more tones
+```
+
+The baseline parses and compiles the common probe code but performs no palette
+CTFE instantiation.
+
+---
+
+## D.2 Compilers
+
+The final measurement used:
+
+```text
+DMD 2.111.0
+LDC 1.41.0
+based on DMD v2.111.0
+LLVM 19.1.7
+```
+
+All baseline and palette probes compiled successfully under both compilers.
+
+No probe compile failure was observed.
+
+---
+
+## D.3 Measurement protocol
+
+The retained measurement script is:
+
+```text
+experiments/r0_12_palette_ctfe/cost/measure.sh
+```
+
+Protocol:
+
+```text
+1 warm-up compile per compiler and probe size
+
+then:
+
+5 interleaved measurement rounds
+
+each round:
+    DMD  baseline, 15, 60, 240
+    LDC  baseline, 15, 60, 240
+```
+
+The measured quantities are:
+
+```text
+wall-clock compile time
+peak RSS
+```
+
+using GNU `/usr/bin/time`.
+
+The compiler invocation is compile-only.
+
+The final raw data contains:
+
+```text
+2 compilers
+× 4 probe sizes
+× 5 measured runs
+= 40 measurements
+```
+
+plus one TSV header line.
+
+Observed file length:
+
+```text
+41 lines
+```
+
+---
+
+## D.4 Retained raw data
+
+Raw measurements are stored in:
+
+```text
+experiments/r0_12_palette_ctfe/cost/measurements.tsv
+```
+
+SHA-256:
+
+```text
+6f4da85b74b8e6377cb2d1f64a37bc83455b429c2cdc17d7f3b84a36387a8523
+```
+
+The original measurement data was not regenerated after the reporting-script
+path bug was fixed.
+
+Only the summary path handling in `measure.sh` was repaired.
+
+---
+
+## D.5 Probe hashes
+
+Final probe hashes:
+
+```text
+probe_common.d
+5d8f2c2f3f0fafc5268c72edf93ed94c5710579eb26921278647c8493f6a1d78
+
+probe_baseline.d
+c3552efb68b2f185db954c529479befa701f242da07509066078e1b66e2f9fde
+
+probe_15.d
+ec1d2e2dc57cf23f2e880885f828fe15ec87cf5ddebb7ad9c045efab09291701
+
+probe_60.d
+fb920d0c8fe0b71423af5b007fae9a97585dd441530d6c4cc372803274b7eee5
+
+probe_240.d
+7954330844df543c63051855eb9dba653bc9bb847073ea0aa9db996149100b21
+```
+
+Final measurement-script SHA-256:
+
+```text
+e835200a1d73f8eb8f2c39020a87610b6ad4e347d411d4f84b8a6fcde9bef01d
+```
+
+---
+
+## D.6 DMD measurements
+
+Median results:
+
+| Probe | Wall median | Wall range | Extra vs baseline | RSS median | RSS range | Extra RSS |
+|---|---:|---:|---:|---:|---:|---:|
+| baseline | 0.020 s | 0.020–0.030 s | 0.000 s | 22,536 KiB | 22,484–22,596 | 0 KiB |
+| 15 | 0.040 s | 0.040–0.050 s | +0.020 s | 28,484 KiB | 28,432–28,532 | +5,948 KiB |
+| 60 | 0.050 s | 0.050–0.060 s | +0.030 s | 32,216 KiB | 32,128–32,296 | +9,680 KiB |
+| 240 | 0.110 s | 0.110–0.120 s | +0.090 s | 47,300 KiB | 47,264–47,348 | +24,764 KiB |
+
+For DMD, increasing from 15 to 240 tones means:
+
+```text
+16× more palette tones
+```
+
+while the measured median total compile time changes from:
+
+```text
+0.040 s → 0.110 s
+```
+
+and median peak RSS from:
+
+```text
+28,484 KiB → 47,300 KiB
+```
+
+No abrupt cost discontinuity is observed.
+
+---
+
+## D.7 LDC measurements
+
+Median results:
+
+| Probe | Wall median | Wall range | Extra vs baseline | RSS median | RSS range | Extra RSS |
+|---|---:|---:|---:|---:|---:|---:|
+| baseline | 0.050 s | 0.050–0.050 s | 0.000 s | 87,904 KiB | 87,792–88,116 | 0 KiB |
+| 15 | 0.080 s | 0.070–0.080 s | +0.030 s | 99,776 KiB | 99,720–99,924 | +11,872 KiB |
+| 60 | 0.090 s | 0.090–0.100 s | +0.040 s | 103,688 KiB | 103,396–103,784 | +15,784 KiB |
+| 240 | 0.160 s | 0.150–0.170 s | +0.110 s | 119,364 KiB | 119,284–119,380 | +31,460 KiB |
+
+For LDC, increasing from 15 to 240 tones likewise means:
+
+```text
+16× more palette tones
+```
+
+while median total compile time changes from:
+
+```text
+0.080 s → 0.160 s
+```
+
+and median peak RSS from:
+
+```text
+99,776 KiB → 119,364 KiB
+```
+
+Again, no abrupt cost discontinuity is observed.
+
+---
+
+## D.8 Baseline-adjusted interpretation
+
+Because the absolute compile times are very small, ratios against the baseline
+can exaggerate differences.
+
+The more useful coarse observation is the additional median cost relative to
+the no-palette-CTFE baseline.
+
+At 240 tones:
+
+```text
+DMD:
+    +0.090 s
+    +24,764 KiB peak RSS
+
+LDC:
+    +0.110 s
+    +31,460 KiB peak RSS
+```
+
+Those values are machine- and compiler-specific measurements.
+
+They are not proposed budgets or guarantees.
+
+---
+
+## D.9 Scaling interpretation
+
+The test deliberately increases palette cardinality geometrically:
+
+```text
+15
+60
+240
+```
+
+Each step contains four times as many tones.
+
+Neither compiler shows a corresponding pathological jump in measured compile
+time or peak RSS.
+
+In particular, the second 4× cardinality increase:
+
+```text
+60 → 240
+```
+
+changes median total compile time by:
+
+```text
+DMD:
+    0.050 s → 0.110 s
+
+LDC:
+    0.090 s → 0.160 s
+```
+
+and median peak RSS by:
+
+```text
+DMD:
+    32,216 KiB → 47,300 KiB
+
+LDC:
+    103,688 KiB → 119,364 KiB
+```
+
+This is sufficient for the R0.12 question:
+
+```text
+no obvious pathological CTFE scaling was observed up to 240 tones
+```
+
+---
+
+## D.10 Why the experiment stops at 240 tones
+
+R0.12-D is intended only as a coarse guard against obviously pathological
+implementation choices.
+
+The 240-tone probe already exercises:
+
+```text
+12 families
+× 20 tones
+= 240 complete compile-time color pipelines
+```
+
+and follows two successive 4× increases from the initial 15-tone case.
+
+The observed behavior does not justify expanding R0.12 into a large compiler
+benchmark study.
+
+A larger 960-tone probe is therefore not required by the current evidence.
+
+---
+
+## D.11 Measurement limitations
+
+The experiment does not establish asymptotic complexity.
+
+Important limitations include:
+
+```text
+one machine
+one operating environment
+DMD 2.111.0
+LDC 1.41.0
+double only
+compile-only probes
+five measured runs
+wall-clock resolution of approximately 0.01 s
+```
+
+Compiler startup, parsing, semantic analysis, CTFE, object generation and other
+compile work all contribute to the measured wall time and RSS.
+
+The baseline partially accounts for fixed compiler/probe overhead but does not
+isolate CTFE instruction cost in a laboratory sense.
+
+Therefore the measurements support only a coarse engineering conclusion.
+
+---
+
+## D.12 Performance-policy boundary
+
+R0.12-D does not establish:
+
+```text
+a compile-time performance SLA
+a maximum acceptable palette size
+a universal CTFE budget
+a DMD-versus-LDC performance ranking
+an asymptotic complexity guarantee
+a compiler-specific optimization
+```
+
+Compiler-specific optimization remains subject to the separate performance and
+compiler-policy work.
+
+---
+
+## D.13 Phase-D conclusions
+
+R0.12-D supports the following conclusions:
+
+1. The isolated complete palette pipeline compiles successfully at 15, 60 and
+   240 tones.
+2. Both DMD 2.111.0 and LDC 1.41.0 successfully evaluate the tested CTFE
+   probes.
+3. Two successive 4× increases in palette cardinality do not expose an obvious
+   pathological compile-time jump.
+4. Peak RSS increases remain moderate across the tested sizes.
+5. Compile-time increases remain moderate across the tested sizes.
+6. The 240-tone case remains operationally small in this environment.
+7. No special CTFE palette representation is justified by cost evidence.
+8. No compiler-specific implementation path is justified by cost evidence.
+9. A larger R0.12 compiler benchmark is not required by the observed data.
+10. The result is coarse engineering evidence, not a performance guarantee.
+11. No public API is frozen.
+
+---
+
+## D.14 Not established by R0.12-D
+
+R0.12-D does not establish:
+
+- asymptotic time complexity;
+- asymptotic memory complexity;
+- behavior at arbitrarily large palette sizes;
+- other CPU architectures;
+- other operating systems;
+- other compiler versions;
+- float-versus-double CTFE cost comparison;
+- incremental-build behavior;
+- full application build cost;
+- a compile-time performance contract.
+
+---
+
+## D.15 Phase-D status
+
+R0.12-D is complete.
+
 The next phase is:
 
 ```text
-R0.12-D — Coarse CTFE cost
+R0.12-E — Integration and edge properties
 ```
 
 R0.12 as a whole remains in progress.
