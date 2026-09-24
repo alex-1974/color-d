@@ -1091,29 +1091,276 @@ of ordinary conversions.
 
 # 19. Tone scales and palettes
 
-`color-d` should contain low-level perceptual palette primitives because there are concrete consumers in GUI styling and map rendering.
+`color-d` shall provide low-level perceptual tone-scale primitives because
+there are concrete consumers in GUI styling, map rendering and compile-time
+theme construction.
 
-Possible interface:
+R0.11 validated the mathematical and architectural boundary for these
+primitives.
+
+A tone scale is not one universal aesthetic algorithm.
+
+The low-level model is composed from explicit operations over OKLCH values.
+
+## 19.1 Primitive decomposition
+
+The validated primitive operations are conceptually equivalent to:
 
 ```d
-toneScale(base, parameters)
+withLightness(color, lightness)
+withChroma(color, chroma)
+withHue(color, hue)
 ```
 
-or:
+Each operation replaces exactly one stored component and preserves the other
+components.
+
+They are raw mathematical operations.
+
+They must not implicitly:
+
+```text
+clamp lightness
+canonicalize chroma
+normalize hue
+gamut-map
+assign semantic palette meaning
+```
+
+This decomposition allows higher-level tone construction to remain explicit.
+
+## 19.2 Lightness and chroma schedules
+
+Tone families may be constructed from explicit component schedules.
+
+Conceptually:
+
+```text
+seed OKLCH color
++
+lightness schedule
++
+chroma schedule
+    ↓
+raw OKLCH tone family
+```
+
+Caller-supplied schedules are authoritative.
+
+The library shall not embed one universal lightness or chroma curve into the
+lowest-level primitive.
+
+Generated finite interval schedules may exist as a convenience layer, but their
+schedule semantics are distinct from tone construction itself.
+
+R0.11 validated generated finite interval schedules for compile-time step
+counts of at least two.
+
+Zero- and one-element tone families remain naturally representable through
+explicit schedules and must not require ambiguous generated-interval
+semantics.
+
+## 19.3 Base-color anchoring
+
+A supplied seed does not override an explicit requested schedule.
+
+If the schedule naturally contains the seed's requested component values, the
+seed may remain exactly represented.
+
+If the requested schedule differs from the seed, the schedule remains
+authoritative.
+
+The implementation must not silently:
+
+```text
+move a schedule point
+replace the requested value
+choose a nearest anchor
+repair the schedule to preserve the seed
+```
+
+Any future anchor-forcing policy must be a separate explicit operation.
+
+## 19.4 Hue and chroma semantics
+
+Stored OKLCH hue remains raw data.
+
+The low-level primitive does not normalize negative or multi-turn hue values.
+
+Zero chroma does not erase stored hue.
+
+A powerless hue may therefore remain stored while chroma is zero and become
+meaningful again if chroma is later restored.
+
+Negative or extended chroma likewise remains representable at the raw
+mathematical layer.
+
+Aesthetic chroma shaping and hue drift belong to explicit higher-level policy.
+
+## 19.5 Gamut boundary
+
+Raw OKLCH tone generation and target-gamut mapping are separate operations.
+
+Conceptually:
+
+```text
+raw OKLCH family
+        ↓
+explicit gamut mapper
+        ↓
+target-space family
+```
+
+Generating a raw tone family must not implicitly:
+
+```text
+clip
+gamut-map
+select a default gamut mapper
+rewrite the raw family
+```
+
+R0.8's validated perceptual mapping candidates remain explicit policy choices.
+
+R0.11 confirmed that an out-of-gamut raw tone may map successfully to a target
+color while the original raw tone family remains unchanged and authoritative.
+
+## 19.6 Representation
+
+For compile-time-known cardinality, the validated representation model is:
 
 ```d
-perceptualScale(base, range, steps)
+Oklch!T[N]
 ```
 
-The algorithm should use OKLCH rather than RGB scaling or HSV `value` manipulation.
+For runtime-known cardinality, caller-owned output storage is sufficient:
 
-A tone-scale generator may:
+```d
+Oklch!T[]
+```
 
-1. vary perceptual lightness;
-2. preserve hue where possible;
-3. optionally adjust chroma;
-4. apply explicit gamut mapping;
-5. produce final target-space colors.
+The core operation need not allocate.
+
+A caller-output form should reject length mismatches without partially writing
+the output.
+
+R0.11 found no justification for a custom tone-scale container or lazy range
+solely for the core primitive.
+
+Public names remain provisional until consumer validation.
+
+## 19.7 Extended and non-finite values
+
+Finite extended OKLCH component values remain valid raw mathematical inputs.
+
+The low-level component operations do not silently restrict values to display
+ranges such as:
+
+```text
+0 <= L <= 1
+C >= 0
+0 <= H < 360
+```
+
+NaN and positive/negative infinity remain visible to the caller in the tested
+raw component operations.
+
+The implementation must not silently repair them.
+
+R0.11 deliberately does not define generated-schedule arithmetic for
+non-finite endpoints.
+
+In particular, behavior involving expressions such as:
+
+```text
+Inf - Inf
+0 * Inf
+NaN interpolation
+```
+
+must not become an accidental API contract.
+
+Non-finite gamut-mapping semantics are likewise not established by R0.11.
+
+## 19.8 CTFE and allocation policy
+
+The validated low-level operations work through ordinary functions at runtime
+and CTFE.
+
+The viable core forms support both:
+
+```text
+float
+double
+```
+
+and should retain, where technically appropriate:
+
+```d
+@safe
+pure
+nothrow
+@nogc
+```
+
+No CTFE-specific duplicate API family is required.
+
+## 19.9 Numerical policy
+
+The structural tone-scale properties validated by R0.11 do not require one
+universal epsilon.
+
+Exact properties such as:
+
+```text
+component preservation
+cardinality
+raw anchor behavior
+ordering
+NaN classification
+infinity sign
+representation equivalence
+raw-versus-mapped separation
+```
+
+should remain distinct from approximate numerical comparison policy.
+
+Library-wide tolerance policy remains a separate concern.
+
+## 19.10 Palette and theme boundary
+
+The low-level tone-scale primitive does not assign semantic roles.
+
+Concepts such as:
+
+```text
+accent
+warning
+success
+selected
+hovered
+road.primary
+building.residential
+```
+
+remain outside `color-d`.
+
+Higher-level palette/theme generation may combine:
+
+```text
+tone schedules
+chroma policy
+gamut mapping
+contrast constraints
+semantic role assignment
+```
+
+but those policies must remain visible above the mathematical primitive.
+
+R0.11 validates the low-level architecture only.
+
+Public production API names remain provisional until promotion and real
+consumer validation.
 
 ---
 

@@ -22,7 +22,7 @@ Goals:
 
 No public API is frozen during R0.
 
-### Validated research through R0.10
+### Validated research through R0.11
 
 Completed research blocks:
 
@@ -37,7 +37,10 @@ Completed research blocks:
 - R0.9 — WCAG-2 relative-luminance and contrast semantics, domain validation
   and checked-result representation;
 - R0.10 — Oklab `deltaEOK` semantics, numerical robustness, special-value
-  behavior and reference coverage.
+  behavior and reference coverage;
+- R0.11 — OKLCH tone-scale primitive decomposition, finite schedule semantics,
+  chroma/hue policy, explicit gamut composition, allocation-free
+  representation, CTFE and edge-case properties.
 
 R0.8 additionally established initial performance and generated-code evidence
 for Local MINDE and Ray Trace gamut mapping. Ray Trace is the stronger
@@ -65,9 +68,29 @@ straightforward squared-sum implementation is not sufficiently robust across
 the tested compiler/build configurations, while a custom scaled norm remains a
 validated fallback/reference implementation. No public API is frozen.
 
+R0.11 established tone-scale generation as composition of explicit low-level
+operations rather than one policy-heavy universal generator. Raw OKLCH
+lightness/chroma/hue values remain authoritative; there is no implicit
+clamping, chroma canonicalization, hue normalization or gamut mapping.
+
+Finite generated schedules have explicit schedule semantics. Matching raw
+anchors remain exact naturally; a mismatching requested schedule is not
+silently repaired to preserve the seed.
+
+For representation, compile-time-known cardinality is adequately represented
+by `Oklch!T[N]`, while runtime-known cardinality can use caller-owned
+`Oklch!T[]`. No custom tone-scale container is currently justified.
+
+The tested raw component operations preserve NaN and infinity rather than
+silently repairing them. Generated non-finite schedule arithmetic remains
+deliberately unspecified, and non-finite gamut-mapping behavior was not
+contracted.
+
+No public tone-scale API name, default gamut mapper or universal numerical
+epsilon is frozen by R0.11.
+
 Remaining R0 work includes:
 
-- tone-scale generation;
 - compile-time palette/theme generation and validation;
 - library-wide numerical tolerance policy;
 - remaining basic performance/code-generation checks where justified;
