@@ -85,16 +85,15 @@ if (isColorScalar!T)
  *
  * No clipping or gamut mapping occurs.
  */
-Oklch!T[N] composeRawFamily(T, size_t N)(
-    Oklch!T seed,
-    const T[N] lightnesses,
-    const T[N] chromas
+void composeRawFamilyInto(T, size_t N)(
+    ref Oklch!T[N] result,
+    ref const(Oklch!T) seed,
+    ref const(T[N]) lightnesses,
+    ref const(T[N]) chromas
 )
 @safe pure nothrow @nogc
 if (isColorScalar!T)
 {
-    Oklch!T[N] result;
-
     foreach (i; 0 .. N)
     {
         result[i] =
@@ -106,6 +105,25 @@ if (isColorScalar!T)
                 chromas[i]
             );
     }
+}
+
+
+Oklch!T[N] composeRawFamily(T, size_t N)(
+    Oklch!T seed,
+    const T[N] lightnesses,
+    const T[N] chromas
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    Oklch!T[N] result;
+
+    composeRawFamilyInto!(T, N)(
+        result,
+        seed,
+        lightnesses,
+        chromas
+    );
 
     return result;
 }
@@ -119,6 +137,27 @@ if (isColorScalar!T)
  * Does this operation add semantics beyond repeatedly calling
  * composeRawFamily?
  */
+void composeRawPaletteInto(T, size_t F, size_t N)(
+    ref Oklch!T[N][F] result,
+    ref const(Oklch!T[F]) seeds,
+    ref const(T[N][F]) lightnesses,
+    ref const(T[N][F]) chromas
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    foreach (f; 0 .. F)
+    {
+        composeRawFamilyInto!(T, N)(
+            result[f],
+            seeds[f],
+            lightnesses[f],
+            chromas[f]
+        );
+    }
+}
+
+
 Oklch!T[N][F] composeRawPalette(T, size_t F, size_t N)(
     const Oklch!T[F] seeds,
     const T[N][F] lightnesses,
@@ -129,14 +168,12 @@ if (isColorScalar!T)
 {
     Oklch!T[N][F] result;
 
-    foreach (f; 0 .. F)
-    {
-        result[f] = composeRawFamily!(T, N)(
-            seeds[f],
-            lightnesses[f],
-            chromas[f]
-        );
-    }
+    composeRawPaletteInto!(T, F, N)(
+        result,
+        seeds,
+        lightnesses,
+        chromas
+    );
 
     return result;
 }
@@ -146,6 +183,21 @@ if (isColorScalar!T)
 // Explicit gamut mapping
 // ==========================================================================
 
+void mapFamilyRayTraceInto(T, size_t N)(
+    ref MapResult!T[N] result,
+    ref const(Oklch!T[N]) raw
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    foreach (i; 0 .. N)
+    {
+        result[i] =
+            gamut.gamutMapRayTrace(raw[i]);
+    }
+}
+
+
 MapResult!T[N] mapFamilyRayTrace(T, size_t N)(
     const Oklch!T[N] raw
 )
@@ -154,18 +206,29 @@ if (isColorScalar!T)
 {
     MapResult!T[N] result;
 
-    foreach (i; 0 .. N)
-    {
-        /*
-         * Deliberately module-qualified.
-         *
-         * The mapper belongs to the extracted R0.8 fixture/type world.
-         */
-        result[i] =
-            gamut.gamutMapRayTrace(raw[i]);
-    }
+    mapFamilyRayTraceInto!(T, N)(
+        result,
+        raw
+    );
 
     return result;
+}
+
+
+void mapPaletteRayTraceInto(T, size_t F, size_t N)(
+    ref MapResult!T[N][F] result,
+    ref const(Oklch!T[N][F]) raw
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    foreach (f; 0 .. F)
+    {
+        mapFamilyRayTraceInto!(T, N)(
+            result[f],
+            raw[f]
+        );
+    }
 }
 
 
@@ -177,11 +240,10 @@ if (isColorScalar!T)
 {
     MapResult!T[N][F] result;
 
-    foreach (f; 0 .. F)
-    {
-        result[f] =
-            mapFamilyRayTrace!(T, N)(raw[f]);
-    }
+    mapPaletteRayTraceInto!(T, F, N)(
+        result,
+        raw
+    );
 
     return result;
 }
@@ -191,6 +253,21 @@ if (isColorScalar!T)
 // Explicit target-space conversion
 // ==========================================================================
 
+void encodeMappedFamilyInto(T, size_t N)(
+    ref SRgb!T[N] result,
+    ref const(MapResult!T[N]) mapped
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    foreach (i; 0 .. N)
+    {
+        result[i] =
+            gamut.toSRgb(mapped[i].color);
+    }
+}
+
+
 SRgb!T[N] encodeMappedFamily(T, size_t N)(
     const MapResult!T[N] mapped
 )
@@ -199,13 +276,29 @@ if (isColorScalar!T)
 {
     SRgb!T[N] result;
 
-    foreach (i; 0 .. N)
-    {
-        result[i] =
-            gamut.toSRgb(mapped[i].color);
-    }
+    encodeMappedFamilyInto!(T, N)(
+        result,
+        mapped
+    );
 
     return result;
+}
+
+
+void encodeMappedPaletteInto(T, size_t F, size_t N)(
+    ref SRgb!T[N][F] result,
+    ref const(MapResult!T[N][F]) mapped
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    foreach (f; 0 .. F)
+    {
+        encodeMappedFamilyInto!(T, N)(
+            result[f],
+            mapped[f]
+        );
+    }
 }
 
 
@@ -217,11 +310,10 @@ if (isColorScalar!T)
 {
     SRgb!T[N][F] result;
 
-    foreach (f; 0 .. F)
-    {
-        result[f] =
-            encodeMappedFamily!(T, N)(mapped[f]);
-    }
+    encodeMappedPaletteInto!(T, F, N)(
+        result,
+        mapped
+    );
 
     return result;
 }
@@ -1119,6 +1211,41 @@ if (isColorScalar!T)
 }
 
 
+void buildPaletteBundleInto(T, size_t F, size_t N)(
+    ref PaletteBundle!(T, F, N) result,
+    ref const(Oklch!T[F]) seeds,
+    ref const(T[N][F]) lightnesses,
+    ref const(T[N][F]) chromas
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    composeRawPaletteInto!(T, F, N)(
+        result.raw,
+        seeds,
+        lightnesses,
+        chromas
+    );
+
+    mapPaletteRayTraceInto!(T, F, N)(
+        result.mapped,
+        result.raw
+    );
+
+    encodeMappedPaletteInto!(T, F, N)(
+        result.encoded,
+        result.mapped
+    );
+}
+
+
+/*
+ * Value-returning wrapper retained for CTFE and comparison research.
+ *
+ * Runtime construction for the supported compiler baseline uses
+ * buildPaletteBundleInto so nested static arrays do not cross the
+ * older DMD ABI by value.
+ */
 PaletteBundle!(T, F, N) buildPaletteBundle(
     T,
     size_t F,
@@ -1133,22 +1260,12 @@ if (isColorScalar!T)
 {
     PaletteBundle!(T, F, N) result;
 
-    result.raw =
-        composeRawPalette!(T, F, N)(
-            seeds,
-            lightnesses,
-            chromas
-        );
-
-    result.mapped =
-        mapPaletteRayTrace!(T, F, N)(
-            result.raw
-        );
-
-    result.encoded =
-        encodeMappedPalette!(T, F, N)(
-            result.mapped
-        );
+    buildPaletteBundleInto!(T, F, N)(
+        result,
+        seeds,
+        lightnesses,
+        chromas
+    );
 
     return result;
 }
@@ -2064,16 +2181,22 @@ if (isColorScalar!T)
     const auto chromas =
         phaseCChromas!T();
 
-    const auto runtimeBundle =
-        buildPaletteBundle!(
-            T,
-            phaseCFamilies,
-            phaseCTones
-        )(
-            seeds,
-            lightnesses,
-            chromas
-        );
+    PaletteBundle!(
+        T,
+        phaseCFamilies,
+        phaseCTones
+    ) runtimeBundle;
+
+    buildPaletteBundleInto!(
+        T,
+        phaseCFamilies,
+        phaseCTones
+    )(
+        runtimeBundle,
+        seeds,
+        lightnesses,
+        chromas
+    );
 
     writeln();
     writeln("=== R0.12-C ", scalarName, " ===");
@@ -2146,6 +2269,578 @@ if (isColorScalar!T)
             phaseCStoredD
         );
     }
+}
+
+
+// ==========================================================================
+// R0.12-E — integration and edge properties
+// ==========================================================================
+
+bool sameRawFamily(T, size_t N)(
+    const Oklch!T[N] lhs,
+    const Oklch!T[N] rhs
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    foreach (i; 0 .. N)
+    {
+        if (!sameRawTone!T(
+                lhs[i],
+                rhs[i]))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+bool sameMappedFamily(T, size_t N)(
+    const MapResult!T[N] lhs,
+    const MapResult!T[N] rhs
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    foreach (i; 0 .. N)
+    {
+        if (!sameMapResult!T(
+                lhs[i],
+                rhs[i]))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+bool sameEncodedFamily(T, size_t N)(
+    const SRgb!T[N] lhs,
+    const SRgb!T[N] rhs
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    foreach (i; 0 .. N)
+    {
+        if (!sameSrgb!T(
+                lhs[i],
+                rhs[i]))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+void runPhaseE(T)(
+    ref CheckTotals totals,
+    string scalarName
+)
+if (isColorScalar!T)
+{
+    // ----------------------------------------------------------------------
+    // Smallest non-empty shape: 1 family × 1 tone
+    // ----------------------------------------------------------------------
+
+    enum size_t SF = 1;
+    enum size_t SN = 1;
+
+    Oklch!T[SF] singletonSeeds =
+    [
+        Oklch!T(
+            cast(T)0.5,
+            cast(T)0.0,
+            OklabHue!T(cast(T)725.0))
+    ];
+
+    T[SN][SF] singletonLightnesses =
+    [
+        [
+            cast(T)0.5
+        ]
+    ];
+
+    T[SN][SF] singletonChromas =
+    [
+        [
+            cast(T)0.0
+        ]
+    ];
+
+    PaletteBundle!(T, SF, SN) singleton;
+
+    buildPaletteBundleInto!(
+        T,
+        SF,
+        SN
+    )(
+        singleton,
+        singletonSeeds,
+        singletonLightnesses,
+        singletonChromas
+    );
+
+    const auto singletonAfterLightness =
+        withLightness!T(
+            singletonSeeds[0],
+            singletonLightnesses[0][0]
+        );
+
+    const auto singletonAfterChroma =
+        withChroma!T(
+            singletonAfterLightness,
+            singletonChromas[0][0]
+        );
+
+    const auto singletonDirectFamily =
+        composeRawFamily!(
+            T,
+            SN
+        )(
+            singletonSeeds[0],
+            singletonLightnesses[0],
+            singletonChromas[0]
+        );
+
+    Oklch!T[SN][SF] singletonDirectPalette;
+
+    composeRawPaletteInto!(
+        T,
+        SF,
+        SN
+    )(
+        singletonDirectPalette,
+        singletonSeeds,
+        singletonLightnesses,
+        singletonChromas
+    );
+
+    PaletteBundle!(T, SF, SN) singletonManual;
+
+    singletonManual.raw =
+        singletonDirectPalette;
+
+    mapPaletteRayTraceInto!(
+        T,
+        SF,
+        SN
+    )(
+        singletonManual.mapped,
+        singletonManual.raw
+    );
+
+    encodeMappedPaletteInto!(
+        T,
+        SF,
+        SN
+    )(
+        singletonManual.encoded,
+        singletonManual.mapped
+    );
+
+    PaletteBundle!(T, SF, SN) singletonMutableReturn;
+
+    buildPaletteBundleInto!(
+        T,
+        SF,
+        SN
+    )(
+        singletonMutableReturn,
+        singletonSeeds,
+        singletonLightnesses,
+        singletonChromas
+    );
+
+    writeln();
+    writeln("=== R0.12-E ", scalarName, " ===");
+
+    writefln(
+        "DIAG  %s singleton input seed: L=%.17e C=%.17e H=%.17e",
+        scalarName,
+        cast(double)singletonSeeds[0].l,
+        cast(double)singletonSeeds[0].c,
+        cast(double)singletonSeeds[0].h.degrees
+    );
+
+    writefln(
+        "DIAG  %s singleton schedules: L=%.17e C=%.17e",
+        scalarName,
+        cast(double)singletonLightnesses[0][0],
+        cast(double)singletonChromas[0][0]
+    );
+
+    writefln(
+        "DIAG  %s after withLightness: L=%.17e C=%.17e H=%.17e",
+        scalarName,
+        cast(double)singletonAfterLightness.l,
+        cast(double)singletonAfterLightness.c,
+        cast(double)singletonAfterLightness.h.degrees
+    );
+
+    writefln(
+        "DIAG  %s after withChroma: L=%.17e C=%.17e H=%.17e",
+        scalarName,
+        cast(double)singletonAfterChroma.l,
+        cast(double)singletonAfterChroma.c,
+        cast(double)singletonAfterChroma.h.degrees
+    );
+
+    writefln(
+        "DIAG  %s direct family raw: L=%.17e C=%.17e H=%.17e",
+        scalarName,
+        cast(double)singletonDirectFamily[0].l,
+        cast(double)singletonDirectFamily[0].c,
+        cast(double)singletonDirectFamily[0].h.degrees
+    );
+
+    writefln(
+        "DIAG  %s direct palette raw: L=%.17e C=%.17e H=%.17e",
+        scalarName,
+        cast(double)singletonDirectPalette[0][0].l,
+        cast(double)singletonDirectPalette[0][0].c,
+        cast(double)singletonDirectPalette[0][0].h.degrees
+    );
+
+    writefln(
+        "DIAG  %s manual bundle raw: L=%.17e C=%.17e H=%.17e",
+        scalarName,
+        cast(double)singletonManual.raw[0][0].l,
+        cast(double)singletonManual.raw[0][0].c,
+        cast(double)singletonManual.raw[0][0].h.degrees
+    );
+
+    writefln(
+        "DIAG  %s repeated into bundle raw: L=%.17e C=%.17e H=%.17e",
+        scalarName,
+        cast(double)singletonMutableReturn.raw[0][0].l,
+        cast(double)singletonMutableReturn.raw[0][0].c,
+        cast(double)singletonMutableReturn.raw[0][0].h.degrees
+    );
+
+    writefln(
+        "DIAG  %s singleton raw: L=%.17e C=%.17e H=%.17e",
+        scalarName,
+        cast(double)singleton.raw[0][0].l,
+        cast(double)singleton.raw[0][0].c,
+        cast(double)singleton.raw[0][0].h.degrees
+    );
+
+    check(
+        totals,
+        singleton.raw.length == SF &&
+        singleton.raw[0].length == SN &&
+        singleton.raw[0][0].l == cast(T)0.5 &&
+        singleton.raw[0][0].c == cast(T)0.0 &&
+        singleton.raw[0][0].h.degrees == cast(T)725.0,
+        scalarName ~
+            ": 1x1 raw palette preserves explicit components and hue"
+    );
+
+    check(
+        totals,
+        singleton.mapped[0][0].success &&
+        singleton.mapped[0][0].iterations == 0,
+        scalarName ~
+            ": in-gamut singleton uses successful zero-iteration mapping path"
+    );
+
+    check(
+        totals,
+        allMappedInGamut!(
+            T,
+            SF,
+            SN
+        )(singleton.mapped) &&
+        allEncodedInGamut!(
+            T,
+            SF,
+            SN
+        )(singleton.encoded),
+        scalarName ~
+            ": 1x1 mapped and encoded results are in gamut"
+    );
+
+
+    // ----------------------------------------------------------------------
+    // Representative 3 × 5 integration palette
+    // ----------------------------------------------------------------------
+
+    enum size_t F = phaseCFamilies;
+    enum size_t N = phaseCTones;
+
+    const auto seeds =
+        phaseCSeeds!T();
+
+    const auto lightnesses =
+        phaseCLightnesses!T();
+
+    const auto chromas =
+        phaseCChromas!T();
+
+    PaletteBundle!(T, F, N) base;
+
+    buildPaletteBundleInto!(
+        T,
+        F,
+        N
+    )(
+        base,
+        seeds,
+        lightnesses,
+        chromas
+    );
+
+    /*
+     * The independently established high-chroma yellow is family 1, tone 3.
+     *
+     * Phase A established that the raw value is outside sRGB. Here we test
+     * that integration through the full bundle actually takes an active
+     * Ray Trace path rather than silently treating it as an in-gamut no-op.
+     */
+    check(
+        totals,
+        base.mapped[1][3].success &&
+        base.mapped[1][3].iterations > 0,
+        scalarName ~
+            ": known out-of-gamut tone takes active successful mapping path"
+    );
+
+
+    // ----------------------------------------------------------------------
+    // Family independence
+    // ----------------------------------------------------------------------
+
+    T[N][F] editedChromas =
+        phaseCChromas!T();
+
+    editedChromas[1][2] =
+        cast(T)0.05;
+
+    PaletteBundle!(T, F, N) edited;
+
+    buildPaletteBundleInto!(
+        T,
+        F,
+        N
+    )(
+        edited,
+        seeds,
+        lightnesses,
+        editedChromas
+    );
+
+    check(
+        totals,
+        sameRawFamily!(T, N)(
+            base.raw[0],
+            edited.raw[0]
+        ) &&
+        sameRawFamily!(T, N)(
+            base.raw[2],
+            edited.raw[2]
+        ),
+        scalarName ~
+            ": editing one family leaves other raw families exact"
+    );
+
+    check(
+        totals,
+        !sameRawFamily!(T, N)(
+            base.raw[1],
+            edited.raw[1]
+        ),
+        scalarName ~
+            ": editing one family changes that raw family"
+    );
+
+    check(
+        totals,
+        sameMappedFamily!(T, N)(
+            base.mapped[0],
+            edited.mapped[0]
+        ) &&
+        sameMappedFamily!(T, N)(
+            base.mapped[2],
+            edited.mapped[2]
+        ),
+        scalarName ~
+            ": editing one family leaves other mapped families exact"
+    );
+
+    check(
+        totals,
+        sameEncodedFamily!(T, N)(
+            base.encoded[0],
+            edited.encoded[0]
+        ) &&
+        sameEncodedFamily!(T, N)(
+            base.encoded[2],
+            edited.encoded[2]
+        ),
+        scalarName ~
+            ": editing one family leaves other encoded families exact"
+    );
+
+
+    // ----------------------------------------------------------------------
+    // Family permutation
+    // ----------------------------------------------------------------------
+
+    Oklch!T[F] permutedSeeds =
+    [
+        seeds[2],
+        seeds[1],
+        seeds[0]
+    ];
+
+    T[N][F] permutedLightnesses =
+    [
+        lightnesses[2],
+        lightnesses[1],
+        lightnesses[0]
+    ];
+
+    T[N][F] permutedChromas =
+    [
+        chromas[2],
+        chromas[1],
+        chromas[0]
+    ];
+
+    PaletteBundle!(T, F, N) permuted;
+
+    buildPaletteBundleInto!(
+        T,
+        F,
+        N
+    )(
+        permuted,
+        permutedSeeds,
+        permutedLightnesses,
+        permutedChromas
+    );
+
+    check(
+        totals,
+        sameRawFamily!(T, N)(
+            permuted.raw[0],
+            base.raw[2]
+        ) &&
+        sameRawFamily!(T, N)(
+            permuted.raw[1],
+            base.raw[1]
+        ) &&
+        sameRawFamily!(T, N)(
+            permuted.raw[2],
+            base.raw[0]
+        ),
+        scalarName ~
+            ": family permutation only permutes raw results"
+    );
+
+    check(
+        totals,
+        sameMappedFamily!(T, N)(
+            permuted.mapped[0],
+            base.mapped[2]
+        ) &&
+        sameMappedFamily!(T, N)(
+            permuted.mapped[1],
+            base.mapped[1]
+        ) &&
+        sameMappedFamily!(T, N)(
+            permuted.mapped[2],
+            base.mapped[0]
+        ),
+        scalarName ~
+            ": family permutation only permutes mapped results"
+    );
+
+    check(
+        totals,
+        sameEncodedFamily!(T, N)(
+            permuted.encoded[0],
+            base.encoded[2]
+        ) &&
+        sameEncodedFamily!(T, N)(
+            permuted.encoded[1],
+            base.encoded[1]
+        ) &&
+        sameEncodedFamily!(T, N)(
+            permuted.encoded[2],
+            base.encoded[0]
+        ),
+        scalarName ~
+            ": family permutation only permutes encoded results"
+    );
+
+
+    // ----------------------------------------------------------------------
+    // Cross-family caller-selected validation pairs
+    // ----------------------------------------------------------------------
+
+    enum TonePair crossFamilyPair =
+        TonePair(
+            ToneRef(0, 0),
+            ToneRef(2, 4)
+        );
+
+    const T measuredContrast =
+        measureContrast!(
+            T,
+            F,
+            N
+        )(
+            base.encoded,
+            crossFamilyPair
+        );
+
+    const T directContrast =
+        wcag2ContrastRatio!T(
+            base.encoded[0][0],
+            base.encoded[2][4]
+        );
+
+    check(
+        totals,
+        measuredContrast == directContrast,
+        scalarName ~
+            ": cross-family contrast pair equals direct measurement"
+    );
+
+    const T measuredDistance =
+        measureDeltaEOK!(
+            T,
+            F,
+            N
+        )(
+            base.encoded,
+            crossFamilyPair
+        );
+
+    const T directDistance =
+        deltaEOK!T(
+            encodedToOklab!T(
+                base.encoded[0][0]
+            ),
+            encodedToOklab!T(
+                base.encoded[2][4]
+            )
+        );
+
+    check(
+        totals,
+        measuredDistance == directDistance,
+        scalarName ~
+            ": cross-family deltaEOK pair equals direct measurement"
+    );
 }
 
 
@@ -2486,10 +3181,32 @@ int main()
         " FAIL"
     );
 
+    CheckTotals phaseE;
+
+    runPhaseE!float(
+        phaseE,
+        "float"
+    );
+
+    runPhaseE!double(
+        phaseE,
+        "double"
+    );
+
+    writeln();
+    writeln(
+        "R0.12-E: ",
+        phaseE.pass,
+        " PASS, ",
+        phaseE.fail,
+        " FAIL"
+    );
+
     return
         phaseA.fail == 0 &&
         phaseB.fail == 0 &&
-        phaseC.fail == 0
+        phaseC.fail == 0 &&
+        phaseE.fail == 0
             ? 0
             : 1;
 }

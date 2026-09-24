@@ -1925,3 +1925,610 @@ R0.12-E — Integration and edge properties
 ```
 
 R0.12 as a whole remains in progress.
+
+---
+
+# R0.12-E — Integration and edge properties
+
+## E.1 Purpose
+
+R0.12-E exercises the already validated palette-composition pieces as one
+integrated pipeline and checks edge properties that are easy to miss when
+testing only representative multi-tone palettes.
+
+The phase does not introduce new color mathematics.
+
+It exercises:
+
+```text
+raw schedule construction
+→ explicit gamut mapping
+→ explicit target-space conversion
+→ caller-selected validation
+```
+
+with particular attention to:
+
+```text
+1 × 1 palette cardinality
+explicit hue preservation
+achromatic / zero-chroma input
+in-gamut zero-iteration mapping
+known out-of-gamut active mapping
+family independence
+family permutation
+cross-family measurements
+runtime / CTFE integration
+compiler-baseline behavior
+```
+
+No application semantic roles are introduced.
+
+---
+
+## E.2 Final source
+
+The final validated experiment source is:
+
+```text
+experiments/r0_12_palette_ctfe/source/app.d
+```
+
+SHA-256:
+
+```text
+9baf0b3de9778d025104e26021e789c15eada78d2075b7a085185a0c2b82fd6f
+```
+
+The complete post-workaround compiler matrix was run against this unchanged
+source.
+
+---
+
+## E.3 Integration checks
+
+R0.12-E contains 13 checks per scalar type.
+
+Both:
+
+```text
+float
+double
+```
+
+are exercised, for a total of:
+
+```text
+26 checks per compiler/build run
+```
+
+The checks cover the following integration properties.
+
+### Smallest non-empty palette
+
+A:
+
+```text
+1 family × 1 tone
+```
+
+palette preserves the explicit raw components:
+
+```text
+L = 0.5
+C = 0.0
+h = 725°
+```
+
+The stored hue is not implicitly normalized.
+
+### In-gamut mapping path
+
+The achromatic singleton maps successfully with:
+
+```text
+iterations = 0
+```
+
+and remains in gamut after mapping and encoding.
+
+### Active out-of-gamut mapping path
+
+The independently established high-chroma yellow case is exercised through the
+complete bundle pipeline.
+
+Its mapping:
+
+```text
+succeeds
+and
+uses more than zero iterations
+```
+
+so the integrated pipeline does not silently turn the known out-of-gamut case
+into an in-gamut no-op.
+
+### Family independence
+
+Changing a chroma value in one family changes that family while leaving the
+other raw, mapped and encoded families unchanged under exact structural
+comparison.
+
+### Family permutation
+
+Permuting the family inputs only permutes the corresponding raw, mapped and
+encoded family results.
+
+No cross-family state is introduced by palette construction.
+
+### Cross-family measurement
+
+Caller-selected contrast and OKLab-distance pairs may reference tones from
+different families without introducing semantic palette roles.
+
+The measurement primitives remain independent of the caller's acceptance
+policy.
+
+---
+
+## E.4 Initial DMD runtime anomaly
+
+The original Phase-E implementation returned and passed nested static arrays by
+value through generic helper functions such as:
+
+```text
+composeRawPalette
+mapPaletteRayTrace
+encodeMappedPalette
+buildPaletteBundle
+```
+
+The first full Phase-E run exposed a compiler-dependent runtime anomaly.
+
+With DMD 2.111.0:
+
+```text
+Debug:
+    R0.12-E = 24 PASS, 2 FAIL
+
+Release:
+    R0.12-E = 24 PASS, 2 FAIL
+```
+
+The failures were both the 1 × 1 raw-palette preservation check:
+
+```text
+float
+double
+```
+
+The remaining Phase-E checks passed.
+
+LDC 1.41.0 passed the same source.
+
+This was therefore investigated before accepting Phase E.
+
+---
+
+## E.5 Compiler-bug isolation
+
+The investigation was intentionally reduced beyond the color-d experiment.
+
+The resulting reproducer set is stored under:
+
+```text
+experiments/r0_12_palette_ctfe/compiler_bug/
+```
+
+The most reduced return reproducer contains:
+
+```d
+struct S
+{
+    float a;
+    float b;
+    float c;
+}
+
+S[1][1] make()
+{
+    S[1][1] result;
+    result[0][0] = S(0.5f, 0.0f, 725.0f);
+    return result;
+}
+```
+
+No:
+
+```text
+color-d dependency
+template
+CTFE
+gamut mapping
+color conversion
+```
+
+is required to reproduce the naked nested-static-array return failure.
+
+The minimal naked-return reproducer fails at runtime under all controlled DMD
+versions:
+
+```text
+DMD 2.111.0
+DMD 2.112.0
+DMD 2.112.1
+DMD 2.113.0
+```
+
+in both Debug and Release.
+
+The corresponding controlled LDC versions:
+
+```text
+LDC 1.41.0
+LDC 1.42.0
+LDC 1.43.0
+```
+
+produce the expected values.
+
+A separate parameter-only reproducer passes on all tested compilers.
+
+Therefore ordinary static-array parameter reading alone is not sufficient to
+reproduce the defect.
+
+---
+
+## E.6 Additional ABI/code-generation observations
+
+The investigation found several distinct behaviors rather than one simple
+"static arrays are broken" rule.
+
+### Simple non-generic compatibility test
+
+For a simple non-generic `S[1][1]` case under DMD 2.111.0 through 2.113.0:
+
+```text
+naked by-value return    FAIL
+out destination          PASS
+ref destination          PASS
+simple struct wrapper    PASS
+```
+
+LDC passes all variants.
+
+### Generic wrapper test
+
+A generic wrapper is not sufficient for the older DMD baseline.
+
+For DMD 2.111.0 through 2.112.1, generic:
+
+```text
+bare return
+boxed return
+bundle return
+```
+
+may all produce incorrect runtime values.
+
+DMD 2.113.0 fixes the tested generic boxed/bundle cases, while the naked
+`float[1][1]`-style return remains broken.
+
+### Generic `ref` output with by-value static-array inputs
+
+Changing only the output to caller-owned `ref` storage is also insufficient.
+
+The tested generic form with:
+
+```text
+ref output
++
+by-value static-array inputs
+```
+
+segfaults at runtime under:
+
+```text
+DMD 2.111.0
+DMD 2.112.0
+DMD 2.112.1
+```
+
+in both Debug and Release.
+
+The same test succeeds under DMD 2.113.0 and all tested LDC versions.
+
+### Generic `ref` output with `ref const` static-array inputs
+
+The stable common form found by the experiment is:
+
+```text
+output:
+    ref
+
+static-array inputs:
+    ref const
+```
+
+This form passes in both Debug and Release under every controlled compiler:
+
+```text
+DMD 2.111.0
+DMD 2.112.0
+DMD 2.112.1
+DMD 2.113.0
+
+LDC 1.41.0
+LDC 1.42.0
+LDC 1.43.0
+```
+
+for both:
+
+```text
+float
+double
+```
+
+This is the compatibility form used by the final R0.12-E runtime pipeline.
+
+---
+
+## E.7 Compatibility implementation
+
+The experiment now provides caller-owned helpers:
+
+```text
+composeRawFamilyInto
+composeRawPaletteInto
+
+mapFamilyRayTraceInto
+mapPaletteRayTraceInto
+
+encodeMappedFamilyInto
+encodeMappedPaletteInto
+
+buildPaletteBundleInto
+```
+
+Their relevant transport convention is:
+
+```text
+result:
+    ref
+
+static-array input:
+    ref const
+```
+
+The mathematical operations themselves are unchanged.
+
+The original value-returning helpers remain research wrappers and continue to
+be useful for CTFE and comparison experiments.
+
+They are not established by R0.12-E as a generally runtime-safe API for the
+entire compiler baseline.
+
+---
+
+## E.8 Why no compiler switch is required here
+
+A compiler/version-specific branch is not necessary for correctness in R0.12.
+
+The same caller-owned transport form works on:
+
+```text
+all tested DMD versions
+and
+all tested LDC versions
+```
+
+from the project baseline upward.
+
+The preferred policy is therefore:
+
+```text
+use one correct common implementation where practical
+```
+
+rather than introducing a compiler version branch merely because one compiler
+has a defective alternative ABI/code-generation path.
+
+Compiler-specific paths remain legitimate when later evidence demonstrates that
+they are necessary for:
+
+```text
+correctness
+or
+material performance
+```
+
+Such paths must be justified by measurements or a reproduced compiler defect.
+
+R0.12 does not establish a performance reason to add such a switch.
+
+---
+
+## E.9 Final compiler matrix
+
+Because Phase E exposed a concrete compiler-dependent runtime problem, the
+correctness matrix was expanded beyond the original baseline.
+
+The final unchanged source was tested with:
+
+```text
+DMD 2.111.0  Debug
+DMD 2.111.0  Release
+
+DMD 2.112.0  Debug
+DMD 2.112.0  Release
+
+DMD 2.112.1  Debug
+DMD 2.112.1  Release
+
+DMD 2.113.0  Debug
+DMD 2.113.0  Release
+
+LDC 1.41.0   Debug
+LDC 1.41.0   Release
+
+LDC 1.42.0   Debug
+LDC 1.42.0   Release
+
+LDC 1.43.0   Debug
+LDC 1.43.0   Release
+```
+
+Every run reports:
+
+```text
+R0.12-A: 18 PASS, 0 FAIL
+R0.12-B: 28 PASS, 0 FAIL
+R0.12-C: 22 PASS, 0 FAIL
+R0.12-E: 26 PASS, 0 FAIL
+```
+
+Therefore each compiler/build run contains:
+
+```text
+94 PASS
+0 FAIL
+```
+
+Across the 14 final runs:
+
+```text
+1,316 PASS
+0 FAIL
+```
+
+The project correctness baseline is therefore preserved for the tested
+compiler matrix.
+
+The common implementation form was verified from the baseline through:
+
+```text
+DMD 2.111.0 → DMD 2.113.0
+LDC 1.41.0  → LDC 1.43.0
+```
+
+on the tested architecture.
+
+Future compiler releases remain subject to the same baseline-support policy but
+are not claimed as verified by R0.12-E.
+
+---
+
+## E.10 CTFE boundary
+
+The compiler defect investigated in Phase E is a runtime code-generation /
+calling-convention observation.
+
+The relevant compile-time constructions and static assertions also compiled
+successfully while older DMD runtime variants were producing incorrect values.
+
+R0.12 therefore does not identify CTFE evaluation itself as the cause of the
+Phase-E corruption.
+
+The value-returning construction remains suitable for the compile-time
+experiments where it is fully evaluated during compilation.
+
+---
+
+## E.11 Numerical-tolerance boundary
+
+R0.12-E does not alter the Phase-C observation that runtime and CTFE floating
+point results may differ slightly after gamut mapping and encoding.
+
+No epsilon or tolerance policy is introduced here.
+
+That subject remains assigned to:
+
+```text
+R0.13 — tolerance and reference strategy
+```
+
+and should be checked across the supported compiler baseline rather than only
+one compiler/version.
+
+---
+
+## E.12 Architectural implications
+
+The final Phase-E evidence supports the following architecture:
+
+```text
+scalar/color mathematical primitives
++
+ordinary fixed-size arrays
++
+explicit caller-owned policy
++
+ABI-safe internal transport where required
+```
+
+No semantic `Palette`, `Theme`, `PaletteBuilder` or `ThemeBuilder` abstraction
+is required by the observed mathematics.
+
+The compiler workaround does not create new palette semantics.
+
+It is an implementation/transport concern.
+
+---
+
+## E.13 Phase-E conclusions
+
+R0.12-E supports the following conclusions:
+
+1. The smallest non-empty 1 × 1 palette is a relevant integration edge case.
+2. Explicit raw hue values are preserved without implicit normalization.
+3. An in-gamut achromatic singleton takes the successful zero-iteration mapping
+   path.
+4. The known out-of-gamut case takes an active successful Ray Trace path.
+5. Editing one family does not perturb independent families.
+6. Family permutation only permutes the corresponding results.
+7. Cross-family contrast and distance measurement compose without semantic
+   palette roles.
+8. Raw, mapped and encoded representations remain separate.
+9. The original DMD failures are compiler/runtime transport effects rather than
+   failures of the color mathematics.
+10. Naked and generic by-value static-array transport cannot be treated as
+    baseline-safe merely because it compiles.
+11. Caller-owned `ref` output plus `ref const` static-array inputs provides one
+    common tested path across DMD 2.111.0–2.113.0 and LDC 1.41.0–1.43.0.
+12. No compiler switch is required for correctness in the current
+    implementation.
+13. Compiler switches remain available when separately justified by correctness
+    or measured performance.
+14. No new palette semantic abstraction is justified.
+15. No numerical tolerance policy is introduced.
+16. No public API is frozen.
+
+---
+
+## E.14 Not established by R0.12-E
+
+R0.12-E does not establish:
+
+- the exact internal root cause inside the DMD backend;
+- behavior on architectures other than the tested x86-64 environment;
+- behavior on operating systems other than the tested environment;
+- that every possible static-array shape has the same compiler behavior;
+- that value-returning wrappers are suitable as a production runtime API on
+  the full baseline;
+- a performance advantage for either ABI form;
+- a compiler-specific optimization policy;
+- a universal numerical epsilon;
+- application theme semantics;
+- a public palette API.
+
+---
+
+## E.15 Phase-E status
+
+R0.12-E is complete.
+
+The final Phase-E implementation passes the complete expanded compiler matrix
+from the established baseline upward.
+
+R0.12 as a whole may now proceed to synthesis / closeout.

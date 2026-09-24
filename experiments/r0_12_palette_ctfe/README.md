@@ -569,8 +569,7 @@ R0.12 does not establish:
 
 # 13. Compiler matrix
 
-Correctness validation will use the established baseline matrix unless a
-specific phase justifies additional comparison:
+Correctness validation begins with the established baseline matrix:
 
 ```text
 DMD 2.111.0  Debug
@@ -579,8 +578,35 @@ LDC 1.41.0   Debug
 LDC 1.41.0   Release
 ```
 
-Newer-compiler comparison belongs to the targeted performance/compiler work in
-GitHub #5 unless R0.12 exposes a specific compiler-dependent problem.
+R0.12-E exposed a specific compiler-dependent runtime problem, so the
+correctness matrix was expanded for diagnosis and final compatibility
+validation to:
+
+```text
+DMD 2.111.0  Debug / Release
+DMD 2.112.0  Debug / Release
+DMD 2.112.1  Debug / Release
+DMD 2.113.0  Debug / Release
+
+LDC 1.41.0   Debug / Release
+LDC 1.42.0   Debug / Release
+LDC 1.43.0   Debug / Release
+```
+
+The implementation goal remains:
+
+```text
+correct from the established baseline upward
+```
+
+A common implementation path is preferred where it is correct across the
+matrix.
+
+Compiler-specific switches remain permitted when a reproduced correctness
+problem or measured material performance difference justifies them.
+
+General newer-compiler performance optimization remains subject to the
+targeted compiler/performance work in GitHub #5.
 
 ---
 
