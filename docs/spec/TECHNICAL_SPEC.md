@@ -291,7 +291,7 @@ Primary uses:
 - tone scales;
 - shades;
 - hue-preserving transformations;
-- semantic palette construction;
+- palette and tone construction primitives;
 - gamut mapping.
 
 ---

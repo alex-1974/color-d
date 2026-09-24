@@ -2532,3 +2532,354 @@ The final Phase-E implementation passes the complete expanded compiler matrix
 from the established baseline upward.
 
 R0.12 as a whole may now proceed to synthesis / closeout.
+
+---
+
+# R0.12 synthesis and closeout
+
+**Status:** COMPLETE
+**GitHub:** #8 — R0.12 — Validate compile-time palette construction and validation
+
+## S.1 Research question
+
+R0.12 asked whether the previously validated low-level color primitives compose
+into useful compile-time palette construction and validation without requiring
+a new policy-heavy palette engine, semantic theme model or color-d-specific
+palette container.
+
+The answer is:
+
+```text
+yes
+```
+
+The central hypothesis is supported.
+
+---
+
+## S.2 Selected outcome
+
+R0.12 selects:
+
+```text
+Outcome A — composition is sufficient
+```
+
+The smallest architecture supported by the evidence is:
+
+```text
+typed scalar/color primitives
++
+ordinary fixed-size arrays
++
+explicit construction schedules
++
+explicit gamut mapping
++
+explicit target-space conversion
++
+independent measurement primitives
++
+caller-owned acceptance policy
+```
+
+No additional semantic palette abstraction is required by the mathematics.
+
+---
+
+## S.3 Phase synthesis
+
+### R0.12-A — vertical composition and ownership
+
+Representative multi-family raw palettes compose mechanically from already
+validated color operations.
+
+Ordinary arrays are sufficient to represent the tested palette families.
+
+No `Palette`, `PaletteBuilder`, `Theme` or `ThemeBuilder` type is required.
+
+Gamut mapping remains explicit.
+
+### R0.12-B — validation composition
+
+Contrast and perceptual-distance measurements compose independently.
+
+Measurement remains separate from caller-defined acceptance thresholds.
+
+No universal aggregate `validatePalette()` policy is justified.
+
+No universal epsilon is introduced.
+
+### R0.12-C — representation and CTFE
+
+Ordinary nested static arrays and consumer-local aggregate structs work as
+compile-time-known palette representations.
+
+Complete palette construction and validation execute at compile time.
+
+The tested `enum` and `static immutable` compile-time materializations agree
+exactly with each other.
+
+Runtime and CTFE evaluation may differ slightly after floating-point gamut
+mapping and encoding.
+
+Those measured differences are not hidden by inventing an R0.12 tolerance.
+
+### R0.12-D — coarse CTFE cost
+
+The complete compile-time pipeline was exercised at:
+
+```text
+3 × 5   = 15 tones
+6 × 10  = 60 tones
+12 × 20 = 240 tones
+```
+
+No obvious pathological compile-time or memory-growth behavior was observed in
+the tested environment.
+
+No special CTFE palette representation or compiler-specific optimization is
+justified by the observed cost evidence.
+
+### R0.12-E — integration and edge properties
+
+The complete integration preserves:
+
+```text
+1 × 1 palettes
+explicit raw hue values
+zero-chroma values
+raw / mapped / encoded separation
+family independence
+family permutation
+cross-family measurements
+explicit active and zero-iteration gamut-mapping paths
+```
+
+A compiler-dependent runtime defect discovered by the 1 × 1 case was reduced
+separately from the color mathematics.
+
+---
+
+## S.4 Compiler compatibility conclusion
+
+The DMD investigation demonstrated that successful compilation alone is not a
+sufficient compatibility criterion for certain nested-static-array transport
+forms.
+
+The final runtime integration uses:
+
+```text
+caller-owned output:
+    ref
+
+static-array input:
+    ref const
+```
+
+The same form passes the complete final R0.12 matrix under:
+
+```text
+DMD 2.111.0  Debug / Release
+DMD 2.112.0  Debug / Release
+DMD 2.112.1  Debug / Release
+DMD 2.113.0  Debug / Release
+
+LDC 1.41.0   Debug / Release
+LDC 1.42.0   Debug / Release
+LDC 1.43.0   Debug / Release
+```
+
+Each final compiler/build run reports:
+
+```text
+R0.12-A: 18 PASS, 0 FAIL
+R0.12-B: 28 PASS, 0 FAIL
+R0.12-C: 22 PASS, 0 FAIL
+R0.12-E: 26 PASS, 0 FAIL
+```
+
+for:
+
+```text
+94 PASS
+0 FAIL
+```
+
+per run and:
+
+```text
+1,316 PASS
+0 FAIL
+```
+
+across the 14-run final matrix.
+
+The tested source SHA-256 is:
+
+```text
+9baf0b3de9778d025104e26021e789c15eada78d2075b7a085185a0c2b82fd6f
+```
+
+No compiler-version switch is required for correctness by the selected common
+implementation form.
+
+Compiler-specific switches remain legitimate when future evidence demonstrates
+a reproduced correctness requirement or a material measured performance
+benefit.
+
+---
+
+## S.5 Library boundary
+
+R0.12 reinforces the separation:
+
+```text
+color-d
+    mathematical color representation
+    transformations
+    gamut operations
+    measurements
+    reusable low-level construction primitives
+
+consumer/theme layer
+    semantic roles
+    light/dark/high-contrast schemes
+    design-token relationships
+    application state
+    acceptance thresholds
+    theme policy
+```
+
+The library may provide reusable mathematical primitives used during palette
+construction.
+
+It does not own application palette semantics merely because those primitives
+can be evaluated at compile time.
+
+---
+
+## S.6 Representation conclusion
+
+For compile-time-known cardinality, ordinary D static arrays are sufficient as
+the tested structural representation.
+
+R0.12 provides no evidence for introducing a dedicated public palette
+container.
+
+The DMD transport workaround does not change that conclusion.
+
+It is an implementation-boundary concern, not a semantic representation
+requirement.
+
+---
+
+## S.7 Numerical handoff to R0.13
+
+R0.12-C measured small runtime-versus-CTFE differences after floating-point
+gamut mapping and encoding.
+
+R0.12 deliberately does not convert those observations into:
+
+```text
+a universal epsilon
+a universal relative tolerance
+a compiler-specific tolerance
+a palette-specific tolerance
+```
+
+R0.13 must determine the numerical comparison/reference policy using the
+supported compiler baseline and independently justified numerical semantics.
+
+---
+
+## S.8 Performance/compiler handoff
+
+R0.12-D found no reason to introduce a compiler-specific palette
+implementation for CTFE cost.
+
+R0.12-E found a correctness defect in particular DMD runtime transport forms,
+but also found one common implementation form that works across the complete
+tested compiler matrix.
+
+Therefore:
+
+```text
+no R0.12 compiler switch is required
+```
+
+General compiler/version-specific optimization remains governed by the separate
+performance/compiler-policy work.
+
+---
+
+## S.9 API promotion decision
+
+R0.12 validates architectural behavior, not final production API names.
+
+The experiment does not promote:
+
+```text
+Palette
+PaletteBuilder
+Theme
+ThemeBuilder
+validatePalette
+a default mapper
+a default contrast threshold
+a default perceptual-distance threshold
+a universal tolerance
+```
+
+into the public library.
+
+Any future generic helper must independently demonstrate reusable mathematical
+semantics and a clear ownership reason to live in `color-d`.
+
+Consumer validation remains required before public API stabilization.
+
+---
+
+## S.10 Final R0.12 conclusions
+
+R0.12 establishes:
+
+1. Compile-time palette construction is viable through ordinary composition of
+   existing color primitives.
+2. Ordinary fixed-size arrays are sufficient for the tested compile-time-known
+   palette structures.
+3. Raw construction, gamut mapping and target conversion remain explicit
+   stages.
+4. Measurement and validation policy remain separate.
+5. Caller-defined semantic roles do not belong in the mathematical library.
+6. No semantic palette/theme container is justified by the current evidence.
+7. No policy-heavy universal palette builder is justified.
+8. Complete palette construction and validation can execute at compile time.
+9. The tested CTFE sizes show no obvious pathological compile-time behavior.
+10. Runtime-versus-CTFE numerical drift exists and passes to R0.13 rather than
+    being hidden by an invented tolerance.
+11. The DMD runtime defect is an implementation/transport concern rather than a
+    color-mathematics defect.
+12. `ref` output plus `ref const` static-array inputs provides one common
+    runtime compatibility form across the complete tested compiler matrix.
+13. No compiler switch is required by the current implementation.
+14. Compiler-specific paths remain permitted when justified by reproduced
+    correctness evidence or material measured performance.
+15. No public palette API is frozen.
+16. R0.12 is complete.
+
+---
+
+## S.11 R0.12 status
+
+```text
+R0.12 — COMPLETE
+```
+
+The next research block is:
+
+```text
+R0.13 — numerical tolerance and reference policy
+```
+
+R0.14 remains the final R0 synthesis and R0→R1 promotion gate.

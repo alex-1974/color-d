@@ -1,5 +1,6 @@
 # R0.12 — Compile-time palette construction and validation
 
+**Status:** COMPLETE
 **GitHub:** #8 — R0.12 — Validate compile-time palette construction and validation
 
 R0.12 is an integration research block.
@@ -610,7 +611,50 @@ targeted compiler/performance work in GitHub #5.
 
 ---
 
-# 14. Promotion rule
+# 14. Final outcome
+
+R0.12 selects:
+
+```text
+Outcome A — composition is sufficient
+```
+
+The research evidence supports:
+
+```text
+existing scalar/color primitives
++
+ordinary fixed-size arrays
++
+explicit gamut and conversion operations
++
+caller-owned validation policy
+```
+
+as sufficient for compile-time palette construction and validation.
+
+No new semantic palette container or policy-heavy palette builder is justified
+inside `color-d`.
+
+Application roles, theme modes, design-token relationships and other semantic
+meaning remain consumer concerns above the mathematical library boundary.
+
+For runtime integration on the tested compiler baseline, nested static-array
+transport uses caller-owned `ref` outputs and `ref const` inputs. This is an
+implementation compatibility concern rather than new palette semantics.
+
+The tested common path requires no compiler-version switch. Compiler-specific
+paths remain allowed when separately justified by correctness evidence or
+material measured performance.
+
+Runtime-versus-CTFE floating-point comparison policy is deliberately not
+settled by R0.12 and passes to R0.13.
+
+R0.12 does not freeze a public palette API.
+
+---
+
+# 15. Promotion rule
 
 Research code must not become production API through implementation momentum.
 

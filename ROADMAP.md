@@ -123,9 +123,31 @@ contracted.
 No public tone-scale API name, default gamut mapper or universal numerical
 epsilon is frozen by R0.11.
 
+R0.12 established compile-time palette construction and validation as ordinary
+composition of the already validated color primitives rather than a new
+policy-heavy palette engine.
+
+Compile-time-known palette structure is adequately represented by ordinary
+fixed-size arrays. Construction, explicit gamut mapping, target conversion and
+measurement/validation remain separate operations, with acceptance policy owned
+by the caller. No semantic `Palette`, `Theme`, `PaletteBuilder` or
+`ThemeBuilder` abstraction is justified by the research evidence.
+
+A DMD runtime code-generation/calling-boundary defect was reduced independently
+during R0.12. For the tested runtime integration path, caller-owned `ref`
+outputs plus `ref const` static-array inputs provide one common correct form
+across DMD 2.111.0–2.113.0 and LDC 1.41.0–1.43.0. No compiler switch is
+required for correctness by the current implementation; compiler-specific
+paths remain permissible when separately justified by reproduced correctness
+evidence or material measured performance.
+
+R0.12 does not introduce a universal numerical tolerance. The measured
+runtime-versus-CTFE floating-point differences remain input to R0.13.
+
+No public palette API is frozen by R0.12.
+
 Remaining R0 work is now tracked through the `v0.1.0` release milestone:
 
-- #8 — R0.12 compile-time palette construction and validation;
 - #9 — R0.13 numerical tolerance and reference policy;
 - #1 — durable `color-d` / `imagery-d` responsibility boundary;
 - #5 — performance baselines and targeted compiler/code-generation evidence;

@@ -134,7 +134,7 @@ Start with:
 
 Current phase: **R0 — research and architecture closeout**.
 
-Executable research is validated through **R0.11**.
+Executable research is validated through **R0.12**.
 
 The current first-release target is:
 
@@ -144,7 +144,6 @@ v0.1.0 — First public release
 
 Remaining R0 work covers:
 
-- compile-time palette construction and validation;
 - numerical tolerance/reference policy;
 - the `color-d` / `imagery-d` responsibility boundary;
 - targeted performance/compiler evidence;
