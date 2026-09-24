@@ -1,6 +1,6 @@
 # R0.11 — OKLCH tone-scale generation
 
-**Status:** RESEARCH / R0.11-A/B/C/D VALIDATED
+**Status:** RESEARCH / R0.11-A/B/C/D/E VALIDATED
 **Issue:** https://github.com/alex-1974/color-d/issues/7
 **Branch:** `research/r0_11-tone-scales`
 **Base HEAD:** `35b3f6f8183e43a20f89ad7955c16409f8245e46`

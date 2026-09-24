@@ -1387,4 +1387,4 @@ R0.11-E begins with these hypotheses:
 11. Representation must remain independent of gamut and palette policy.
 12. Public API choice remains provisional until R0.12 and consumer review.
 
-No R0.11-E result is recorded until observed compiler runs exist.
+Observed R0.11-E results are recorded in `RESULTS.md` after the complete DMD/LDC Debug/Release matrix was executed.

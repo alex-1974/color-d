@@ -1125,6 +1125,458 @@ static assert(gamut.inSrgbGamut(
         ctfeDRay[1].color
     ));
 
+
+// --------------------------------------------------------------------------
+// R0.11-E — representation and CTFE
+// --------------------------------------------------------------------------
+
+/*
+ * Exact caller-output kernel.
+ *
+ * This form deliberately has no runtime mismatch protocol.  Its caller must
+ * already have established:
+ *
+ *     lightnesses.length == chromas.length == output.length
+ *
+ * R0.11-E uses it to separate the actual element-writing primitive from the
+ * public/error-reporting representation question.
+ */
+void tonesAtLightnessAndChromaIntoExact(T)(
+    Oklch!T seed,
+    const(T)[] lightnesses,
+    const(T)[] chromas,
+    Oklch!T[] output
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    foreach (i; 0 .. output.length)
+    {
+        output[i] =
+            withChroma(
+                withLightness(
+                    seed,
+                    lightnesses[i]
+                ),
+                chromas[i]
+            );
+    }
+}
+
+
+/*
+ * Explicit non-throwing runtime boundary.
+ *
+ * Mismatch is all-or-nothing:
+ *
+ *     false
+ *     no output writes
+ */
+bool tryTonesAtLightnessAndChromaInto(T)(
+    Oklch!T seed,
+    const(T)[] lightnesses,
+    const(T)[] chromas,
+    Oklch!T[] output
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    if (
+        lightnesses.length != chromas.length ||
+        lightnesses.length != output.length
+    )
+    {
+        return false;
+    }
+
+    tonesAtLightnessAndChromaIntoExact(
+        seed,
+        lightnesses,
+        chromas,
+        output
+    );
+
+    return true;
+}
+
+
+/*
+ * Written-count comparison candidate.
+ *
+ * This deliberately uses 0 for mismatch so R0.11-E can expose the semantic
+ * collision with a successful empty write.  It is a research candidate, not
+ * a proposed production contract.
+ */
+size_t tonesAtLightnessAndChromaWriteCount(T)(
+    Oklch!T seed,
+    const(T)[] lightnesses,
+    const(T)[] chromas,
+    Oklch!T[] output
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    if (
+        lightnesses.length != chromas.length ||
+        lightnesses.length != output.length
+    )
+    {
+        return 0;
+    }
+
+    tonesAtLightnessAndChromaIntoExact(
+        seed,
+        lightnesses,
+        chromas,
+        output
+    );
+
+    return output.length;
+}
+
+
+/*
+ * Use the normal caller-output function at CTFE and return the caller-owned
+ * static storage only so static assertions can inspect it.
+ */
+Oklch!T[N] callerOutputAtCtfe(T, size_t N)(
+    Oklch!T seed,
+    const T[N] lightnesses,
+    const T[N] chromas
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    Oklch!T[N] output;
+
+    const bool ok =
+        tryTonesAtLightnessAndChromaInto(
+            seed,
+            lightnesses[],
+            chromas[],
+            output[]
+        );
+
+    if (!ok)
+    {
+        Oklch!T[N] failed;
+        return failed;
+    }
+
+    return output;
+}
+
+
+/*
+ * Larger CTFE probe.
+ *
+ * This also verifies repeated scalar composition rather than merely comparing
+ * the two container forms with one another.
+ */
+bool ctfeLargeRepresentationProbe(T)()
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    enum size_t N = 32;
+
+    T[N] lightnesses;
+    T[N] chromas;
+
+    foreach (i; 0 .. N)
+    {
+        lightnesses[i] =
+            cast(T)i /
+            cast(T)(N - 1);
+
+        chromas[i] =
+            cast(T)0.02 +
+            cast(T)i * cast(T)0.003;
+    }
+
+    const Oklch!T seed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0.10,
+            OklabHue!T.fromDegrees(
+                cast(T)42.5
+            )
+        );
+
+    const auto fixed =
+        tonesAtLightnessAndChroma(
+            seed,
+            lightnesses,
+            chromas
+        );
+
+    Oklch!T[N] output;
+
+    if (!tryTonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses[],
+        chromas[],
+        output[]
+    ))
+    {
+        return false;
+    }
+
+    if (output != fixed)
+        return false;
+
+    foreach (i; 0 .. N)
+    {
+        const auto scalar =
+            withChroma(
+                withLightness(
+                    seed,
+                    lightnesses[i]
+                ),
+                chromas[i]
+            );
+
+        if (fixed[i] != scalar)
+            return false;
+    }
+
+    return true;
+}
+
+
+/*
+ * Representative compile-time fixtures.
+ */
+enum float[5] ctfeEFloatLightness =
+[
+    0.10f,
+    0.30f,
+    0.50f,
+    0.70f,
+    0.90f
+];
+
+enum float[5] ctfeEFloatChroma =
+[
+    0.02f,
+    0.05f,
+    0.08f,
+    0.05f,
+    0.02f
+];
+
+enum Oklchf ctfeEFloatSeed =
+    Oklchf(
+        0.50f,
+        0.08f,
+        OklabHue!float.fromDegrees(210.0f)
+    );
+
+enum auto ctfeEFloatFixed =
+    tonesAtLightnessAndChroma(
+        ctfeEFloatSeed,
+        ctfeEFloatLightness,
+        ctfeEFloatChroma
+    );
+
+enum auto ctfeEFloatInto =
+    callerOutputAtCtfe(
+        ctfeEFloatSeed,
+        ctfeEFloatLightness,
+        ctfeEFloatChroma
+    );
+
+static assert(ctfeEFloatFixed == ctfeEFloatInto);
+
+
+enum double[5] ctfeEDoubleLightness =
+[
+    0.10,
+    0.30,
+    0.50,
+    0.70,
+    0.90
+];
+
+enum double[5] ctfeEDoubleChroma =
+[
+    0.02,
+    0.05,
+    0.08,
+    0.05,
+    0.02
+];
+
+enum Oklchd ctfeEDoubleSeed =
+    Oklchd(
+        0.50,
+        0.08,
+        OklabHue!double.fromDegrees(210.0)
+    );
+
+enum auto ctfeEDoubleFixed =
+    tonesAtLightnessAndChroma(
+        ctfeEDoubleSeed,
+        ctfeEDoubleLightness,
+        ctfeEDoubleChroma
+    );
+
+enum auto ctfeEDoubleInto =
+    callerOutputAtCtfe(
+        ctfeEDoubleSeed,
+        ctfeEDoubleLightness,
+        ctfeEDoubleChroma
+    );
+
+static assert(ctfeEDoubleFixed == ctfeEDoubleInto);
+
+
+/*
+ * Empty representation works with the ordinary API at CTFE.
+ */
+enum double[0] ctfeEEmptyLightness = [];
+enum double[0] ctfeEEmptyChroma = [];
+
+enum Oklchd ctfeEEmptySeed =
+    Oklchd(
+        0.50,
+        0.10,
+        OklabHue!double.fromDegrees(30.0)
+    );
+
+enum auto ctfeEEmptyFixed =
+    tonesAtLightnessAndChroma(
+        ctfeEEmptySeed,
+        ctfeEEmptyLightness,
+        ctfeEEmptyChroma
+    );
+
+enum auto ctfeEEmptyInto =
+    callerOutputAtCtfe(
+        ctfeEEmptySeed,
+        ctfeEEmptyLightness,
+        ctfeEEmptyChroma
+    );
+
+static assert(ctfeEEmptyFixed.length == 0);
+static assert(ctfeEEmptyInto.length == 0);
+static assert(ctfeEEmptyFixed == ctfeEEmptyInto);
+
+
+/*
+ * Larger ordinary-function CTFE probes.
+ */
+static assert(ctfeLargeRepresentationProbe!float());
+static assert(ctfeLargeRepresentationProbe!double());
+
+
+/*
+ * Mismatch behavior of the ordinary bool caller-output boundary at CTFE.
+ *
+ * Both mismatch classes must:
+ *
+ *     return false
+ *     leave caller-owned output unchanged
+ */
+bool ctfeMismatchNoWriteProbe(T)()
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    const Oklch!T seed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0.08,
+            OklabHue!T.fromDegrees(
+                cast(T)210
+            )
+        );
+
+    // Component schedule mismatch.
+    T[3] lightnesses =
+    [
+        cast(T)0.20,
+        cast(T)0.50,
+        cast(T)0.80
+    ];
+
+    T[2] shortChroma =
+    [
+        cast(T)0.03,
+        cast(T)0.07
+    ];
+
+    Oklch!T[3] componentOutput;
+
+    foreach (ref value; componentOutput)
+    {
+        value =
+            Oklch!T(
+                cast(T)9,
+                cast(T)8,
+                OklabHue!T.fromDegrees(
+                    cast(T)7
+                )
+            );
+    }
+
+    const componentBefore = componentOutput;
+
+    if (tryTonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses[],
+        shortChroma[],
+        componentOutput[]
+    ))
+    {
+        return false;
+    }
+
+    if (componentOutput != componentBefore)
+        return false;
+
+    // Output-size mismatch.
+    T[3] equalChroma =
+    [
+        cast(T)0.03,
+        cast(T)0.07,
+        cast(T)0.04
+    ];
+
+    Oklch!T[2] shortOutput;
+
+    foreach (ref value; shortOutput)
+    {
+        value =
+            Oklch!T(
+                cast(T)6,
+                cast(T)5,
+                OklabHue!T.fromDegrees(
+                    cast(T)4
+                )
+            );
+    }
+
+    const outputBefore = shortOutput;
+
+    if (tryTonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses[],
+        equalChroma[],
+        shortOutput[]
+    ))
+    {
+        return false;
+    }
+
+    if (shortOutput != outputBefore)
+        return false;
+
+    return true;
+}
+
+
+static assert(ctfeMismatchNoWriteProbe!float());
+static assert(ctfeMismatchNoWriteProbe!double());
+
 struct TestState
 {
     size_t passed;
@@ -2443,6 +2895,479 @@ if (isColorScalar!T)
 }
 
 
+
+void runRepresentationTests(T)(
+    ref TestState state,
+    const(char)* scalarName
+)
+if (isColorScalar!T)
+{
+    printf(
+        "\n=== R0.11-E representation / %s ===\n",
+        scalarName
+    );
+
+    const Oklch!T seed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0.08,
+            OklabHue!T.fromDegrees(
+                cast(T)210
+            )
+        );
+
+    // ----------------------------------------------------------------------
+    // N = 0
+    // ----------------------------------------------------------------------
+
+    T[0] emptyLightness;
+    T[0] emptyChroma;
+
+    const auto fixed0 =
+        tonesAtLightnessAndChroma(
+            seed,
+            emptyLightness,
+            emptyChroma
+        );
+
+    check(
+        state,
+        fixed0.length == 0,
+        "static-array representation supports N=0"
+    );
+
+    Oklch!T[0] into0;
+
+    const bool ok0 =
+        tryTonesAtLightnessAndChromaInto(
+            seed,
+            emptyLightness[],
+            emptyChroma[],
+            into0[]
+        );
+
+    check(
+        state,
+        ok0 &&
+        into0.length == 0,
+        "caller-output representation supports empty schedule"
+    );
+
+    // ----------------------------------------------------------------------
+    // N = 1
+    // ----------------------------------------------------------------------
+
+    const T[1] lightness1 =
+    [
+        cast(T)0.42
+    ];
+
+    const T[1] chroma1 =
+    [
+        cast(T)0.07
+    ];
+
+    const auto fixed1 =
+        tonesAtLightnessAndChroma(
+            seed,
+            lightness1,
+            chroma1
+        );
+
+    const auto scalar1 =
+        withChroma(
+            withLightness(
+                seed,
+                lightness1[0]
+            ),
+            chroma1[0]
+        );
+
+    check(
+        state,
+        fixed1.length == 1 &&
+        fixed1[0] == scalar1,
+        "static-array representation supports N=1 and scalar equivalence"
+    );
+
+    Oklch!T[1] into1;
+
+    const bool ok1 =
+        tryTonesAtLightnessAndChromaInto(
+            seed,
+            lightness1[],
+            chroma1[],
+            into1[]
+        );
+
+    check(
+        state,
+        ok1 &&
+        into1 == fixed1,
+        "caller-output N=1 equals static-array result"
+    );
+
+    // ----------------------------------------------------------------------
+    // Representative N = 5
+    // ----------------------------------------------------------------------
+
+    const T[5] lightness5 =
+    [
+        cast(T)0.10,
+        cast(T)0.30,
+        cast(T)0.50,
+        cast(T)0.70,
+        cast(T)0.90
+    ];
+
+    const T[5] chroma5 =
+    [
+        cast(T)0.02,
+        cast(T)0.05,
+        cast(T)0.08,
+        cast(T)0.05,
+        cast(T)0.02
+    ];
+
+    const auto fixed5 =
+        tonesAtLightnessAndChroma(
+            seed,
+            lightness5,
+            chroma5
+        );
+
+    bool fixed5ScalarExact = true;
+
+    foreach (i; 0 .. fixed5.length)
+    {
+        const auto scalar =
+            withChroma(
+                withLightness(
+                    seed,
+                    lightness5[i]
+                ),
+                chroma5[i]
+            );
+
+        if (fixed5[i] != scalar)
+            fixed5ScalarExact = false;
+    }
+
+    check(
+        state,
+        fixed5ScalarExact,
+        "static-array N=5 equals repeated scalar composition"
+    );
+
+    Oklch!T[5] into5;
+
+    const bool ok5 =
+        tryTonesAtLightnessAndChromaInto(
+            seed,
+            lightness5[],
+            chroma5[],
+            into5[]
+        );
+
+    check(
+        state,
+        ok5 &&
+        into5 == fixed5,
+        "caller-output N=5 equals static-array result"
+    );
+
+    bool into5ScalarExact = true;
+
+    foreach (i; 0 .. into5.length)
+    {
+        const auto scalar =
+            withChroma(
+                withLightness(
+                    seed,
+                    lightness5[i]
+                ),
+                chroma5[i]
+            );
+
+        if (into5[i] != scalar)
+            into5ScalarExact = false;
+    }
+
+    check(
+        state,
+        into5ScalarExact,
+        "caller-output N=5 equals repeated scalar composition"
+    );
+
+    // ----------------------------------------------------------------------
+    // Exact void kernel on already validated lengths.
+    // ----------------------------------------------------------------------
+
+    Oklch!T[5] exact5;
+
+    tonesAtLightnessAndChromaIntoExact(
+        seed,
+        lightness5[],
+        chroma5[],
+        exact5[]
+    );
+
+    check(
+        state,
+        exact5 == fixed5,
+        "void exact-write kernel matches static-array result"
+    );
+
+    // ----------------------------------------------------------------------
+    // Runtime versus CTFE equivalence.
+    // ----------------------------------------------------------------------
+
+    static if (is(T == float))
+    {
+        check(
+            state,
+            fixed5 == ctfeEFloatFixed,
+            "runtime static-array result equals CTFE static-array result"
+        );
+
+        check(
+            state,
+            into5 == ctfeEFloatInto,
+            "runtime caller-output result equals CTFE caller-output result"
+        );
+    }
+    else
+    {
+        check(
+            state,
+            fixed5 == ctfeEDoubleFixed,
+            "runtime static-array result equals CTFE static-array result"
+        );
+
+        check(
+            state,
+            into5 == ctfeEDoubleInto,
+            "runtime caller-output result equals CTFE caller-output result"
+        );
+    }
+
+    // ----------------------------------------------------------------------
+    // Representative larger N = 32.
+    // ----------------------------------------------------------------------
+
+    enum size_t LargeN = 32;
+
+    T[LargeN] lightness32;
+    T[LargeN] chroma32;
+
+    foreach (i; 0 .. LargeN)
+    {
+        lightness32[i] =
+            cast(T)i /
+            cast(T)(LargeN - 1);
+
+        chroma32[i] =
+            cast(T)0.02 +
+            cast(T)i * cast(T)0.003;
+    }
+
+    const auto fixed32 =
+        tonesAtLightnessAndChroma(
+            seed,
+            lightness32,
+            chroma32
+        );
+
+    bool fixed32ScalarExact = true;
+
+    foreach (i; 0 .. LargeN)
+    {
+        const auto scalar =
+            withChroma(
+                withLightness(
+                    seed,
+                    lightness32[i]
+                ),
+                chroma32[i]
+            );
+
+        if (fixed32[i] != scalar)
+            fixed32ScalarExact = false;
+    }
+
+    check(
+        state,
+        fixed32.length == LargeN &&
+        fixed32ScalarExact,
+        "static-array representation supports N=32"
+    );
+
+    Oklch!T[LargeN] into32;
+
+    const bool ok32 =
+        tryTonesAtLightnessAndChromaInto(
+            seed,
+            lightness32[],
+            chroma32[],
+            into32[]
+        );
+
+    check(
+        state,
+        ok32 &&
+        into32 == fixed32,
+        "caller-output N=32 equals static-array result"
+    );
+
+    // ----------------------------------------------------------------------
+    // Mismatch contract: bool candidate is all-or-nothing.
+    // ----------------------------------------------------------------------
+
+    const T[3] mismatchLightness =
+    [
+        cast(T)0.20,
+        cast(T)0.50,
+        cast(T)0.80
+    ];
+
+    const T[2] mismatchChroma =
+    [
+        cast(T)0.03,
+        cast(T)0.07
+    ];
+
+    Oklch!T[3] mismatchOutput;
+
+    foreach (ref value; mismatchOutput)
+    {
+        value =
+            Oklch!T(
+                cast(T)9,
+                cast(T)8,
+                OklabHue!T.fromDegrees(
+                    cast(T)7
+                )
+            );
+    }
+
+    const auto mismatchBefore =
+        mismatchOutput;
+
+    const bool mismatchComponentsOk =
+        tryTonesAtLightnessAndChromaInto(
+            seed,
+            mismatchLightness[],
+            mismatchChroma[],
+            mismatchOutput[]
+        );
+
+    check(
+        state,
+        !mismatchComponentsOk &&
+        mismatchOutput == mismatchBefore,
+        "bool caller-output rejects component-length mismatch without writes"
+    );
+
+    const T[3] equalChroma =
+    [
+        cast(T)0.03,
+        cast(T)0.07,
+        cast(T)0.04
+    ];
+
+    Oklch!T[2] shortOutput;
+
+    foreach (ref value; shortOutput)
+    {
+        value =
+            Oklch!T(
+                cast(T)6,
+                cast(T)5,
+                OklabHue!T.fromDegrees(
+                    cast(T)4
+                )
+            );
+    }
+
+    const auto shortBefore =
+        shortOutput;
+
+    const bool mismatchOutputOk =
+        tryTonesAtLightnessAndChromaInto(
+            seed,
+            mismatchLightness[],
+            equalChroma[],
+            shortOutput[]
+        );
+
+    check(
+        state,
+        !mismatchOutputOk &&
+        shortOutput == shortBefore,
+        "bool caller-output rejects output-length mismatch without writes"
+    );
+
+    // ----------------------------------------------------------------------
+    // Written-count comparison candidate.
+    // ----------------------------------------------------------------------
+
+    Oklch!T[5] count5Output;
+
+    const size_t count5 =
+        tonesAtLightnessAndChromaWriteCount(
+            seed,
+            lightness5[],
+            chroma5[],
+            count5Output[]
+        );
+
+    check(
+        state,
+        count5 == 5 &&
+        count5Output == fixed5,
+        "written-count candidate reports successful non-empty cardinality"
+    );
+
+    Oklch!T[0] countEmptyOutput;
+
+    const size_t countEmpty =
+        tonesAtLightnessAndChromaWriteCount(
+            seed,
+            emptyLightness[],
+            emptyChroma[],
+            countEmptyOutput[]
+        );
+
+    Oklch!T[3] countMismatchOutput;
+
+    const size_t countMismatch =
+        tonesAtLightnessAndChromaWriteCount(
+            seed,
+            mismatchLightness[],
+            mismatchChroma[],
+            countMismatchOutput[]
+        );
+
+    check(
+        state,
+        countEmpty == 0,
+        "written-count candidate reports zero for successful empty write"
+    );
+
+    check(
+        state,
+        countMismatch == 0,
+        "written-count candidate reports zero for mismatch"
+    );
+
+    check(
+        state,
+        countEmpty == countMismatch,
+        "plain written-count cannot distinguish empty success from mismatch"
+    );
+}
+
+
 void main()
 {
     printf("color-d R0.11 — tone-scale research\n");
@@ -2497,6 +3422,16 @@ void main()
     );
 
     runGamutCompositionTests!double(
+        state,
+        "double"
+    );
+
+    runRepresentationTests!float(
+        state,
+        "float"
+    );
+
+    runRepresentationTests!double(
         state,
         "double"
     );

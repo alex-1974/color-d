@@ -1,8 +1,8 @@
 # R0.11 results — OKLCH tone-scale research
 
-**Status:** R0.11-A/B/C/D VALIDATED — R0.11 IN PROGRESS
+**Status:** R0.11-A/B/C/D/E VALIDATED — R0.11 IN PROGRESS
 **Research block:** R0.11 — OKLCH tone-scale generation
-**Validated phases:** R0.11-A — primitive decomposition; R0.11-B — schedule semantics; R0.11-C — chroma and hue policy; R0.11-D — explicit gamut composition
+**Validated phases:** R0.11-A — primitive decomposition; R0.11-B — schedule semantics; R0.11-C — chroma and hue policy; R0.11-D — explicit gamut composition; R0.11-E — representation and CTFE
 
 This file records observed results.
 
@@ -2327,5 +2327,588 @@ There is no evidence that gamut mapping belongs intrinsically inside the raw
 tone-scale primitive.
 
 R0.11-D is therefore complete.
+
+R0.11 remains in progress.
+
+---
+
+## R0.11-E results — representation and CTFE
+
+**Status:** VALIDATED
+**Phase:** R0.11-E — representation and CTFE
+
+R0.11-E investigated whether the raw tone semantics validated in R0.11-A
+through R0.11-D can be represented cleanly for both compile-time-known and
+runtime-known cardinalities without introducing allocation into the low-level
+primitive.
+
+No new color mathematics was introduced.
+
+### E.1 Final tested source
+
+The final phase-E source had SHA-256:
+
+```text
+642756de98383ab54074e76d20cd151b197d8db807827a0975ae657da6e8b3a0
+```
+
+The final source contained exactly:
+
+```text
+1 ctfeMismatchNoWriteProbe definition
+2 ctfeMismatchNoWriteProbe static assertions
+```
+
+for `float` and `double`.
+
+### E.2 Compiler matrix
+
+The final source was force-rebuilt and executed under:
+
+```text
+DMD 2.111.0  Debug
+DMD 2.111.0  Release
+LDC 1.41.0   Debug
+LDC 1.41.0   Release
+```
+
+Observed accumulated result in every configuration:
+
+```text
+170 PASS
+0 FAIL
+```
+
+Matrix:
+
+| Compiler | Build | Accumulated result |
+|---|---|---:|
+| DMD 2.111.0 | Debug | 170/170 PASS |
+| DMD 2.111.0 | Release | 170/170 PASS |
+| LDC 1.41.0 | Debug | 170/170 PASS |
+| LDC 1.41.0 | Release | 170/170 PASS |
+
+Therefore the accumulated R0.11-A/B/C/D/E runtime matrix totals:
+
+```text
+4 configurations
+170 runtime checks per configuration
+
+680 PASS
+0 FAIL
+```
+
+R0.11-E contributes:
+
+```text
+18 checks per scalar type
+2 scalar types
+4 compiler/build configurations
+
+144 phase-E runtime PASS results
+0 phase-E runtime failures
+```
+
+No compiler/build disagreement was observed.
+
+### E.3 Fixed-size static-array representation
+
+The existing fixed-size research form:
+
+```d
+Oklch!T[N]
+```
+
+was exercised for:
+
+```text
+N = 0
+N = 1
+N = 5
+N = 32
+```
+
+Observed:
+
+```text
+PASS  static-array representation supports N=0
+PASS  static-array representation supports N=1 and scalar equivalence
+PASS  static-array N=5 equals repeated scalar composition
+PASS  static-array representation supports N=32
+```
+
+The fixed-size representation therefore works naturally when cardinality is a
+compile-time value.
+
+No separate tone-scale container is required for this case.
+
+### E.4 Caller-owned output representation
+
+The runtime-sized candidate used caller-owned storage:
+
+```d
+Oklch!T[] output
+```
+
+with a low-level operation equivalent to:
+
+```d
+bool tryTonesAtLightnessAndChromaInto(
+    seed,
+    lightnesses,
+    chromas,
+    output);
+```
+
+Observed:
+
+```text
+PASS  caller-output representation supports empty schedule
+PASS  caller-output N=1 equals static-array result
+PASS  caller-output N=5 equals static-array result
+PASS  caller-output N=32 equals static-array result
+```
+
+A caller-provided slice is therefore sufficient for runtime-sized low-level
+generation in the tested design.
+
+The primitive itself does not need to allocate output storage.
+
+### E.5 Shared scalar semantics
+
+The static-array and caller-output forms were both compared with repeated
+scalar composition.
+
+Observed:
+
+```text
+PASS  static-array N=5 equals repeated scalar composition
+PASS  caller-output N=5 equals repeated scalar composition
+```
+
+Therefore the representation forms do not require separate tone algorithms.
+
+Conceptually:
+
+```text
+scalar operation
+      |
+      +-- repeated into static array
+      |
+      +-- repeated into caller-owned slice
+```
+
+The element semantics remain those established in earlier R0.11 phases.
+
+### E.6 Exact void kernel
+
+A prevalidated exact-write kernel was also exercised:
+
+```d
+void tonesAtLightnessAndChromaIntoExact(...)
+```
+
+Its caller is responsible for establishing equal lengths before entry.
+
+Observed:
+
+```text
+PASS  void exact-write kernel matches static-array result
+```
+
+This establishes that a `void` form is mechanically sufficient for an internal
+or otherwise prevalidated path.
+
+R0.11-E does not establish it as the best standalone public runtime boundary,
+because it cannot itself communicate a dynamic length mismatch.
+
+### E.7 Bool runtime boundary
+
+The explicit runtime boundary returns:
+
+```text
+true  -> complete successful write
+false -> invalid length relationship
+```
+
+The implementation checks all relevant lengths before performing any write.
+
+Both mismatch classes were tested:
+
+```text
+lightness count != chroma count
+output count != input count
+```
+
+Observed for both `float` and `double`:
+
+```text
+PASS  bool caller-output rejects component-length mismatch without writes
+PASS  bool caller-output rejects output-length mismatch without writes
+```
+
+Therefore mismatch behavior is all-or-nothing:
+
+```text
+mismatch
+    -> false
+    -> zero output mutation
+```
+
+This avoids implicit truncation and partial output.
+
+### E.8 Empty schedules
+
+The valid empty case is represented naturally:
+
+```text
+input length  = 0
+output length = 0
+```
+
+Observed:
+
+```text
+PASS  static-array representation supports N=0
+PASS  caller-output representation supports empty schedule
+```
+
+The bool boundary can therefore distinguish:
+
+```text
+true  + N=0 -> successful empty operation
+false       -> length mismatch
+```
+
+No special empty-container abstraction is required.
+
+### E.9 Written-count candidate
+
+A comparison candidate returned only the number of elements written:
+
+```d
+size_t tonesAtLightnessAndChromaWriteCount(...)
+```
+
+Observed:
+
+```text
+PASS  written-count candidate reports successful non-empty cardinality
+PASS  written-count candidate reports zero for successful empty write
+PASS  written-count candidate reports zero for mismatch
+PASS  plain written-count cannot distinguish empty success from mismatch
+```
+
+Therefore a plain written-count return value is insufficient as the sole
+status representation when `N=0` is valid.
+
+Specifically:
+
+```text
+0
+```
+
+would mean both:
+
+```text
+successful empty operation
+length mismatch
+```
+
+The experiment therefore rejects a bare written-count as the sole error/status
+channel for this low-level API shape.
+
+### E.10 CTFE — static-array form
+
+The ordinary fixed-size API was exercised through compile-time evaluation.
+
+Representative compile-time cases included:
+
+```text
+N = 0
+N = 5
+N = 32
+float
+double
+```
+
+The static-array results compiled successfully in all four compiler/build
+configurations.
+
+No CTFE-specific static-array API is required.
+
+### E.11 CTFE — caller-output form
+
+The ordinary caller-output function was also used during compile-time
+evaluation.
+
+Observed at runtime against compile-time fixtures:
+
+```text
+PASS  runtime caller-output result equals CTFE caller-output result
+```
+
+for both scalar types in all four compiler/build configurations.
+
+Therefore mutable caller-owned storage does not imply runtime-only use in this
+design.
+
+The same ordinary function can participate in CTFE.
+
+### E.12 Runtime/CTFE equivalence
+
+Both representations were compared across runtime and compile-time execution.
+
+Observed:
+
+```text
+PASS  runtime static-array result equals CTFE static-array result
+PASS  runtime caller-output result equals CTFE caller-output result
+```
+
+for:
+
+```text
+float
+double
+DMD Debug
+DMD Release
+LDC Debug
+LDC Release
+```
+
+No representation-semantic difference between runtime execution and CTFE was
+observed.
+
+### E.13 CTFE mismatch behavior
+
+The final source added explicit compile-time mismatch probes for both scalar
+types.
+
+They test both:
+
+```text
+component-schedule mismatch
+output-size mismatch
+```
+
+and require:
+
+```text
+return false
+output remains unchanged
+```
+
+The probes are ordinary:
+
+```d
+static assert(...)
+```
+
+uses of the same `try...` boundary.
+
+They compiled successfully in all four final matrix configurations.
+
+Therefore the all-or-nothing mismatch contract is valid at CTFE as well as
+runtime.
+
+### E.14 Attributes and allocation model
+
+The representation candidates compiled with:
+
+```d
+@safe
+pure
+nothrow
+@nogc
+```
+
+The caller-output form writes into storage supplied by the caller.
+
+The low-level implementation therefore does not require:
+
+```text
+heap allocation
+GC allocation
+hidden dynamic-array ownership
+```
+
+R0.11-E does not claim that every future convenience API must be allocation
+free.
+
+It establishes only that the low-level primitive can be.
+
+### E.15 Runtime-sized cardinality
+
+A runtime value cannot become a static-array type parameter.
+
+Therefore:
+
+```text
+compile-time-known N
+    -> static-array return is natural
+
+runtime-known N
+    -> caller-provided storage is natural
+```
+
+R0.11-E found no need to introduce a custom dynamic tone-scale container merely
+to bridge these two cases.
+
+### E.16 Aliasing
+
+The current inputs are scalar schedules:
+
+```text
+T[]
+T[]
+```
+
+while output is:
+
+```text
+Oklch!T[]
+```
+
+The tested API therefore does not expose an ordinary same-element-type
+input/output aliasing problem.
+
+No additional generalized aliasing abstraction was justified by the phase-E
+experiment.
+
+Future APIs with different input/output layouts may need separate analysis.
+
+### E.17 Representation remains policy-free
+
+Neither representation candidate performs or implies:
+
+```text
+gamut mapping
+clipping
+chroma shaping
+hue normalization
+anchor repair
+theme semantics
+```
+
+Those policies remain orthogonal.
+
+The representation layer only determines where mechanically generated raw
+`Oklch` elements are stored.
+
+### E.18 Candidate architecture
+
+The validated low-level representation model is:
+
+```text
+compile-time-known cardinality
+        |
+        v
+Oklch!T[N] return-by-value
+        |
+        +---- same scalar element semantics
+        |
+runtime-known cardinality
+        |
+        v
+caller-owned Oklch!T[]
+        |
+        v
+bool success boundary
+```
+
+A prevalidated internal path may use:
+
+```text
+void exact-write kernel
+```
+
+behind the checked boundary.
+
+### E.19 API implications
+
+R0.11-E supports these provisional API conclusions:
+
+1. `Oklch!T[N]` is appropriate when `N` is statically known.
+2. Caller-owned `Oklch!T[]` is sufficient for runtime-known cardinality.
+3. Both representations can use identical scalar composition semantics.
+4. Both representations can remain allocation-free at the low-level layer.
+5. Both representations can participate in CTFE.
+6. Both representations can retain `@safe pure nothrow @nogc`.
+7. `N=0` is a valid successful operation.
+8. Runtime length mismatch must not silently truncate.
+9. Runtime mismatch can be handled all-or-nothing without exceptions.
+10. A bool success boundary distinguishes valid `N=0` from mismatch.
+11. A bare written-count does not distinguish those cases and is therefore
+    insufficient as the sole status channel.
+12. A void exact-write kernel is suitable only when lengths are already
+    validated or otherwise guaranteed.
+13. No custom tone-scale container is justified by current evidence.
+14. No general range/output-range abstraction is justified by current
+    evidence.
+15. No CTFE-specific API family is justified.
+
+Function names remain provisional.
+
+### E.20 Not established by R0.11-E
+
+R0.11-E does not establish:
+
+- final public API names;
+- whether both static and slice forms must be public;
+- a high-level allocating convenience API;
+- lazy or range-based generation;
+- arbitrary output-range support;
+- SIMD representation;
+- GPU representation;
+- palette/theme object design;
+- gamut-aware tone generation;
+- semantic color roles;
+- library-wide tolerance policy;
+- final consumer ergonomics.
+
+Those remain separate questions.
+
+### E.21 Phase-E conclusion
+
+R0.11-E validates a simple two-form representation strategy.
+
+For compile-time-known cardinality:
+
+```text
+static array
+```
+
+is sufficient.
+
+For runtime-known cardinality:
+
+```text
+caller-owned output slice
+```
+
+is sufficient.
+
+Both can preserve:
+
+```text
+the same scalar tone semantics
+allocation-free low-level operation
+@safe
+pure
+nothrow
+@nogc
+CTFE capability
+```
+
+A bool runtime boundary provides explicit, all-or-nothing mismatch handling
+without making valid empty output ambiguous.
+
+A bare written-count does not.
+
+No additional container abstraction or separate CTFE API is justified by the
+observed results.
+
+R0.11-E is therefore complete.
 
 R0.11 remains in progress.
