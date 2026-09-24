@@ -2099,4 +2099,4 @@ R0.11-F begins with these hypotheses:
 18. Passing F should allow R0.11 to close without another tone-generation
     research phase.
 
-No R0.11-F result is recorded until observed compiler runs exist.
+Observed R0.11-F results are recorded in `RESULTS.md` after the complete DMD/LDC Debug/Release matrix was executed. R0.11-F and the R0.11 research block are complete.

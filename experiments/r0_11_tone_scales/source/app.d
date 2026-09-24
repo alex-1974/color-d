@@ -1577,6 +1577,738 @@ if (isColorScalar!T)
 static assert(ctfeMismatchNoWriteProbe!float());
 static assert(ctfeMismatchNoWriteProbe!double());
 
+
+// --------------------------------------------------------------------------
+// R0.11-F-A — finite structural properties
+// --------------------------------------------------------------------------
+
+bool finiteCardinalityPropertyProbe(T, size_t N)()
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    T[N] lightnesses;
+    T[N] chromas;
+
+    foreach (i; 0 .. N)
+    {
+        lightnesses[i] =
+            cast(T)i - cast(T)2;
+
+        chromas[i] =
+            cast(T)-0.25 +
+            cast(T)i * cast(T)0.05;
+    }
+
+    const Oklch!T seed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0.10,
+            OklabHue!T.fromDegrees(
+                cast(T)725
+            )
+        );
+
+    const auto fixed =
+        tonesAtLightnessAndChroma(
+            seed,
+            lightnesses,
+            chromas
+        );
+
+    Oklch!T[N] output;
+
+    if (!tryTonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses[],
+        chromas[],
+        output[]
+    ))
+    {
+        return false;
+    }
+
+    return
+        fixed.length == N &&
+        output.length == N &&
+        fixed == output;
+}
+
+
+bool ctfeFiniteRawPropertyProbe(T)()
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    const T[7] lightnesses =
+    [
+        cast(T)-2,
+        cast(T)-0.25,
+        cast(T)0,
+        cast(T)0.50,
+        cast(T)1,
+        cast(T)1.25,
+        cast(T)2
+    ];
+
+    const T[7] chromas =
+    [
+        cast(T)-1,
+        cast(T)-0.10,
+        cast(T)0,
+        cast(T)0.10,
+        cast(T)0.50,
+        cast(T)1,
+        cast(T)-0.40
+    ];
+
+    const Oklch!T seed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0.10,
+            OklabHue!T.fromDegrees(
+                cast(T)725
+            )
+        );
+
+    const auto fixed =
+        tonesAtLightnessAndChroma(
+            seed,
+            lightnesses,
+            chromas
+        );
+
+    /*
+     * Singleton correctness must be checked against the requested components,
+     * not only by comparing two representation paths with one another.
+     */
+    const T[1] singletonL =
+    [
+        cast(T)-2
+    ];
+
+    const T[1] singletonC =
+    [
+        cast(T)-0.25
+    ];
+
+    const auto singleton =
+        tonesAtLightnessAndChroma(
+            seed,
+            singletonL,
+            singletonC
+        );
+
+    if (
+        singleton.length != 1 ||
+        singleton[0].l != singletonL[0] ||
+        singleton[0].c != singletonC[0] ||
+        singleton[0].h != seed.h
+    )
+    {
+        return false;
+    }
+
+    Oklch!T[7] output;
+
+    if (!tryTonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses[],
+        chromas[],
+        output[]
+    ))
+    {
+        return false;
+    }
+
+    if (fixed != output)
+        return false;
+
+    foreach (i; 0 .. fixed.length)
+    {
+        if (fixed[i].l != lightnesses[i])
+            return false;
+
+        if (fixed[i].c != chromas[i])
+            return false;
+
+        if (fixed[i].h.degrees != seed.h.degrees)
+            return false;
+    }
+
+    const T[7] hueDegrees =
+    [
+        cast(T)-720,
+        cast(T)-45,
+        cast(T)-0.0,
+        cast(T)0,
+        cast(T)360,
+        cast(T)725,
+        cast(T)1080
+    ];
+
+    foreach (i; 0 .. hueDegrees.length)
+    {
+        const auto changed =
+            withHue(
+                fixed[i],
+                OklabHue!T.fromDegrees(
+                    hueDegrees[i]
+                )
+            );
+
+        if (changed.h.degrees != hueDegrees[i])
+            return false;
+
+        if (changed.l != fixed[i].l)
+            return false;
+
+        if (changed.c != fixed[i].c)
+            return false;
+    }
+
+    const auto powerless =
+        withChroma(
+            withHue(
+                seed,
+                OklabHue!T.fromDegrees(
+                    cast(T)-720
+                )
+            ),
+            cast(T)0
+        );
+
+    if (
+        powerless.c != cast(T)0 ||
+        powerless.h.degrees != cast(T)-720
+    )
+    {
+        return false;
+    }
+
+    const auto restored =
+        withChroma(
+            powerless,
+            cast(T)0.35
+        );
+
+    if (restored.h.degrees != cast(T)-720)
+        return false;
+
+    // Matching raw anchor.
+    const T[3] anchorLightness =
+    [
+        cast(T)0.20,
+        seed.l,
+        cast(T)0.80
+    ];
+
+    const T[3] anchorChroma =
+    [
+        cast(T)0.03,
+        seed.c,
+        cast(T)0.20
+    ];
+
+    const auto anchored =
+        tonesAtLightnessAndChroma(
+            seed,
+            anchorLightness,
+            anchorChroma
+        );
+
+    if (anchored[1] != seed)
+        return false;
+
+    // Mismatching unanchored schedule: requested value wins.
+    T[3] mismatchLightness = anchorLightness;
+    mismatchLightness[1] = cast(T)0.60;
+
+    const auto mismatched =
+        tonesAtLightnessAndChroma(
+            seed,
+            mismatchLightness,
+            anchorChroma
+        );
+
+    if (mismatched[1] == seed)
+        return false;
+
+    if (mismatched[1].l != cast(T)0.60)
+        return false;
+
+    /*
+     * Generated finite schedules already have their arithmetic semantics from
+     * R0.11-B.  F only verifies that tone composition preserves that ordering.
+     */
+    const auto generatedAscending =
+        linearScheduleHybrid!(T, 17)(
+            cast(T)-2,
+            cast(T)2
+        );
+
+    const auto generatedDescending =
+        linearScheduleHybrid!(T, 17)(
+            cast(T)2,
+            cast(T)-2
+        );
+
+    T[17] generatedChroma;
+
+    foreach (ref c; generatedChroma)
+        c = cast(T)0.10;
+
+    const auto ascendingTones =
+        tonesAtLightnessAndChroma(
+            seed,
+            generatedAscending,
+            generatedChroma
+        );
+
+    const auto descendingTones =
+        tonesAtLightnessAndChroma(
+            seed,
+            generatedDescending,
+            generatedChroma
+        );
+
+    foreach (i; 0 .. 17)
+    {
+        if (ascendingTones[i].l != generatedAscending[i])
+            return false;
+
+        if (descendingTones[i].l != generatedDescending[i])
+            return false;
+    }
+
+    foreach (i; 1 .. 17)
+    {
+        if (ascendingTones[i].l < ascendingTones[i - 1].l)
+            return false;
+
+        if (descendingTones[i].l > descendingTones[i - 1].l)
+            return false;
+    }
+
+    return true;
+}
+
+
+// Representative cardinalities at CTFE.
+static assert(finiteCardinalityPropertyProbe!(float, 0)());
+static assert(finiteCardinalityPropertyProbe!(float, 1)());
+static assert(finiteCardinalityPropertyProbe!(float, 2)());
+static assert(finiteCardinalityPropertyProbe!(float, 3)());
+static assert(finiteCardinalityPropertyProbe!(float, 5)());
+static assert(finiteCardinalityPropertyProbe!(float, 17)());
+static assert(finiteCardinalityPropertyProbe!(float, 32)());
+
+static assert(finiteCardinalityPropertyProbe!(double, 0)());
+static assert(finiteCardinalityPropertyProbe!(double, 1)());
+static assert(finiteCardinalityPropertyProbe!(double, 2)());
+static assert(finiteCardinalityPropertyProbe!(double, 3)());
+static assert(finiteCardinalityPropertyProbe!(double, 5)());
+static assert(finiteCardinalityPropertyProbe!(double, 17)());
+static assert(finiteCardinalityPropertyProbe!(double, 32)());
+
+enum bool ctfeFiniteRawFloat =
+    ctfeFiniteRawPropertyProbe!float();
+
+enum bool ctfeFiniteRawDouble =
+    ctfeFiniteRawPropertyProbe!double();
+
+static assert(ctfeFiniteRawFloat);
+static assert(ctfeFiniteRawDouble);
+
+
+// --------------------------------------------------------------------------
+// R0.11-F-B — non-finite raw properties
+// --------------------------------------------------------------------------
+
+bool rawIsNaN(T)(const(T) value)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    return value != value;
+}
+
+
+bool rawIsPositiveInfinity(T)(const(T) value)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    return value == T.infinity;
+}
+
+
+bool rawIsNegativeInfinity(T)(const(T) value)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    return value == -T.infinity;
+}
+
+
+/*
+ * Equality suitable for raw representation checks containing NaN.
+ *
+ * Finite values and infinities retain ordinary exact equality.
+ * NaN is compared by classification rather than NaN == NaN.
+ */
+bool sameRawScalarClassification(T)(
+    const(T) a,
+    const(T) b
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    if (rawIsNaN(a))
+        return rawIsNaN(b);
+
+    if (rawIsNaN(b))
+        return false;
+
+    return a == b;
+}
+
+
+bool sameRawToneClassification(T)(
+    const(Oklch!T) a,
+    const(Oklch!T) b
+)
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    return
+        sameRawScalarClassification(a.l, b.l) &&
+        sameRawScalarClassification(a.c, b.c) &&
+        sameRawScalarClassification(
+            a.h.degrees,
+            b.h.degrees
+        );
+}
+
+
+/*
+ * Compile-time property probe for explicit/raw non-finite values.
+ *
+ * This deliberately does not exercise generated schedules with non-finite
+ * endpoints and does not invoke gamut mapping.
+ */
+bool ctfeNonFiniteRawPropertyProbe(T)()
+@safe pure nothrow @nogc
+if (isColorScalar!T)
+{
+    const Oklch!T seed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0.10,
+            OklabHue!T.fromDegrees(
+                cast(T)725
+            )
+        );
+
+    // ----------------------------------------------------------------------
+    // Lightness replacement
+    // ----------------------------------------------------------------------
+
+    const auto nanL =
+        withLightness(
+            seed,
+            T.nan
+        );
+
+    if (
+        !rawIsNaN(nanL.l) ||
+        nanL.c != seed.c ||
+        nanL.h != seed.h
+    )
+    {
+        return false;
+    }
+
+    const auto posInfL =
+        withLightness(
+            seed,
+            T.infinity
+        );
+
+    const auto negInfL =
+        withLightness(
+            seed,
+            -T.infinity
+        );
+
+    if (
+        !rawIsPositiveInfinity(posInfL.l) ||
+        !rawIsNegativeInfinity(negInfL.l) ||
+        posInfL.c != seed.c ||
+        negInfL.c != seed.c ||
+        posInfL.h != seed.h ||
+        negInfL.h != seed.h
+    )
+    {
+        return false;
+    }
+
+    // ----------------------------------------------------------------------
+    // Chroma replacement
+    // ----------------------------------------------------------------------
+
+    const auto nanC =
+        withChroma(
+            seed,
+            T.nan
+        );
+
+    if (
+        !rawIsNaN(nanC.c) ||
+        nanC.l != seed.l ||
+        nanC.h != seed.h
+    )
+    {
+        return false;
+    }
+
+    const auto posInfC =
+        withChroma(
+            seed,
+            T.infinity
+        );
+
+    const auto negInfC =
+        withChroma(
+            seed,
+            -T.infinity
+        );
+
+    if (
+        !rawIsPositiveInfinity(posInfC.c) ||
+        !rawIsNegativeInfinity(negInfC.c) ||
+        posInfC.l != seed.l ||
+        negInfC.l != seed.l ||
+        posInfC.h != seed.h ||
+        negInfC.h != seed.h
+    )
+    {
+        return false;
+    }
+
+    // ----------------------------------------------------------------------
+    // Hue replacement
+    // ----------------------------------------------------------------------
+
+    const auto nanH =
+        withHue(
+            seed,
+            OklabHue!T.fromDegrees(
+                T.nan
+            )
+        );
+
+    if (
+        !rawIsNaN(nanH.h.degrees) ||
+        nanH.l != seed.l ||
+        nanH.c != seed.c
+    )
+    {
+        return false;
+    }
+
+    const auto posInfH =
+        withHue(
+            seed,
+            OklabHue!T.fromDegrees(
+                T.infinity
+            )
+        );
+
+    const auto negInfH =
+        withHue(
+            seed,
+            OklabHue!T.fromDegrees(
+                -T.infinity
+            )
+        );
+
+    if (
+        !rawIsPositiveInfinity(posInfH.h.degrees) ||
+        !rawIsNegativeInfinity(negInfH.h.degrees) ||
+        posInfH.l != seed.l ||
+        negInfH.l != seed.l ||
+        posInfH.c != seed.c ||
+        negInfH.c != seed.c
+    )
+    {
+        return false;
+    }
+
+    // ----------------------------------------------------------------------
+    // Powerless hue storage
+    // ----------------------------------------------------------------------
+
+    const auto powerlessNaN =
+        withChroma(
+            nanH,
+            cast(T)0
+        );
+
+    const auto restoredNaN =
+        withChroma(
+            powerlessNaN,
+            cast(T)0.35
+        );
+
+    if (
+        !rawIsNaN(powerlessNaN.h.degrees) ||
+        !rawIsNaN(restoredNaN.h.degrees)
+    )
+    {
+        return false;
+    }
+
+    const auto powerlessPosInf =
+        withChroma(
+            posInfH,
+            cast(T)0
+        );
+
+    const auto restoredPosInf =
+        withChroma(
+            powerlessPosInf,
+            cast(T)0.35
+        );
+
+    const auto powerlessNegInf =
+        withChroma(
+            negInfH,
+            cast(T)0
+        );
+
+    const auto restoredNegInf =
+        withChroma(
+            powerlessNegInf,
+            cast(T)0.35
+        );
+
+    if (
+        !rawIsPositiveInfinity(
+            powerlessPosInf.h.degrees
+        ) ||
+        !rawIsPositiveInfinity(
+            restoredPosInf.h.degrees
+        ) ||
+        !rawIsNegativeInfinity(
+            powerlessNegInf.h.degrees
+        ) ||
+        !rawIsNegativeInfinity(
+            restoredNegInf.h.degrees
+        )
+    )
+    {
+        return false;
+    }
+
+    // ----------------------------------------------------------------------
+    // Representation equivalence with mixed non-finite components
+    // ----------------------------------------------------------------------
+
+    const T[3] lightnesses =
+    [
+        T.nan,
+        T.infinity,
+        -T.infinity
+    ];
+
+    const T[3] chromas =
+    [
+        T.infinity,
+        -T.infinity,
+        T.nan
+    ];
+
+    const Oklch!T infHueSeed =
+        withHue(
+            seed,
+            OklabHue!T.fromDegrees(
+                T.infinity
+            )
+        );
+
+    const auto fixed =
+        tonesAtLightnessAndChroma(
+            infHueSeed,
+            lightnesses,
+            chromas
+        );
+
+    Oklch!T[3] output;
+
+    if (!tryTonesAtLightnessAndChromaInto(
+        infHueSeed,
+        lightnesses[],
+        chromas[],
+        output[]
+    ))
+    {
+        return false;
+    }
+
+    foreach (i; 0 .. fixed.length)
+    {
+        if (!sameRawToneClassification(
+            fixed[i],
+            output[i]
+        ))
+        {
+            return false;
+        }
+    }
+
+    if (
+        !rawIsNaN(fixed[0].l) ||
+        !rawIsPositiveInfinity(fixed[0].c) ||
+        !rawIsPositiveInfinity(
+            fixed[0].h.degrees
+        )
+    )
+    {
+        return false;
+    }
+
+    if (
+        !rawIsPositiveInfinity(fixed[1].l) ||
+        !rawIsNegativeInfinity(fixed[1].c) ||
+        !rawIsPositiveInfinity(
+            fixed[1].h.degrees
+        )
+    )
+    {
+        return false;
+    }
+
+    if (
+        !rawIsNegativeInfinity(fixed[2].l) ||
+        !rawIsNaN(fixed[2].c) ||
+        !rawIsPositiveInfinity(
+            fixed[2].h.degrees
+        )
+    )
+    {
+        return false;
+    }
+
+    return true;
+}
+
+
+enum bool ctfeNonFiniteFloat =
+    ctfeNonFiniteRawPropertyProbe!float();
+
+enum bool ctfeNonFiniteDouble =
+    ctfeNonFiniteRawPropertyProbe!double();
+
+static assert(ctfeNonFiniteFloat);
+static assert(ctfeNonFiniteDouble);
+
 struct TestState
 {
     size_t passed;
@@ -3368,6 +4100,1055 @@ if (isColorScalar!T)
 }
 
 
+
+void runFinitePropertyTests(T)(
+    ref TestState state,
+    const(char)* scalarName
+)
+if (isColorScalar!T)
+{
+    printf(
+        "\n=== R0.11-F-A finite properties / %s ===\n",
+        scalarName
+    );
+
+    // ----------------------------------------------------------------------
+    // Cardinality + representation invariants
+    // ----------------------------------------------------------------------
+
+    check(
+        state,
+        finiteCardinalityPropertyProbe!(T, 0)(),
+        "N=0 preserves cardinality and representation equivalence"
+    );
+
+    check(
+        state,
+        finiteCardinalityPropertyProbe!(T, 1)(),
+        "N=1 preserves cardinality and representation equivalence"
+    );
+
+    check(
+        state,
+        finiteCardinalityPropertyProbe!(T, 2)(),
+        "N=2 preserves cardinality and representation equivalence"
+    );
+
+    check(
+        state,
+        finiteCardinalityPropertyProbe!(T, 3)(),
+        "N=3 preserves cardinality and representation equivalence"
+    );
+
+    check(
+        state,
+        finiteCardinalityPropertyProbe!(T, 5)(),
+        "N=5 preserves cardinality and representation equivalence"
+    );
+
+    check(
+        state,
+        finiteCardinalityPropertyProbe!(T, 17)(),
+        "N=17 preserves cardinality and representation equivalence"
+    );
+
+    check(
+        state,
+        finiteCardinalityPropertyProbe!(T, 32)(),
+        "N=32 preserves cardinality and representation equivalence"
+    );
+
+    const Oklch!T singletonSeed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0.10,
+            OklabHue!T.fromDegrees(
+                cast(T)725
+            )
+        );
+
+    const T[1] singletonL =
+    [
+        cast(T)-2
+    ];
+
+    const T[1] singletonC =
+    [
+        cast(T)-0.25
+    ];
+
+    const auto singleton =
+        tonesAtLightnessAndChroma(
+            singletonSeed,
+            singletonL,
+            singletonC
+        );
+
+    check(
+        state,
+        singleton.length == 1 &&
+        singleton[0].l == singletonL[0] &&
+        singleton[0].c == singletonC[0] &&
+        singleton[0].h == singletonSeed.h,
+        "N=1 preserves its sole requested raw components"
+    );
+
+    // ----------------------------------------------------------------------
+    // Extended finite component schedules
+    // ----------------------------------------------------------------------
+
+    const T[7] lightnesses =
+    [
+        cast(T)-2,
+        cast(T)-0.25,
+        cast(T)0,
+        cast(T)0.50,
+        cast(T)1,
+        cast(T)1.25,
+        cast(T)2
+    ];
+
+    const T[7] chromas =
+    [
+        cast(T)-1,
+        cast(T)-0.10,
+        cast(T)0,
+        cast(T)0.10,
+        cast(T)0.50,
+        cast(T)1,
+        cast(T)-0.40
+    ];
+
+    const Oklch!T seed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0.10,
+            OklabHue!T.fromDegrees(
+                cast(T)725
+            )
+        );
+
+    const auto raw =
+        tonesAtLightnessAndChroma(
+            seed,
+            lightnesses,
+            chromas
+        );
+
+    Oklch!T[7] callerOutput;
+
+    const bool callerOk =
+        tryTonesAtLightnessAndChromaInto(
+            seed,
+            lightnesses[],
+            chromas[],
+            callerOutput[]
+        );
+
+    check(
+        state,
+        callerOk &&
+        callerOutput == raw,
+        "static-array and caller-output agree on extended finite values"
+    );
+
+    bool exactLightness = true;
+    bool exactChroma = true;
+    bool exactSeedHue = true;
+
+    foreach (i; 0 .. raw.length)
+    {
+        if (raw[i].l != lightnesses[i])
+            exactLightness = false;
+
+        if (raw[i].c != chromas[i])
+            exactChroma = false;
+
+        if (raw[i].h.degrees != seed.h.degrees)
+            exactSeedHue = false;
+    }
+
+    check(
+        state,
+        exactLightness,
+        "extended finite lightness values are preserved exactly"
+    );
+
+    check(
+        state,
+        exactChroma,
+        "extended finite chroma values are preserved exactly"
+    );
+
+    check(
+        state,
+        exactSeedHue,
+        "chroma/lightness composition leaves stored hue unchanged"
+    );
+
+    check(
+        state,
+        raw[0].l == cast(T)-2 &&
+        raw[6].l == cast(T)2,
+        "raw lightness is not implicitly clamped"
+    );
+
+    check(
+        state,
+        raw[0].c == cast(T)-1,
+        "negative chroma is not implicitly clamped"
+    );
+
+    check(
+        state,
+        raw[5].c == cast(T)1,
+        "large positive chroma remains raw"
+    );
+
+    // ----------------------------------------------------------------------
+    // Hue range and powerless-hue semantics
+    // ----------------------------------------------------------------------
+
+    const T[7] hueDegrees =
+    [
+        cast(T)-720,
+        cast(T)-45,
+        cast(T)-0.0,
+        cast(T)0,
+        cast(T)360,
+        cast(T)725,
+        cast(T)1080
+    ];
+
+    Oklch!T[7] hueChanged;
+
+    bool hueExact = true;
+    bool hueKeepsOtherComponents = true;
+
+    foreach (i; 0 .. hueDegrees.length)
+    {
+        hueChanged[i] =
+            withHue(
+                raw[i],
+                OklabHue!T.fromDegrees(
+                    hueDegrees[i]
+                )
+            );
+
+        if (hueChanged[i].h.degrees != hueDegrees[i])
+            hueExact = false;
+
+        if (
+            hueChanged[i].l != raw[i].l ||
+            hueChanged[i].c != raw[i].c
+        )
+        {
+            hueKeepsOtherComponents = false;
+        }
+    }
+
+    check(
+        state,
+        hueExact,
+        "negative and multi-turn hue values are stored without normalization"
+    );
+
+    const auto powerless =
+        withChroma(
+            withHue(
+                seed,
+                OklabHue!T.fromDegrees(
+                    cast(T)-720
+                )
+            ),
+            cast(T)0
+        );
+
+    check(
+        state,
+        powerless.c == cast(T)0 &&
+        powerless.h.degrees == cast(T)-720,
+        "zero chroma preserves stored powerless hue"
+    );
+
+    const auto restored =
+        withChroma(
+            powerless,
+            cast(T)0.35
+        );
+
+    check(
+        state,
+        restored.c == cast(T)0.35 &&
+        restored.h.degrees == cast(T)-720,
+        "restoring chroma preserves the stored powerless hue"
+    );
+
+    // ----------------------------------------------------------------------
+    // Scalar component independence
+    // ----------------------------------------------------------------------
+
+    const Oklch!T unusual =
+        Oklch!T(
+            cast(T)1.25,
+            cast(T)-0.50,
+            OklabHue!T.fromDegrees(
+                cast(T)725
+            )
+        );
+
+    const auto changedL =
+        withLightness(
+            unusual,
+            cast(T)-2
+        );
+
+    check(
+        state,
+        changedL.l == cast(T)-2 &&
+        changedL.c == unusual.c &&
+        changedL.h == unusual.h,
+        "withLightness changes only raw lightness"
+    );
+
+    const auto changedC =
+        withChroma(
+            unusual,
+            cast(T)1
+        );
+
+    check(
+        state,
+        changedC.l == unusual.l &&
+        changedC.c == cast(T)1 &&
+        changedC.h == unusual.h,
+        "withChroma changes only raw chroma"
+    );
+
+    const auto changedH =
+        withHue(
+            unusual,
+            OklabHue!T.fromDegrees(
+                cast(T)-45
+            )
+        );
+
+    check(
+        state,
+        changedH.l == unusual.l &&
+        changedH.c == unusual.c &&
+        changedH.h.degrees == cast(T)-45,
+        "withHue changes only stored raw hue"
+    );
+
+    check(
+        state,
+        hueKeepsOtherComponents,
+        "hue schedule does not alter stored lightness or chroma"
+    );
+
+    // ----------------------------------------------------------------------
+    // Explicit lightness monotonicity
+    // ----------------------------------------------------------------------
+
+    const T[7] ascendingL =
+    [
+        cast(T)-2,
+        cast(T)-0.25,
+        cast(T)0,
+        cast(T)0.50,
+        cast(T)1,
+        cast(T)1.25,
+        cast(T)2
+    ];
+
+    const T[7] descendingL =
+    [
+        cast(T)2,
+        cast(T)1.25,
+        cast(T)1,
+        cast(T)0.50,
+        cast(T)0,
+        cast(T)-0.25,
+        cast(T)-2
+    ];
+
+    const T[7] constantL =
+    [
+        cast(T)0.40,
+        cast(T)0.40,
+        cast(T)0.40,
+        cast(T)0.40,
+        cast(T)0.40,
+        cast(T)0.40,
+        cast(T)0.40
+    ];
+
+    const T[7] varyingC =
+    [
+        cast(T)-0.40,
+        cast(T)0,
+        cast(T)0.80,
+        cast(T)-0.20,
+        cast(T)1,
+        cast(T)0.10,
+        cast(T)-1
+    ];
+
+    const auto ascendingRaw =
+        tonesAtLightnessAndChroma(
+            seed,
+            ascendingL,
+            varyingC
+        );
+
+    const auto descendingRaw =
+        tonesAtLightnessAndChroma(
+            seed,
+            descendingL,
+            varyingC
+        );
+
+    const auto constantRaw =
+        tonesAtLightnessAndChroma(
+            seed,
+            constantL,
+            varyingC
+        );
+
+    bool ascending = true;
+    bool descending = true;
+    bool constant = true;
+    bool varyingChromaKeepsLightness = true;
+
+    foreach (i; 1 .. ascendingRaw.length)
+    {
+        if (ascendingRaw[i].l < ascendingRaw[i - 1].l)
+            ascending = false;
+
+        if (descendingRaw[i].l > descendingRaw[i - 1].l)
+            descending = false;
+
+        if (constantRaw[i].l != constantRaw[0].l)
+            constant = false;
+    }
+
+    foreach (i; 0 .. ascendingRaw.length)
+    {
+        if (ascendingRaw[i].l != ascendingL[i])
+            varyingChromaKeepsLightness = false;
+    }
+
+    check(
+        state,
+        ascending,
+        "ascending explicit lightness remains nondecreasing"
+    );
+
+    check(
+        state,
+        descending,
+        "descending explicit lightness remains nonincreasing"
+    );
+
+    check(
+        state,
+        constant,
+        "constant explicit lightness remains constant"
+    );
+
+    check(
+        state,
+        varyingChromaKeepsLightness,
+        "varying chroma does not alter requested raw lightness"
+    );
+
+    const auto generatedAscending =
+        linearScheduleHybrid!(T, 17)(
+            cast(T)-2,
+            cast(T)2
+        );
+
+    const auto generatedDescending =
+        linearScheduleHybrid!(T, 17)(
+            cast(T)2,
+            cast(T)-2
+        );
+
+    T[17] generatedChroma;
+
+    foreach (ref c; generatedChroma)
+        c = cast(T)0.10;
+
+    const auto generatedAscendingTones =
+        tonesAtLightnessAndChroma(
+            seed,
+            generatedAscending,
+            generatedChroma
+        );
+
+    const auto generatedDescendingTones =
+        tonesAtLightnessAndChroma(
+            seed,
+            generatedDescending,
+            generatedChroma
+        );
+
+    bool generatedAscendingExact = true;
+    bool generatedDescendingExact = true;
+
+    foreach (i; 0 .. 17)
+    {
+        if (
+            generatedAscendingTones[i].l !=
+            generatedAscending[i]
+        )
+        {
+            generatedAscendingExact = false;
+        }
+
+        if (
+            generatedDescendingTones[i].l !=
+            generatedDescending[i]
+        )
+        {
+            generatedDescendingExact = false;
+        }
+    }
+
+    foreach (i; 1 .. 17)
+    {
+        if (
+            generatedAscendingTones[i].l <
+            generatedAscendingTones[i - 1].l
+        )
+        {
+            generatedAscendingExact = false;
+        }
+
+        if (
+            generatedDescendingTones[i].l >
+            generatedDescendingTones[i - 1].l
+        )
+        {
+            generatedDescendingExact = false;
+        }
+    }
+
+    check(
+        state,
+        generatedAscendingExact,
+        "generated finite ascending schedule remains monotone after tone composition"
+    );
+
+    check(
+        state,
+        generatedDescendingExact,
+        "generated finite descending schedule remains monotone after tone composition"
+    );
+
+    // ----------------------------------------------------------------------
+    // Raw anchor invariants
+    // ----------------------------------------------------------------------
+
+    const T[3] anchorLightness =
+    [
+        cast(T)0.20,
+        seed.l,
+        cast(T)0.80
+    ];
+
+    const T[3] anchorChroma =
+    [
+        cast(T)0.03,
+        seed.c,
+        cast(T)0.20
+    ];
+
+    const auto matching =
+        tonesAtLightnessAndChroma(
+            seed,
+            anchorLightness,
+            anchorChroma
+        );
+
+    check(
+        state,
+        matching[1] == seed,
+        "matching raw seed anchor remains exact"
+    );
+
+    T[3] mismatchLightness = anchorLightness;
+    mismatchLightness[1] = cast(T)0.60;
+
+    const auto mismatching =
+        tonesAtLightnessAndChroma(
+            seed,
+            mismatchLightness,
+            anchorChroma
+        );
+
+    check(
+        state,
+        mismatching[1] != seed &&
+        mismatching[1].l == cast(T)0.60 &&
+        mismatching[1].c == seed.c &&
+        mismatching[1].h == seed.h,
+        "mismatching raw schedule preserves requested value instead of seed"
+    );
+}
+
+
+
+void runNonFinitePropertyTests(T)(
+    ref TestState state,
+    const(char)* scalarName
+)
+if (isColorScalar!T)
+{
+    printf(
+        "\n=== R0.11-F-B non-finite raw properties / %s ===\n",
+        scalarName
+    );
+
+    const Oklch!T seed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0.10,
+            OklabHue!T.fromDegrees(
+                cast(T)725
+            )
+        );
+
+    // ----------------------------------------------------------------------
+    // Lightness
+    // ----------------------------------------------------------------------
+
+    const auto nanL =
+        withLightness(
+            seed,
+            T.nan
+        );
+
+    check(
+        state,
+        rawIsNaN(nanL.l) &&
+        nanL.c == seed.c &&
+        nanL.h == seed.h,
+        "NaN lightness remains NaN and leaves other raw components unchanged"
+    );
+
+    const auto posInfL =
+        withLightness(
+            seed,
+            T.infinity
+        );
+
+    const auto negInfL =
+        withLightness(
+            seed,
+            -T.infinity
+        );
+
+    check(
+        state,
+        rawIsPositiveInfinity(posInfL.l) &&
+        rawIsNegativeInfinity(negInfL.l) &&
+        posInfL.c == seed.c &&
+        negInfL.c == seed.c &&
+        posInfL.h == seed.h &&
+        negInfL.h == seed.h,
+        "positive and negative infinite lightness preserve classification and sign"
+    );
+
+    // ----------------------------------------------------------------------
+    // Chroma
+    // ----------------------------------------------------------------------
+
+    const auto nanC =
+        withChroma(
+            seed,
+            T.nan
+        );
+
+    check(
+        state,
+        rawIsNaN(nanC.c) &&
+        nanC.l == seed.l &&
+        nanC.h == seed.h,
+        "NaN chroma remains NaN and leaves other raw components unchanged"
+    );
+
+    const auto posInfC =
+        withChroma(
+            seed,
+            T.infinity
+        );
+
+    const auto negInfC =
+        withChroma(
+            seed,
+            -T.infinity
+        );
+
+    check(
+        state,
+        rawIsPositiveInfinity(posInfC.c) &&
+        rawIsNegativeInfinity(negInfC.c) &&
+        posInfC.l == seed.l &&
+        negInfC.l == seed.l &&
+        posInfC.h == seed.h &&
+        negInfC.h == seed.h,
+        "positive and negative infinite chroma preserve classification and sign"
+    );
+
+    // ----------------------------------------------------------------------
+    // Hue
+    // ----------------------------------------------------------------------
+
+    const auto nanH =
+        withHue(
+            seed,
+            OklabHue!T.fromDegrees(
+                T.nan
+            )
+        );
+
+    check(
+        state,
+        rawIsNaN(nanH.h.degrees) &&
+        nanH.l == seed.l &&
+        nanH.c == seed.c,
+        "NaN hue remains NaN and leaves other raw components unchanged"
+    );
+
+    const auto posInfH =
+        withHue(
+            seed,
+            OklabHue!T.fromDegrees(
+                T.infinity
+            )
+        );
+
+    const auto negInfH =
+        withHue(
+            seed,
+            OklabHue!T.fromDegrees(
+                -T.infinity
+            )
+        );
+
+    check(
+        state,
+        rawIsPositiveInfinity(posInfH.h.degrees) &&
+        rawIsNegativeInfinity(negInfH.h.degrees) &&
+        posInfH.l == seed.l &&
+        negInfH.l == seed.l &&
+        posInfH.c == seed.c &&
+        negInfH.c == seed.c,
+        "positive and negative infinite hue preserve classification and sign"
+    );
+
+    // ----------------------------------------------------------------------
+    // Powerless hue
+    // ----------------------------------------------------------------------
+
+    const auto powerlessNaN =
+        withChroma(
+            nanH,
+            cast(T)0
+        );
+
+    const auto restoredNaN =
+        withChroma(
+            powerlessNaN,
+            cast(T)0.35
+        );
+
+    check(
+        state,
+        powerlessNaN.c == cast(T)0 &&
+        rawIsNaN(powerlessNaN.h.degrees) &&
+        restoredNaN.c == cast(T)0.35 &&
+        rawIsNaN(restoredNaN.h.degrees),
+        "zero chroma and chroma restoration preserve stored NaN hue"
+    );
+
+    const auto powerlessPosInf =
+        withChroma(
+            posInfH,
+            cast(T)0
+        );
+
+    const auto restoredPosInf =
+        withChroma(
+            powerlessPosInf,
+            cast(T)0.35
+        );
+
+    const auto powerlessNegInf =
+        withChroma(
+            negInfH,
+            cast(T)0
+        );
+
+    const auto restoredNegInf =
+        withChroma(
+            powerlessNegInf,
+            cast(T)0.35
+        );
+
+    check(
+        state,
+        rawIsPositiveInfinity(
+            powerlessPosInf.h.degrees
+        ) &&
+        rawIsPositiveInfinity(
+            restoredPosInf.h.degrees
+        ) &&
+        rawIsNegativeInfinity(
+            powerlessNegInf.h.degrees
+        ) &&
+        rawIsNegativeInfinity(
+            restoredNegInf.h.degrees
+        ),
+        "zero chroma and chroma restoration preserve stored infinite hue signs"
+    );
+
+    // ----------------------------------------------------------------------
+    // Static-array versus caller-output representation
+    // ----------------------------------------------------------------------
+
+    const T[3] lightnesses =
+    [
+        T.nan,
+        T.infinity,
+        -T.infinity
+    ];
+
+    const T[3] chromas =
+    [
+        T.infinity,
+        -T.infinity,
+        T.nan
+    ];
+
+    const Oklch!T infHueSeed =
+        withHue(
+            seed,
+            OklabHue!T.fromDegrees(
+                T.infinity
+            )
+        );
+
+    const auto fixed =
+        tonesAtLightnessAndChroma(
+            infHueSeed,
+            lightnesses,
+            chromas
+        );
+
+    Oklch!T[3] output;
+
+    const bool outputOk =
+        tryTonesAtLightnessAndChromaInto(
+            infHueSeed,
+            lightnesses[],
+            chromas[],
+            output[]
+        );
+
+    bool representationEquivalent =
+        outputOk;
+
+    foreach (i; 0 .. fixed.length)
+    {
+        if (!sameRawToneClassification(
+            fixed[i],
+            output[i]
+        ))
+        {
+            representationEquivalent = false;
+        }
+    }
+
+    check(
+        state,
+        representationEquivalent,
+        "static-array and caller-output preserve equivalent non-finite classifications"
+    );
+
+    check(
+        state,
+        fixed.length == 3 &&
+        output.length == 3,
+        "non-finite raw components do not alter family cardinality"
+    );
+
+    const bool mixedClassificationsPreserved =
+        rawIsNaN(fixed[0].l) &&
+        rawIsPositiveInfinity(fixed[0].c) &&
+        rawIsPositiveInfinity(
+            fixed[0].h.degrees
+        ) &&
+
+        rawIsPositiveInfinity(fixed[1].l) &&
+        rawIsNegativeInfinity(fixed[1].c) &&
+        rawIsPositiveInfinity(
+            fixed[1].h.degrees
+        ) &&
+
+        rawIsNegativeInfinity(fixed[2].l) &&
+        rawIsNaN(fixed[2].c) &&
+        rawIsPositiveInfinity(
+            fixed[2].h.degrees
+        );
+
+    check(
+        state,
+        mixedClassificationsPreserved,
+        "explicit mixed non-finite schedules preserve classification and infinity sign"
+    );
+
+    // ----------------------------------------------------------------------
+    // Runtime / CTFE property agreement
+    // ----------------------------------------------------------------------
+
+    const bool runtimeProbe =
+        ctfeNonFiniteRawPropertyProbe!T();
+
+    static if (is(T == float))
+    {
+        check(
+            state,
+            runtimeProbe &&
+            runtimeProbe == ctfeNonFiniteFloat,
+            "runtime and CTFE agree on selected float non-finite raw properties"
+        );
+    }
+    else
+    {
+        check(
+            state,
+            runtimeProbe &&
+            runtimeProbe == ctfeNonFiniteDouble,
+            "runtime and CTFE agree on selected double non-finite raw properties"
+        );
+    }
+}
+
+
+
+// --------------------------------------------------------------------------
+// R0.11-F-C — cross-phase integration properties
+// --------------------------------------------------------------------------
+
+void runCrossPhasePropertyTests(T)(
+    ref TestState state,
+    const(char)* scalarName
+)
+if (isColorScalar!T)
+{
+    printf(
+        "\n=== R0.11-F-C cross-phase properties / %s ===\n",
+        scalarName
+    );
+
+    // ----------------------------------------------------------------------
+    // Explicit finite runtime / CTFE agreement.
+    //
+    // F-A already executes the same ordinary operations in both modes.
+    // This check makes the relationship explicit rather than inferring it
+    // only from two independently passing paths.
+    // ----------------------------------------------------------------------
+
+    const bool runtimeFinite =
+        ctfeFiniteRawPropertyProbe!T();
+
+    enum bool compileTimeFinite =
+        is(T == float)
+            ? ctfeFiniteRawFloat
+            : ctfeFiniteRawDouble;
+
+    check(
+        state,
+        runtimeFinite &&
+        runtimeFinite == compileTimeFinite,
+        "runtime and CTFE agree on representative finite raw edge properties"
+    );
+
+    // ----------------------------------------------------------------------
+    // Cross-phase raw / mapped separation.
+    //
+    // Reuse the same published high-chroma yellow already validated in
+    // R0.11-D.  F-C is not another gamut experiment.  It verifies only the
+    // structural integration property:
+    //
+    //     raw result remains authoritative and unchanged
+    //     mapped target is a separate successful in-gamut result
+    // ----------------------------------------------------------------------
+
+    const T[2] lightnesses =
+    [
+        cast(T)0.50,
+        cast(T)0.96476
+    ];
+
+    const T[2] chromas =
+    [
+        cast(T)0,
+        cast(T)0.24503
+    ];
+
+    const Oklch!T seed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0,
+            OklabHue!T.fromDegrees(
+                cast(T)110.23
+            )
+        );
+
+    const auto raw =
+        tonesAtLightnessAndChroma(
+            seed,
+            lightnesses,
+            chromas
+        );
+
+    const auto rawBeforeMapping =
+        raw;
+
+    const bool rawSecondOutOfGamut =
+        !gamut.inSrgbGamut(
+            toR08Oklch(raw[1])
+        );
+
+    const auto local =
+        mapScaleLocalMinde(raw);
+
+    const auto ray =
+        mapScaleRayTrace(raw);
+
+    check(
+        state,
+        raw == rawBeforeMapping &&
+        rawSecondOutOfGamut &&
+        local.length == raw.length &&
+        ray.length == raw.length &&
+        local[1].success &&
+        ray[1].success &&
+        gamut.inSrgbGamut(
+            local[1].color
+        ) &&
+        gamut.inSrgbGamut(
+            ray[1].color
+        ),
+        "finite raw family remains authoritative while mapped target results stay separate"
+    );
+}
+
+
 void main()
 {
     printf("color-d R0.11 — tone-scale research\n");
@@ -3432,6 +5213,36 @@ void main()
     );
 
     runRepresentationTests!double(
+        state,
+        "double"
+    );
+
+    runFinitePropertyTests!float(
+        state,
+        "float"
+    );
+
+    runFinitePropertyTests!double(
+        state,
+        "double"
+    );
+
+    runNonFinitePropertyTests!float(
+        state,
+        "float"
+    );
+
+    runNonFinitePropertyTests!double(
+        state,
+        "double"
+    );
+
+    runCrossPhasePropertyTests!float(
+        state,
+        "float"
+    );
+
+    runCrossPhasePropertyTests!double(
         state,
         "double"
     );
