@@ -1388,3 +1388,715 @@ R0.11-E begins with these hypotheses:
 12. Public API choice remains provisional until R0.12 and consumer review.
 
 Observed R0.11-E results are recorded in `RESULTS.md` after the complete DMD/LDC Debug/Release matrix was executed.
+
+---
+
+# R0.11-F — properties and edge cases
+
+R0.11-A through R0.11-E established:
+
+```text
+primitive decomposition
+schedule semantics
+chroma and hue semantics
+explicit gamut composition
+representation and CTFE behavior
+```
+
+R0.11-F is the final integration and edge-case phase.
+
+It introduces no new tone-generation algorithm and no new public API
+candidate.
+
+Its purpose is to determine whether the already validated model remains
+internally consistent across boundary values, unusual raw values and combined
+use of the previously validated operations.
+
+## F1 — Property phase, not another design phase
+
+R0.11-F should primarily test invariants.
+
+It should not redesign:
+
+```text
+withLightness
+withChroma
+withHue
+generated schedule interpolation
+static-array representation
+caller-output representation
+gamut mapping
+```
+
+unless an actual contradiction is discovered.
+
+A failing property may reopen an earlier conclusion.
+
+A passing property should not create a new abstraction merely because another
+wrapper could be written.
+
+## F2 — Cardinalities
+
+Exercise representative tone-family cardinalities including:
+
+```text
+N = 0
+N = 1
+N = 2
+N = 3
+N = 5
+N = 17
+N = 32
+```
+
+The purpose is to cover:
+
+```text
+empty
+singleton
+minimal generated interval
+odd/even small families
+representative palette size
+larger fixed-size family
+```
+
+R0.11-F does not need arbitrary huge arrays unless a compiler anomaly appears.
+
+For explicit caller-supplied schedules:
+
+```text
+N = 0
+N = 1
+```
+
+remain naturally valid.
+
+For generated inclusive intervals, the R0.11-B rule remains:
+
+```text
+N >= 2
+```
+
+No new generated-`N=0` or generated-`N=1` policy is introduced.
+
+## F3 — Cardinality invariants
+
+For every valid tested family:
+
+```text
+result.length == requested schedule length
+```
+
+and, where both representations apply:
+
+```text
+staticResult.length == callerOutput.length
+```
+
+Cardinality must not depend on:
+
+```text
+component values
+gamut status
+hue magnitude
+negative chroma
+extended lightness
+```
+
+Raw generation performs no element insertion, deletion or deduplication.
+
+## F4 — Extended finite raw values
+
+The low-level raw tone model supports finite values outside ordinary UI or
+display ranges.
+
+R0.11-F should include representative finite values such as:
+
+```text
+L < 0
+L = 0
+0 < L < 1
+L = 1
+L > 1
+
+C < 0
+C = 0
+C > typical sRGB chroma
+
+H < 0 degrees
+H = 0 degrees
+H = 360 degrees
+H > 360 degrees
+multiple-turn hue values
+```
+
+Representative examples may include:
+
+```text
+L: -2, -0.25, 0, 0.5, 1, 1.25, 2
+C: -1, -0.1, 0, 0.1, 0.5, 1
+H: -720, -45, -0, 0, 360, 725, 1080
+```
+
+These are raw mathematical values.
+
+The experiment must not implicitly reinterpret them as UI constraints.
+
+## F5 — Extended finite exactness
+
+For explicit component schedules, raw generation should preserve requested
+finite component values exactly where the validated primitives are exact
+component replacement.
+
+For each index:
+
+```text
+raw[i].l == requestedL[i]
+raw[i].c == requestedC[i]
+raw[i].h == requestedH[i]
+```
+
+when those components were explicitly supplied.
+
+This property is about raw component assignment.
+
+It is not a claim that the resulting color lies in any display gamut.
+
+## F6 — No implicit clamping
+
+R0.11-F should explicitly verify that raw construction does not silently
+transform:
+
+```text
+L < 0  -> 0
+L > 1  -> 1
+C < 0  -> 0
+```
+
+Likewise, it must not silently force hue into a canonical turn.
+
+Raw operations remain raw.
+
+Clipping and gamut mapping remain separate explicit operations.
+
+## F7 — No implicit hue normalization
+
+Previously validated examples such as:
+
+```text
+725 degrees
+```
+
+should be extended with additional raw hue values including negative and
+multi-turn values.
+
+The property is:
+
+```text
+stored hue == requested hue
+```
+
+for raw replacement/construction.
+
+R0.11-F does not introduce a canonical hue interval.
+
+## F8 — Powerless hue remains stored data
+
+For:
+
+```text
+C = 0
+```
+
+stored hue remains representationally present.
+
+R0.11-F should combine this with unusual hue values.
+
+Examples:
+
+```text
+C = 0, H = -720
+C = 0, H = 725
+C = 0, H = +Inf
+C = 0, H = NaN
+```
+
+where meaningful for the raw representation test.
+
+Restoring nonzero chroma should not cause the raw layer to invent a different
+stored hue.
+
+NaN requires classification tests rather than equality.
+
+## F9 — NaN and infinity scope
+
+R0.11-F should test non-finite values only where the raw component operations
+have meaningful representation semantics.
+
+Representative cases:
+
+```text
+L = NaN
+L = +Inf
+L = -Inf
+
+C = NaN
+C = +Inf
+C = -Inf
+
+H = NaN
+H = +Inf
+H = -Inf
+```
+
+The question is not whether these are useful colors.
+
+The question is whether the low-level raw primitives silently:
+
+```text
+clamp
+normalize
+replace
+repair
+canonicalize
+```
+
+them.
+
+They should not.
+
+## F10 — Non-finite property checks
+
+Because:
+
+```text
+NaN != NaN
+```
+
+R0.11-F must not use ordinary equality as the NaN invariant.
+
+Instead test classification:
+
+```text
+isNaN
+isInfinity
+sign where relevant
+```
+
+and verify that untouched components remain untouched.
+
+For infinities, exact sign should remain observable:
+
+```text
++Inf remains +Inf
+-Inf remains -Inf
+```
+
+No universal "invalid color" wrapper is introduced by this phase.
+
+## F11 — Generated schedules and non-finite endpoints
+
+R0.11-F does not define new interpolation semantics for generated schedules
+whose endpoints are NaN or infinite.
+
+R0.11-B validated the generated schedule arithmetic for finite endpoints.
+
+Therefore F should not infer a stable mathematical contract from expressions
+such as:
+
+```text
+Inf - Inf
+0 * Inf
+NaN arithmetic
+```
+
+Non-finite testing is primarily for explicit/raw component composition.
+
+If generated non-finite endpoints are probed, observations must be recorded as
+observations rather than promoted into new API guarantees.
+
+## F12 — Monotone lightness property
+
+For a finite explicit lightness schedule that is nondecreasing:
+
+```text
+L[0] <= L[1] <= ... <= L[N-1]
+```
+
+raw tone construction must preserve the same ordering because it stores the
+requested lightness values.
+
+Likewise for nonincreasing schedules.
+
+Changing chroma and hue schedules must not alter stored raw lightness.
+
+This is a raw component invariant, not a perceptual-lightness guarantee after
+gamut mapping.
+
+## F13 — Generated finite lightness monotonicity
+
+For generated finite inclusive schedules already covered by R0.11-B:
+
+```text
+start < end -> nondecreasing
+start > end -> nonincreasing
+start == end -> constant
+```
+
+R0.11-F may verify that composing those generated scalar positions into raw
+tones preserves the same ordering.
+
+It must not re-run the full R0.11-B arithmetic search unless a contradiction is
+found.
+
+## F14 — Chroma and hue independence
+
+For raw tones constructed by component composition:
+
+```text
+changing C must not change L or H
+changing H must not change L or C
+changing L must not change C or H
+```
+
+This should be exercised across:
+
+```text
+ordinary values
+extended finite values
+selected non-finite replacement values
+```
+
+using classification tests where exact equality is not meaningful.
+
+## F15 — Raw anchor invariants
+
+R0.11-A/B established that an exact seed anchor and a mismatching requested
+schedule cannot both be preserved automatically.
+
+R0.11-F should preserve this distinction.
+
+For a schedule containing exactly the seed components at index `k`:
+
+```text
+raw[k] == seed
+```
+
+where ordinary equality is meaningful.
+
+For a schedule whose requested component differs from the seed:
+
+```text
+schedule value wins in an ordinary unanchored raw scale
+```
+
+unless the explicitly selected anchoring policy says otherwise.
+
+No implicit nearest-anchor or seed-repair policy is introduced.
+
+## F16 — Anchor versus gamut boundary
+
+R0.11-D established that an out-of-gamut exact raw anchor cannot both remain
+exact and become an in-target-gamut replacement.
+
+R0.11-F should not reopen gamut-mapper selection.
+
+At most it should verify the cross-phase structural property:
+
+```text
+raw anchor remains raw and observable
+mapped result is a separate target-space result
+```
+
+for representative finite input.
+
+No non-finite gamut-mapping experiment is required.
+
+## F17 — Representation equivalence on edge values
+
+For edge cases that are representable in both phase-E forms:
+
+```text
+static-array result
+caller-output result
+```
+
+must preserve the same raw properties.
+
+For ordinary and extended finite values, exact equality may be used.
+
+For NaN-containing values, compare component classifications and unaffected
+components rather than whole-struct equality.
+
+Representation must not change semantics.
+
+## F18 — Runtime and CTFE agreement
+
+Representative property probes should execute through ordinary functions both:
+
+```text
+at runtime
+at CTFE
+```
+
+The goal is semantic agreement, not compiler-generated-code identity.
+
+At minimum include:
+
+```text
+finite extended values
+negative chroma
+multi-turn hue
+monotone schedule
+selected non-finite raw component cases
+```
+
+where D CTFE supports the ordinary operations.
+
+No CTFE-specific tone API should be introduced.
+
+## F19 — Float and double
+
+Run the property suite for:
+
+```text
+float
+double
+```
+
+The required invariant is semantic agreement.
+
+R0.11-F does not require:
+
+```text
+float result bit pattern == double result bit pattern
+```
+
+or numerically identical rounding across scalar types.
+
+Exact component replacement remains exact within each scalar type.
+
+## F20 — Exact properties versus numerical tolerances
+
+R0.11-F must keep two concepts separate.
+
+### Exact structural properties
+
+Examples:
+
+```text
+component copied unchanged
+cardinality preserved
+output not written on mismatch
+stored hue not normalized
+negative chroma not clamped
+static and caller-output use the same operation
+```
+
+These may be tested exactly.
+
+### Numerical approximation policy
+
+Examples would include deciding a universal epsilon for:
+
+```text
+conversion round trips
+perceptual equality
+near-gamut comparisons
+floating-point algorithm tolerances
+```
+
+R0.11-F must not define that policy.
+
+A library-wide numerical tolerance policy is a separate R0 research block.
+
+## F21 — No universal epsilon
+
+Do not introduce an epsilon merely to make a property test pass.
+
+If a property is inherently approximate, either:
+
+```text
+use an already validated operation-specific criterion
+```
+
+or:
+
+```text
+record that the property belongs to later tolerance research
+```
+
+Tone-scale raw component semantics should mostly permit structural or exact
+tests.
+
+## F22 — Gamut scope
+
+R0.11-F consumes the R0.11-D result.
+
+It does not re-evaluate:
+
+```text
+Local MINDE quality
+Ray Trace quality
+iteration budgets
+mapper performance
+default mapper selection
+```
+
+For finite representative raw colors, it may verify only already-established
+composition properties.
+
+No new mapper is introduced.
+
+## F23 — Representation scope
+
+R0.11-F consumes the R0.11-E result.
+
+It does not reopen the already observed distinction:
+
+```text
+static array for statically known cardinality
+caller-owned slice for runtime cardinality
+```
+
+unless an edge case exposes a genuine contradiction.
+
+The bare written-count candidate remains rejected as the sole runtime status
+channel because valid `N=0` and mismatch both produce zero.
+
+## F24 — Allocation and attributes
+
+Any new phase-F property helper representing low-level color operations should
+remain compatible with:
+
+```d
+@safe
+pure
+nothrow
+@nogc
+```
+
+Test-harness reporting itself need not be pure or `@nogc`.
+
+The property phase must not accidentally require heap allocation in the
+validated primitive path.
+
+## F25 — Compiler matrix
+
+Use the established baseline:
+
+```text
+DMD 2.111.0
+LDC 1.41.0
+```
+
+with:
+
+```text
+Debug
+Release
+float
+double
+CTFE
+```
+
+Only broaden compiler coverage if F exposes a compiler-specific anomaly.
+
+## F26 — Initial executable property set
+
+The phase-F experiment should at minimum test:
+
+1. Explicit `N=0` family remains empty.
+2. Explicit `N=1` family preserves its sole requested components.
+3. Representative cardinalities preserve requested length.
+4. Extended finite lightness is preserved raw.
+5. Negative chroma is preserved raw.
+6. Large positive chroma is preserved raw.
+7. Negative hue is preserved raw.
+8. Multi-turn hue is preserved raw.
+9. Zero chroma preserves stored powerless hue.
+10. Restoring chroma preserves the stored hue.
+11. No raw lightness clamp occurs.
+12. No raw chroma clamp occurs.
+13. No raw hue normalization occurs.
+14. NaN lightness remains NaN.
+15. Positive-infinite lightness remains positive infinity.
+16. Negative-infinite lightness remains negative infinity.
+17. NaN chroma remains NaN.
+18. Positive/negative infinite chroma retains classification and sign.
+19. NaN hue remains NaN.
+20. Positive/negative infinite hue retains classification and sign.
+21. Replacing one component leaves the other raw components unchanged.
+22. Ascending explicit lightness remains nondecreasing.
+23. Descending explicit lightness remains nonincreasing.
+24. Constant explicit lightness remains constant.
+25. Chroma/hue schedules do not alter stored lightness.
+26. Generated finite ascending schedule remains monotone after tone
+    composition.
+27. Generated finite descending schedule remains monotone after tone
+    composition.
+28. Matching raw seed anchor remains exact.
+29. Mismatching ordinary raw schedule remains visibly distinct from seed.
+30. Static-array and caller-output forms agree on extended finite values.
+31. Static-array and caller-output forms preserve equivalent classifications
+    for selected NaN/Inf values.
+32. Runtime and CTFE agree on representative finite edge cases.
+33. Runtime and CTFE agree on selected non-finite raw classifications.
+34. `float` and `double` expose the same property semantics.
+35. Representative finite raw/mapped composition keeps raw and target result
+    distinct.
+36. No new container, mapper or tolerance abstraction is required if these
+    properties hold.
+
+The exact runtime check count may differ if multiple closely related
+properties are combined into one check.
+
+## F27 — Deliberately out of scope
+
+R0.11-F does not establish:
+
+- a library-wide floating-point epsilon;
+- generic approximate equality;
+- new conversion tolerances;
+- a default gamut mapper;
+- new gamut-mapping algorithms;
+- non-finite gamut-mapping guarantees;
+- a canonical hue interval;
+- automatic chroma canonicalization;
+- automatic clipping;
+- palette aesthetic quality;
+- contrast guarantees;
+- semantic theme roles;
+- final public names;
+- consumer-specific palette ergonomics;
+- performance micro-optimization unless an anomaly appears.
+
+## F28 — Strong hypotheses entering the experiment
+
+R0.11-F begins with these hypotheses:
+
+1. Raw tone generation remains structurally exact for explicitly supplied
+   finite components.
+2. Extended finite values remain raw and are not silently clamped.
+3. Negative chroma remains raw.
+4. Hue remains stored without implicit normalization.
+5. Powerless hue remains stored at zero chroma.
+6. Raw component replacement does not silently repair NaN or infinity.
+7. Non-finite classification can be tested without defining a generic
+   "invalid color" abstraction.
+8. Monotone finite lightness schedules remain monotone after raw tone
+   composition.
+9. Chroma and hue composition do not alter stored lightness.
+10. Matching raw anchors remain exact.
+11. Mismatching raw anchors remain an explicit policy conflict.
+12. Static-array and caller-output representations preserve the same edge-case
+    semantics.
+13. Runtime and CTFE preserve the same raw properties.
+14. `float` and `double` expose the same structural semantics.
+15. R0.11-F will not require a universal epsilon.
+16. R0.11-F will not require a new tone-scale container.
+17. R0.11-F will not require a new gamut abstraction.
+18. Passing F should allow R0.11 to close without another tone-generation
+    research phase.
+
+No R0.11-F result is recorded until observed compiler runs exist.
