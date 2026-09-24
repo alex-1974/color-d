@@ -43,6 +43,10 @@ spikes:
 | R0.5 | Oklab <-> OKLCH and hue semantics | PASS |
 | R0.6 | Alpha, premultiplied alpha and linear-light source-over | PASS |
 | R0.7 | Interpolation and OKLCH hue-path semantics | PASS |
+| R0.8 | Gamut detection, clipping and perceptual gamut mapping | PASS |
+| R0.9 | WCAG-2 relative luminance and contrast semantics | PASS |
+| R0.10 | Oklab `deltaEOK` semantics and numerical robustness | PASS |
+| R0.11 | OKLCH tone-scale semantics, CTFE and representation | PASS |
 
 The currently validated computational chain is:
 
@@ -78,6 +82,10 @@ In particular:
 - [`R0.5 OKLCH / hue semantics results`](experiments/r0_5_oklch_semantics/RESULTS.md)
 - [`R0.6 alpha / compositing results`](experiments/r0_6_alpha_semantics/RESULTS.md)
 - [`R0.7 interpolation results`](experiments/r0_7_interpolation_semantics/RESULTS.md)
+- [`R0.8 gamut-semantics results`](experiments/r0_8_gamut_semantics/RESULTS.md)
+- [`R0.9 luminance / contrast results`](experiments/r0_9_luminance_contrast/RESULTS.md)
+- [`R0.10 deltaEOK results`](experiments/r0_10_delta_e_ok/RESULTS.md)
+- [`R0.11 tone-scale results`](experiments/r0_11_tone_scales/RESULTS.md)
 
 ## Workspace role
 
@@ -124,9 +132,45 @@ Start with:
 
 ## Project status
 
-Research and architecture phase.
+Current phase: **R0 — research and architecture closeout**.
 
-No public API is stable yet.
+Executable research is validated through **R0.11**.
+
+The current first-release target is:
+
+```text
+v0.1.0 — First public release
+```
+
+Remaining R0 work covers:
+
+- compile-time palette construction and validation;
+- numerical tolerance/reference policy;
+- the `color-d` / `imagery-d` responsibility boundary;
+- targeted performance/compiler evidence;
+- the final v0.1 scope and R0→R1 promotion decision.
+
+After R0 closes, validated semantics are promoted deliberately into production
+modules:
+
+```text
+R1  mathematical core
+R2  alpha and interpolation
+R3  perceptual utilities
+R4  real consumer validation
+```
+
+Initial R4 consumers are:
+
+- `imagery-d`;
+- the OSM editor theme/style layer.
+
+No public API is stable yet. Pre-1.0 API corrections remain expected where
+production implementation or real consumers demonstrate a better design.
+
+Public API documentation, tests, CTFE coverage and documented `unittest`
+examples are developed together with the production API rather than postponed
+to release cleanup.
 
 See:
 
@@ -134,7 +178,4 @@ See:
 - `docs/research/`
 - `docs/adr/`
 - `docs/design/`
-
-Implementation will begin only after the initial architecture spikes have
-validated the type model, conversion API, alpha model, CTFE behavior, and
-gamut policy.
+- `ROADMAP.md`

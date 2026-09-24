@@ -1,5 +1,39 @@
 # color-d Roadmap
 
+## Current release target
+
+The current planned first public release is:
+
+```text
+v0.1.0 — First public release
+```
+
+GitHub milestone `v0.1.0 — First public release` is the concrete release target.
+
+The R0–R4 names below describe development phases and promotion/validation
+gates leading to that release. They are not separate package releases.
+
+Current sequence:
+
+```text
+R0  research and architecture closeout
+ ↓
+R1  mathematical core production API
+ ↓
+R2  alpha and interpolation
+R3  perceptual utilities
+ ↓
+R4  real consumer validation
+ ↓
+v0.1.0 release hardening and publication
+```
+
+R2 and R3 may overlap where there is no technical dependency.
+
+Detailed work, decisions and release gates are tracked in GitHub issues.
+This roadmap records the durable direction and sequencing rather than
+duplicating issue-level task lists.
+
 ## R0 — Research and architecture
 
 Current phase.
@@ -89,14 +123,26 @@ contracted.
 No public tone-scale API name, default gamut mapper or universal numerical
 epsilon is frozen by R0.11.
 
-Remaining R0 work includes:
+Remaining R0 work is now tracked through the `v0.1.0` release milestone:
 
-- compile-time palette/theme generation and validation;
-- library-wide numerical tolerance policy;
-- remaining basic performance/code-generation checks where justified;
-- define the consumer-validation gate required before API stabilization.
+- #8 — R0.12 compile-time palette construction and validation;
+- #9 — R0.13 numerical tolerance and reference policy;
+- #1 — durable `color-d` / `imagery-d` responsibility boundary;
+- #5 — performance baselines and targeted compiler/code-generation evidence;
+- #10 — R0.14 final v0.1 scope and R0→R1 promotion gate.
+
+Issue #2 is the R0 closeout umbrella.
+
+R0.14 is the synthesis gate: it consumes the relevant conclusions from the
+other remaining R0 work, fixes the intended v0.1 scope, and determines whether
+production API promotion may begin.
 
 ## R1 — Mathematical core
+
+Tracked by GitHub issue #3.
+
+R1 promotes accepted R0 research into deliberate production modules and API.
+Research experiment code is evidence, not production code to copy mechanically.
 
 Candidate scope:
 
@@ -116,6 +162,8 @@ Candidate scope:
 
 ## R2 — Alpha and interpolation
 
+Tracked by GitHub issue #11.
+
 Candidate scope:
 
 - straight alpha representation
@@ -125,6 +173,8 @@ Candidate scope:
 - polar hue interpolation policy
 
 ## R3 — Perceptual utilities
+
+Tracked by GitHub issue #12.
 
 Candidate scope:
 
@@ -136,12 +186,37 @@ Candidate scope:
 
 ## R4 — First consumer integration
 
-Exercise the API through concrete consumers:
+Consumer validation is tracked separately for the two initial real consumers:
 
-- `imagery-d`
-- OSM editor theme/style layer
+- #4 — `imagery-d`;
+- #13 — OSM editor theme/style layer.
 
-Public API stabilization begins only after real consumer usage.
+The exact consumer paths must come from real application requirements rather
+than synthetic API demonstrations.
+
+Public API stabilization begins only after real consumer usage has exercised
+the production surface and discovered friction has been resolved or
+deliberately documented.
+
+## v0.1.0 — Release hardening and publication
+
+Tracked by GitHub issue #14 and milestone
+`v0.1.0 — First public release`.
+
+Release hardening follows completion of the accepted R1–R3 production scope
+and both R4 consumer-validation paths.
+
+The final gate covers:
+
+- public root/direct-module surface audit;
+- tested DMD/LDC support statement;
+- clean production and consumer verification;
+- README / CHANGELOG / release-note accuracy;
+- one exact verified release commit;
+- `v0.1.0` tag and published release.
+
+Public Ddoc, tests and executable examples are not deferred to this phase;
+they evolve with the production APIs that introduce them.
 
 ## Later
 
