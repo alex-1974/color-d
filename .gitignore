@@ -12,3 +12,4 @@ color-d-test-library
 
 # Experiment executables
 experiments/*/color-d-*
+experiments/**/color-d-*
