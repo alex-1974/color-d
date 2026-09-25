@@ -8,6 +8,8 @@ import r0_8_gamut_fixture :
     inSrgbGamut,
     isColorScalar,
     rayEpsilon,
+    intersectUnitRgbCube,
+    insideInterior,
     toOklab,
     toOklch,
     toLinearSRgb;
@@ -260,6 +262,99 @@ private void reportSelectedCases()
 }
 
 
+private void traceFloatFailure(
+    size_t failureIndex,
+    Oklch!float input)
+{
+    const float originalLightness =
+        input.l;
+
+    const float originalHue =
+        input.h.degrees;
+
+    LinearSRgb!float anchor =
+        Oklch!float(
+            originalLightness,
+            0.0f,
+            OklabHue!float(originalHue)
+        ).toLinearSRgb;
+
+    LinearSRgb!float originRgb =
+        input.toLinearSRgb;
+
+    const float eps =
+        rayEpsilon!float;
+
+    const float low =
+        0.0f + eps;
+
+    const float high =
+        1.0f - eps;
+
+    foreach (i; 0 .. 4)
+    {
+        if (i > 0)
+        {
+            Oklch!float current =
+                originRgb.toOklch;
+
+            current.l =
+                originalLightness;
+
+            current.h.degrees =
+                originalHue;
+
+            originRgb =
+                current.toLinearSRgb;
+        }
+
+        writefln(
+            "D3-TRACE-float-%s-iter-%s-pre = anchor=(% .9g,% .9g,% .9g) origin=(% .9g,% .9g,% .9g) interior=%s",
+            failureIndex,
+            i + 1,
+            cast(double)anchor.r,
+            cast(double)anchor.g,
+            cast(double)anchor.b,
+            cast(double)originRgb.r,
+            cast(double)originRgb.g,
+            cast(double)originRgb.b,
+            originRgb.insideInterior(low, high)
+        );
+
+        const auto intersection =
+            intersectUnitRgbCube(
+                anchor,
+                originRgb
+            );
+
+        writefln(
+            "D3-TRACE-float-%s-iter-%s-intersection = found:%s color=(% .9g,% .9g,% .9g)",
+            failureIndex,
+            i + 1,
+            intersection.found,
+            cast(double)intersection.color.r,
+            cast(double)intersection.color.g,
+            cast(double)intersection.color.b
+        );
+
+        if (!intersection.found)
+            break;
+
+        if (i > 0 &&
+            originRgb.insideInterior(
+                low,
+                high))
+        {
+            anchor =
+                originRgb;
+        }
+
+        originRgb =
+            intersection.color;
+    }
+}
+
+
 private void reportGeneratedPaired()
 {
     enum size_t sampleCount = 4096;
@@ -355,6 +450,11 @@ private void reportGeneratedPaired()
                     cast(real)resultD.color.r,
                     cast(real)resultD.color.g,
                     cast(real)resultD.color.b
+                );
+
+                traceFloatFailure(
+                    floatSuccessFailures,
+                    inputF
                 );
             }
         }
