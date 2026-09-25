@@ -2,7 +2,7 @@
 
 **Status:** EXPERIMENT
 **Parent:** R0.13 — Numerical tolerance and reference policy
-**Document revision:** 1.0
+**Document revision:** 1.1
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -690,9 +690,63 @@ public semantic contract. C5 retains R0.10's explicit guard order so NaN takes
 precedence over infinity. The raw result is reported only as diagnostic
 evidence where useful.
 
-C5 remains observational until local DMD/LDC runs are recorded. No numerical
-tolerance, JND policy or public `deltaEOK` API is frozen by adding this
-harness.
+### C5 observed results
+
+C5 has been run in debug builds on the same x86_64 Linux research host with:
+
+- DMD 2.111.0;
+- LDC 1.41.0 using DMD frontend 2.111.0 and LLVM 19.1.7.
+
+The C5 outputs were identical except for the two generated-property
+`reference_max_abs` values. All analytical, special-value, ordinary/extended
+reference, range, ULP-maximum, symmetry and triangle-slack observations matched.
+
+For both scalar types and both tested compilers:
+
+- selected identity, one-axis, 3-4-12 and finite symmetry cases held exactly;
+- the explicit special-value policy held: NaN propagated, +/-infinity mapped to
+  positive infinity, and NaN took precedence over infinity;
+- raw three-argument Phobos `hypot` did not itself provide that policy on the
+  tested toolchains, confirming the need for explicit guards;
+- selected ordinary and extended reference probes rounded to the same target
+  values as the wider `real` scaled-norm reference;
+- the direct squared-sum implementation overflowed to infinity for the selected
+  large finite one-axis input;
+- the direct squared-sum implementation underflowed to zero for both
+  `T.min_normal` and the smallest positive subnormal one-axis inputs;
+- the guarded-`hypot` candidate preserved all three selected one-axis values
+  exactly, including the smallest positive subnormal;
+- 4096 deterministic generated cases produced zero identity failures, zero
+  negative distances, zero non-zero symmetry deltas and zero positive triangle
+  slack;
+- the largest ULP distance to the target-rounded wider reference was 2 for both
+  float and double.
+
+The only DMD/LDC C5 runtime differences were the maximum absolute reference
+error found by the deterministic generated sample:
+
+```text
+                         DMD              LDC
+float reference_max_abs  1.018749e-06     1.431924e-06
+double reference_max_abs 2.143251e-15     2.190088e-15
+```
+
+The float maximum differs by about 1.41x and the double maximum by about 1.02x,
+while both compiler runs still share the same maximum ULP distance of 2. This
+is further evidence that absolute-error maxima and ULP maxima answer different
+questions and should not be collapsed into one generic tolerance.
+
+The generated maxima remain observations, not acceptance thresholds. In
+particular, C5 does not promote 2 ULP, either absolute-error maximum, or the old
+R0.10 epsilon-scaled bounds into production policy.
+
+The identical range and special-value behavior across these two debug runs is
+useful cross-compiler evidence but is not a portability guarantee. Controlled
+Debug/Release, runtime/CTFE and compiler-version comparisons remain R0.13-E
+work.
+
+No C5 observation freezes a numerical tolerance, JND policy or public
+`deltaEOK` API.
 
 ## Characterization rule
 
