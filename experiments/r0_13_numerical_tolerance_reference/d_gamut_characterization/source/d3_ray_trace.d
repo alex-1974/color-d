@@ -329,7 +329,35 @@ private void reportGeneratedPaired()
             ++doubleSuccessFailures;
 
         if (!resultF.success)
+        {
             ++floatSuccessFailures;
+
+            if (floatSuccessFailures <= 8)
+            {
+                const auto inputRgbF =
+                    inputF.toLinearSRgb;
+
+                writefln(
+                    "D3-FAILURE-float-%s = input-l=% .21g input-c=% .21g input-h=% .21g input-r=% .21g input-g=% .21g input-b=% .21g result-r=% .21g result-g=% .21g result-b=% .21g iterations=%s in-gamut=%s double-success=%s double-r=% .21g double-g=% .21g double-b=% .21g",
+                    floatSuccessFailures,
+                    cast(real)inputF.l,
+                    cast(real)inputF.c,
+                    cast(real)inputF.h.degrees,
+                    cast(real)inputRgbF.r,
+                    cast(real)inputRgbF.g,
+                    cast(real)inputRgbF.b,
+                    cast(real)resultF.color.r,
+                    cast(real)resultF.color.g,
+                    cast(real)resultF.color.b,
+                    resultF.iterations,
+                    resultF.color.inSrgbGamut,
+                    resultD.success,
+                    cast(real)resultD.color.r,
+                    cast(real)resultD.color.g,
+                    cast(real)resultD.color.b
+                );
+            }
+        }
 
         if (!resultD.color.inSrgbGamut)
             ++doubleGamutFailures;
