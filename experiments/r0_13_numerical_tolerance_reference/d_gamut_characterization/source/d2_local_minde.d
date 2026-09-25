@@ -204,18 +204,6 @@ private void reportSelectedCases()
         )
     );
 
-    foreach (caseName, l, c, h; [
-        ["high-chroma-red",   "0.65", "0.35", "25"],
-        ["high-chroma-green", "0.75", "0.35", "145"],
-        ["high-chroma-blue",  "0.55", "0.35", "265"],
-        ["near-white",        "0.97", "0.15", "40"],
-        ["near-black",        "0.08", "0.12", "300"]
-    ])
-    {
-        // The literal table is kept as text only to make the cases readable;
-        // explicit typed calls below preserve compile-time type clarity.
-    }
-
     reportSelected!float(
         "float",
         "high-chroma-red",
