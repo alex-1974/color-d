@@ -1,6 +1,7 @@
 module app;
 
 import c1_oklch_hue : runC1For;
+import c2_alpha_compositing : runC2For;
 import std.stdio : writefln, writeln;
 
 void main()
@@ -34,4 +35,7 @@ void main()
 
     runC1For!float("float");
     runC1For!double("double");
+
+    runC2For!float("float");
+    runC2For!double("double");
 }

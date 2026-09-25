@@ -2,21 +2,22 @@
 
 **Status:** EXPERIMENT
 **Parent:** R0.13 — Numerical tolerance and reference policy
-**Document revision:** 0.2
+**Document revision:** 0.3
 **Date:** 2026-09-25
 **GitHub:** #9
 
 This harness characterizes the R0.13-C operation families without selecting a
 universal epsilon or freezing production acceptance thresholds.
 
-The first implemented block is:
+Implemented blocks:
 
 ```text
 C1 — Oklab <-> OKLCH / hue
+C2 — alpha / premultiplication / source-over
 ```
 
-Later C blocks will cover alpha/compositing, interpolation, WCAG measurement and
-`deltaEOK` in separate source modules.
+Later C blocks will cover interpolation, WCAG measurement and `deltaEOK` in
+separate source modules.
 
 ## C1 questions
 
@@ -173,6 +174,82 @@ can coexist with `ulp_to_rounded_ref=0`. This is expected when the observed
 
 No C1 observation is promoted to a production tolerance constant at this
 stage.
+
+## C2 questions
+
+C2 carries the validated R0.6 alpha architecture into the R0.13 comparison
+taxonomy. It keeps straight alpha and premultiplied linear-light sRGB distinct
+and characterizes only the numerical properties needed by that architecture.
+
+```text
+EXACT
+    alpha == 1 premultiplication on selected finite values
+    explicit alpha == 0 unpremultiplication branch
+    zero-alpha hidden-color collapse on selected finite positive colors
+    canonical transparent-source identity
+    selected finite opaque-source identity
+    canonical transparent-destination identity
+
+CLASSIFY
+    alpha validity in [0, 1]
+    rejection of finite out-of-range values, NaN and infinity
+
+REFERENCE
+    premultiply in wider real arithmetic
+    unpremultiply in wider real arithmetic
+    premultiplied Porter-Duff source-over in wider real arithmetic
+
+DERIVED
+    straight -> premultiplied -> straight round trip
+    source-over associativity, left grouping versus right grouping
+
+RANGE
+    smallest-positive-subnormal alpha
+    target-type underflow during premultiplication
+    information loss after unpremultiplication
+```
+
+The exact identity probes are deliberately scoped to selected finite values and
+canonical transparent premultiplied black where required. C2 does not claim a
+bitwise signed-zero contract.
+
+### C2 reference path
+
+The C2 reference functions evaluate the same defining alpha/compositing
+equations in D `real` after widening the target-type inputs.
+
+This is a **wider-arithmetic reference**, not an independent formula oracle.
+Its purpose is to separate ordinary target-type rounding from semantic and
+range failures.
+
+For `sourceOver`, the reference starts from the already-premultiplied
+target-type inputs. That isolates the arithmetic of the low-level compositing
+primitive from any rounding introduced by the preceding premultiplication.
+
+As in C1, `real` is local diagnostic evidence only when it is wider than
+`double`.
+
+### Tiny-alpha range probe
+
+R0.6 established the intentional non-injectivity of premultiplication at
+exactly zero alpha. C2 also probes the smallest positive subnormal alpha.
+
+The selected straight channels are:
+
+```text
+(0.5, 1.0, -0.5)
+```
+
+At that alpha, multiplication of the half-magnitude channels can round to zero
+even though alpha itself is non-zero and valid. The following
+unpremultiplication can therefore no longer reconstruct those original
+channels.
+
+If observed, this is a representational range limit, not ordinary round-trip
+noise and not a reason to enlarge a generic tolerance.
+
+C2 remains observational until the local DMD/LDC runs are recorded. No
+production tolerance or public API is frozen by adding this harness.
 
 ## Characterization rule
 
