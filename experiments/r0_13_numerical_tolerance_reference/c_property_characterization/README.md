@@ -2,7 +2,7 @@
 
 **Status:** EXPERIMENT
 **Parent:** R0.13 — Numerical tolerance and reference policy
-**Document revision:** 0.3
+**Document revision:** 0.4
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -245,11 +245,52 @@ even though alpha itself is non-zero and valid. The following
 unpremultiplication can therefore no longer reconstruct those original
 channels.
 
-If observed, this is a representational range limit, not ordinary round-trip
-noise and not a reason to enlarge a generic tolerance.
+The DMD and LDC runs both observed this loss. The half-magnitude channels
+rounded to signed zero during premultiplication, while the unit channel
+preserved the smallest positive subnormal. Unpremultiplication therefore
+returned `(0, 1, -0)` instead of `(0.5, 1, -0.5)`.
 
-C2 remains observational until the local DMD/LDC runs are recorded. No
-production tolerance or public API is frozen by adding this harness.
+This is a representational range limit, not ordinary round-trip noise and not a
+reason to enlarge a generic tolerance. In particular, straight ->
+premultiplied -> straight is not universally lossless even when alpha is
+positive and valid.
+
+### C2 observed results
+
+C2 has been run in debug builds on the same x86_64 Linux research host with:
+
+- DMD 2.111.0;
+- LDC 1.41.0 using DMD frontend 2.111.0 and LLVM 19.1.7.
+
+After excluding compiler/build banners and the preceding C1 output, all 99 C2
+output lines from the two runs were byte-identical.
+
+For both scalar types and both tested compilers:
+
+- the selected exact premultiplication, zero-alpha, hidden-color-collapse and
+  source-over identity probes all held exactly;
+- alpha classification accepted 0, 0.5 and 1 and rejected negative values,
+  values above 1, NaN and infinity;
+- ordinary premultiplication and unpremultiplication matched the target-type
+  rounded wider-arithmetic reference exactly in the selected probes;
+- the selected ordinary and extended premultiply -> unpremultiply round trips
+  were exact in target type;
+- extended-range source-over remained unclipped and differed from the wider
+  reference by at most 1 ULP in the selected probes;
+- source-over associativity was not bitwise exact: the selected float case
+  differed by 1 ULP in one channel, and the selected double case differed by
+  1 ULP in one channel and alpha;
+- the smallest-positive-subnormal-alpha probe demonstrated deterministic
+  target-type information loss before unpremultiplication.
+
+The associativity observation belongs to `DERIVED`, not `EXACT`. The
+tiny-alpha observation belongs to `RANGE`, not to a tolerance envelope.
+
+The identical DMD/LDC C2 debug output is useful cross-compiler evidence but is
+not promoted to a general portability guarantee. Controlled Debug/Release,
+runtime/CTFE and compiler-version comparisons remain R0.13-E work.
+
+No C2 observation freezes a production tolerance or public API.
 
 ## Characterization rule
 
