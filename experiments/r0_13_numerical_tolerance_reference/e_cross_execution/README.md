@@ -2,7 +2,7 @@
 
 **Status:** CHARACTERIZATION
 **Parent:** R0.13
-**Document revision:** 0.2
+**Document revision:** 0.3
 **Date:** 2026-09-25
 
 This harness characterizes numerical behavior across execution contexts after
@@ -156,3 +156,76 @@ typed equality and does not use promoted decimal formatting as evidence for
 stored scalar identity.
 
 No E1 observation is promoted into a tolerance.
+
+## E2 Debug versus Release observations
+
+E2 reused the exact E1 snapshot under debug and release builds of the baseline
+compilers.
+
+### DMD 2.111.0
+
+The debug and release outputs differed in exactly one selected value:
+
+```text
+double decode ordinary
+
+debug:
+    runtime = 0.147318999244498011203
+    CTFE    = 0.147318999244498011203
+    exact   = true
+
+release:
+    runtime = 0.147318999244498038959
+    CTFE    = 0.147318999244498011203
+    exact   = false
+    abs     = 2.775558e-17
+```
+
+At this magnitude the observed difference is one binary64 ULP.
+
+Every other selected E1 output line, including the compiler-sensitive Ray Trace
+probe metadata, was identical between DMD debug and release.
+
+Therefore DMD 2.111 already demonstrates that:
+
+```text
+same compiler
++
+same source
++
+same scalar type
++
+different optimization mode
+    can produce
+different derived floating-point coordinates
+```
+
+This does not imply a semantic failure. It means Debug/Release bit identity is
+not a general portable correctness contract for derived numerical operations.
+
+### LDC 1.41.0
+
+For the complete selected E1 snapshot, LDC debug and release output was
+byte-identical. No numeric coordinate, classification, mapping metadata or
+selected exact property changed.
+
+This is useful evidence but not a universal LDC guarantee; it is the observed
+result for the current snapshot, compiler version, target and host.
+
+### E2 conclusion
+
+The baseline pair therefore differs in optimization sensitivity:
+
+```text
+DMD 2.111:
+    selected Debug/Release numeric difference observed
+
+LDC 1.41:
+    selected Debug/Release output identical
+```
+
+R0.13 must not derive one generic Debug/Release identity rule from either
+compiler.
+
+No E2 observation is promoted into a tolerance. The next phase extends the same
+deterministic snapshot across the controlled compiler-version matrix.

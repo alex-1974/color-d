@@ -2,7 +2,7 @@
 
 **Status:** VALIDATED
 **Parent:** R0.13
-**Document revision:** 0.5
+**Document revision:** 0.6
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -77,7 +77,7 @@ No approximate threshold in this matrix is frozen.
 | mapped runtime↔CTFE | components | CROSS | CROSS_EXECUTION | float,double | E: characterize |
 | encoded runtime↔CTFE | components | CROSS | CROSS_EXECUTION | float,double | E: characterize |
 | compiler↔compiler | post-transform components | CROSS | CROSS_EXECUTION | float,double | E: characterize |
-| Debug↔Release | post-transform components | CROSS | CROSS_EXECUTION | float,double | E: characterize |
+| Debug↔Release | post-transform components | CROSS | CROSS_EXECUTION | float,double | E2: DMD 2.111 shows selected 1-ULP double decode difference; LDC 1.41 snapshot identical; E3: extend version matrix |
 | CSS cross-space color equivalence | Oklab components ε=0.00001 | POLICY | CSS Color 4 2026-09-13 | CSS semantics | A/C: do not globalize |
 | CSS same-space color equivalence | implementation-defined ε | POLICY | CSS Color 4 2026-09-13 | CSS semantics | A/C: do not infer portable bound |
 
