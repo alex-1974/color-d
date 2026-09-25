@@ -1,9 +1,9 @@
 # R0.13 — Numerical tolerance and reference policy
 
-**Status:** CONTRACT
+**Status:** VALIDATED
 **Research baseline:** R0.12 validated
-**Research progress:** R0.13-A validated; R0.13-B/C/D/E characterized; R0.13-F active
-**Document revision:** 0.8
+**Research progress:** R0.13-A/F validated; R0.13-B/C/D/E characterized; R0.13 complete
+**Document revision:** 1.0
 **Date:** 2026-09-25
 **GitHub:** #9 — R0.13 — Define numerical tolerance and reference policy
 
@@ -874,6 +874,10 @@ justified by the current evidence.
 
 ## R0.13-F — production-test and API policy synthesis
 
+Status: **VALIDATED**
+
+The durable production-test and API policy is recorded in `POLICY.md`.
+
 Determine:
 
 ```text
@@ -896,6 +900,30 @@ Exit criteria:
 - R0.14 receives a durable numerical-policy handoff.
 
 ---
+
+
+### R0.13-F validated handoff
+
+R0.13-F selects property-specific comparison contracts instead of a shared
+floating-point epsilon.
+
+Final decisions:
+
+```text
+EXACT properties stay exact
+strict CLASSIFY predicates stay strict
+REFERENCE and DERIVED comparisons use operation-local rules
+hue uses circular angular comparison where non-exact
+ULP is diagnostic, not a generic portable contract
+float and double are characterized separately
+CROSS reuses the underlying property contract
+POLICY thresholds remain explicit semantic inputs
+ALGORITHM thresholds remain algorithm semantics
+generic approximate helpers remain test/research infrastructure
+no generic approximate comparator enters the public API
+```
+
+R0.14 receives `POLICY.md` as the numerical-policy gate for v0.1 promotion.
 
 # 18. Explicit non-goals
 
