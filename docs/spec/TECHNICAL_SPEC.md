@@ -174,6 +174,26 @@ Computational types use floating-point values and may temporarily contain values
 
 ---
 
+
+## 4.4 Boundary with imagery-d
+
+`color-d` owns colour-value semantics and general colour mathematics.
+`imagery-d` owns image-channel binding, pixel/layout semantics, image colour
+metadata, alpha-channel identity, masks/validity/NoData, raster-region
+execution and metadata preservation.
+
+Packed values such as `SRgb8` / `SRgba8` do not define an image pixel format
+or channel-binding rule. An image consumer must establish colour-component
+binding explicitly before materializing a `color-d` value.
+
+The accepted reciprocal contract is documented in:
+
+`docs/research/IMAGERY_D_BOUNDARY.md`.
+
+`imagery-d -> color-d` is permitted when a concrete image operation needs a
+promoted production capability; `color-d` must remain independent of
+`imagery-d` and `raster-d`.
+
 # 5. Scalar model
 
 Computational color types are generic over floating-point scalar type:
