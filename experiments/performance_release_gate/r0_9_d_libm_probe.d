@@ -11,7 +11,9 @@
 // _powImpl(real, real).
 //
 // The wrapper deliberately does not claim pure: the C math binding may expose
-// C-library floating environment / errno semantics.  Production architecture
+// C-library floating environment / errno semantics.  Only functions that
+// transitively call this direct-libm path drop `pure` in this benchmark probe;
+// linear-only controls retain their original attributes. Production architecture
 // must be decided separately after numerical, CTFE and attribute validation.
 
 module app;
@@ -167,7 +169,7 @@ T srgbToLinearComponent(T)(T encoded)
 
 
 LinearSRgb!T toLinear(T)(SRgb!T color)
-@safe pure nothrow @nogc
+@safe nothrow @nogc
 {
     return LinearSRgb!T(
         srgbToLinearComponent(color.r),
@@ -188,7 +190,7 @@ T wcag2RelativeLuminance(T)(LinearSRgb!T color)
 
 
 T wcag2RelativeLuminance(T)(SRgb!T color)
-@safe pure nothrow @nogc
+@safe nothrow @nogc
 {
     return wcag2RelativeLuminance(
         color.toLinear
@@ -217,7 +219,7 @@ T wcag2ContrastRatio(T)(
     SRgb!T a,
     SRgb!T b
 )
-@safe pure nothrow @nogc
+@safe nothrow @nogc
 {
     return wcag2ContrastFromLuminance(
         wcag2RelativeLuminance(a),
@@ -251,7 +253,7 @@ pragma(inline, true)
 Wcag2Measurement!T checkedWcag2RelativeLuminance(T)(
     SRgb!T color
 )
-@safe pure nothrow @nogc
+@safe nothrow @nogc
 {
     if (!isValidWcag2SrgbDomain(color))
     {
@@ -273,7 +275,7 @@ Wcag2Measurement!T checkedWcag2ContrastRatio(T)(
     SRgb!T a,
     SRgb!T b
 )
-@safe pure nothrow @nogc
+@safe nothrow @nogc
 {
     if (
         !isValidWcag2SrgbDomain(a) ||
@@ -316,7 +318,7 @@ CompactWcag2Measurement!T
 compactCheckedWcag2RelativeLuminance(T)(
     SRgb!T color
 )
-@safe pure nothrow @nogc
+@safe nothrow @nogc
 {
     if (!isValidWcag2SrgbDomain(color))
     {
@@ -336,7 +338,7 @@ compactCheckedWcag2ContrastRatio(T)(
     SRgb!T a,
     SRgb!T b
 )
-@safe pure nothrow @nogc
+@safe nothrow @nogc
 {
     if (
         !isValidWcag2SrgbDomain(a) ||
@@ -391,7 +393,7 @@ bool tryWcag2RelativeLuminance(T)(
     SRgb!T color,
     ref T value
 )
-@safe pure nothrow @nogc
+@safe nothrow @nogc
 {
     if (!isValidWcag2SrgbDomain(color))
         return false;
