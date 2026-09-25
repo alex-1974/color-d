@@ -2,7 +2,7 @@
 
 **Status:** CHARACTERIZATION
 **Parent:** R0.13
-**Document revision:** 0.4
+**Document revision:** 0.5
 **Date:** 2026-09-25
 
 This harness carries the validated R0.8 gamut semantics into the R0.13
@@ -262,5 +262,55 @@ The previously validated R0.8 cached-hue implementation remains useful
 `INTERNAL_REGRESSION` evidence: it matched the baseline numerically over the
 R0.8 4096-case validation set. D2 does not duplicate that optimized
 implementation merely to repeat the comparison.
+
+Cross-execution behavior remains R0.13-E.
+
+## D3 Ray Trace plan
+
+D3 characterizes the validated R0.8 Ray Trace implementation without copying
+or replacing the mapping algorithm.
+
+The comparison roles are:
+
+```text
+EXACT
+    L >= 1 -> white, zero iterations, success
+    L <= 0 -> black, zero iterations, success
+    selected in-gamut fast-path result and metadata
+    negative-chroma canonicalization equivalence
+
+CLASSIFY
+    non-finite input fails rather than being silently repaired
+    mapped finite outputs must classify in strict sRGB gamut
+
+ALGORITHM
+    ray intersection epsilon is scalar-specific:
+        float  -> 1e-6
+        double -> 1e-12
+    out-of-gamut iteration budget = 4
+
+INTERNAL_REGRESSION
+    selected R0.8 mapping cases including the published-yellow input
+
+DERIVED
+    paired float/double 4096-sample characterization
+    success/gamut failures
+    fixed-budget violations
+    iteration-count differences
+    maximum observed iterations
+    maximum RGB absolute difference
+    maximum deltaEOK between paired mapped outputs
+```
+
+The Ray Trace epsilon is an intersection/algorithm threshold. It is not a
+strict-gamut epsilon, a generic test tolerance or a cross-execution tolerance.
+
+The fixed iteration budget is a different kind of algorithm contract again:
+it bounds dynamic work. D3 therefore records budget violations independently
+from numerical output differences.
+
+The previously validated R0.8 no-atan2 implementation remains
+`INTERNAL_REGRESSION` evidence: it matched the baseline numerically over the
+R0.8 4096-case validation set. D3 does not copy that optimized implementation.
 
 Cross-execution behavior remains R0.13-E.

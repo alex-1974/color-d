@@ -14,6 +14,7 @@ import std.math.traits : isIdentical, isNaN;
 import std.stdio : writefln, writeln;
 
 import d2_local_minde : runD2;
+import d3_ray_trace : runD3;
 
 
 private void runD1For(T)(string scalarName)
@@ -237,4 +238,5 @@ void main()
     runD1For!double("double");
 
     runD2();
+    runD3();
 }
