@@ -2,7 +2,7 @@
 
 **Status:** EXPERIMENT
 **Parent:** R0.13 — Numerical tolerance and reference policy
-**Document revision:** 0.7
+**Document revision:** 0.8
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -456,10 +456,10 @@ EXACT
     linear black luminance == 0
     linear white luminance == 1 on the selected published coefficients
     selected same-color contrast == 1
-    selected black/white contrast == 21
     contrast symmetry on selected valid inputs
 
 REFERENCE
+    normative black/white contrast value 21:1
     encoded-sRGB decode in wider real arithmetic
     WCAG relative luminance in wider real arithmetic
     contrast ratio in wider real arithmetic
@@ -477,6 +477,20 @@ REGRESSION
     the old R0.9 "independent direct WCAG reference path" is same-formula
     regression evidence, not an independent numerical oracle
 ```
+
+### Exactness correction from the first C4 compile
+
+The first DMD 2.111 compile rejected an exact CTFE assertion that the
+black/white contrast result was bitwise equal to `21.0`, even though the
+compiler diagnostic printed both operands as `21.0`.
+
+That is precisely the distinction R0.13 is intended to expose: a normative
+mathematical/reference value of 21:1 does not by itself justify an `EXACT`
+floating-point comparison. C4 therefore keeps same-color ratio 1 and selected
+symmetry in the exact bucket, but moves black/white 21:1 to `REFERENCE` and
+reports its numerical distance explicitly.
+
+No tolerance was introduced to make the compile-time assertion pass.
 
 ### Reference provenance
 
