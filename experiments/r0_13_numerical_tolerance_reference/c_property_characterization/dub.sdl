@@ -1,0 +1,7 @@
+name "color-d-r0-13-c-property-characterization"
+description "R0.13-C numerical property characterization harness"
+authors "color-d research"
+copyright "Copyright © 2026"
+license "BSL-1.0"
+targetType "executable"
+sourcePaths "source"

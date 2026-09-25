@@ -1,0 +1,37 @@
+module app;
+
+import c1_oklch_hue : runC1For;
+import std.stdio : writefln, writeln;
+
+void main()
+{
+    writeln("=== color-d R0.13-C property characterization ===");
+    writeln();
+
+    writefln(
+        "float  sizeof=%s mant_dig=%s epsilon=% .9g",
+        float.sizeof,
+        float.mant_dig,
+        float.epsilon
+    );
+    writefln(
+        "double sizeof=%s mant_dig=%s epsilon=% .17g",
+        double.sizeof,
+        double.mant_dig,
+        double.epsilon
+    );
+    writefln(
+        "real   sizeof=%s mant_dig=%s epsilon=% .21g",
+        real.sizeof,
+        real.mant_dig,
+        real.epsilon
+    );
+    writefln(
+        "real wider than double = %s",
+        real.mant_dig > double.mant_dig
+    );
+    writeln();
+
+    runC1For!float("float");
+    runC1For!double("double");
+}
