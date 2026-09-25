@@ -2,8 +2,8 @@
 
 **Status:** CONTRACT
 **Research baseline:** R0.12 validated
-**Research progress:** R0.13-A validated; R0.13-B/C/D characterized
-**Document revision:** 0.3
+**Research progress:** R0.13-A validated; R0.13-B/C/D characterized; R0.13-E active
+**Document revision:** 0.4
 **Date:** 2026-09-25
 **GitHub:** #9 — R0.13 — Define numerical tolerance and reference policy
 
