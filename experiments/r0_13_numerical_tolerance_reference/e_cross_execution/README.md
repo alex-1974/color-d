@@ -2,7 +2,7 @@
 
 **Status:** CHARACTERIZATION
 **Parent:** R0.13
-**Document revision:** 0.1
+**Document revision:** 0.2
 **Date:** 2026-09-25
 
 This harness characterizes numerical behavior across execution contexts after
@@ -98,3 +98,61 @@ cross-execution policy in light of the more precise B/C/D comparison taxonomy.
 
 No generic runtime/CTFE or compiler-cross epsilon is introduced by this
 harness.
+
+## E1 baseline observations
+
+E1 has been run in debug builds with DMD 2.111.0 and LDC 1.41.0
+(using the DMD 2.111 frontend).
+
+For the selected snapshot, both compilers produced the same numerical
+runtime-versus-CTFE differences.
+
+Observed float examples include:
+
+```text
+decode ordinary       1.490116e-08
+encode ordinary       2.980232e-08
+XYZ max component     2.980232e-08
+Oklab max component   5.960464e-08
+OKLCH max component   4.577637e-05   (hue in degrees)
+deltaEOK              7.450581e-08
+Local MINDE RGB       1.788139e-07
+Ray Trace RGB         5.960464e-07
+encoded Ray RGB       2.980232e-07
+```
+
+Selected double runtime-versus-CTFE differences were generally in the
+1e-16 range, with the OKLCH hue probe reaching approximately
+8.526513e-14 degrees.
+
+The rounded transfer-boundary probes were exact in the selected cases.
+Ordinary derived coordinates generally were not.
+
+The fixed D3 Ray Trace float probe is the important metadata case:
+
+```text
+DMD runtime:  iterations=4 success=false in-gamut=true
+DMD CTFE:     iterations=4 success=true  in-gamut=true
+
+LDC runtime:  iterations=4 success=true  in-gamut=true
+LDC CTFE:     iterations=4 success=true  in-gamut=true
+```
+
+The DMD and LDC CTFE mapped coordinates for this probe were the same in the
+observed runs, and the runtime mapped coordinates were also the same. The
+compiler-sensitive difference is the DMD runtime control-flow outcome recorded
+by the experimental success flag.
+
+This strengthens the D3 conclusion:
+
+```text
+cross-execution internal metadata
+    !=
+portable mapped-color semantics
+```
+
+Selected alpha preservation remains exact structural semantics. E1 reports
+typed equality and does not use promoted decimal formatting as evidence for
+stored scalar identity.
+
+No E1 observation is promoted into a tolerance.
