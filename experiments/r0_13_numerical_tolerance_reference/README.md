@@ -2,8 +2,8 @@
 
 **Status:** CONTRACT
 **Research baseline:** R0.12 validated
-**Research progress:** R0.13-A validated; R0.13-B/C/D characterized; R0.13-E1/E2/E3 characterized; E4 active
-**Document revision:** 0.7
+**Research progress:** R0.13-A validated; R0.13-B/C/D/E characterized; R0.13-F active
+**Document revision:** 0.8
 **Date:** 2026-09-25
 **GitHub:** #9 — R0.13 — Define numerical tolerance and reference policy
 
@@ -856,6 +856,21 @@ Exit criteria:
 - any compiler-specific tolerance or workaround requires direct evidence.
 
 ---
+
+### R0.13-E characterized handoff
+
+R0.13-E establishes that cross-execution portability is evaluated by
+applying the same property-specific contracts from A-D in every execution
+environment, not by introducing a new global cross-execution epsilon.
+
+The selected matrix covered runtime/CTFE, Debug/Release, DMD 2.111-2.113
+and LDC 1.41-1.43. It observed small derived-coordinate differences, one
+stable DMD-release one-ULP ordinary double sRGB decode difference, and one
+fixed compiler-sensitive Ray Trace runtime success flag. Exact structural
+properties and strict semantic postconditions remain separate.
+
+No compiler-specific, build-mode-specific or CTFE-specific tolerance is
+justified by the current evidence.
 
 ## R0.13-F — production-test and API policy synthesis
 

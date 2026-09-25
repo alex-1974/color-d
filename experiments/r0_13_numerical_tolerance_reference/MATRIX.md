@@ -2,7 +2,7 @@
 
 **Status:** VALIDATED
 **Parent:** R0.13
-**Document revision:** 0.8
+**Document revision:** 0.9
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -72,10 +72,10 @@ No approximate threshold in this matrix is frozen.
 | deltaEOK | ULP behavior | diagnostic candidate | independent real route | float,double | C: evaluate usefulness |
 | raw tone/palette | copied components | EXACT | structural semantics | float,double | A/F: preserve |
 | raw tone/palette | cardinality/endpoints | EXACT | structural semantics | float,double | A/F: preserve |
-| palette runtime↔CTFE | raw values | EXACT | CROSS_EXECUTION | float,double | E: verify |
-| Ray Trace runtime↔CTFE | success/iterations | CROSS | CROSS_EXECUTION | float,double | E: characterize; D3 already shows compiler-sensitive success metadata for a fixed float probe |
-| mapped runtime↔CTFE | components | CROSS | CROSS_EXECUTION | float,double | E: characterize |
-| encoded runtime↔CTFE | components | CROSS | CROSS_EXECUTION | float,double | E: characterize |
+| palette runtime↔CTFE | raw values | EXACT | CROSS_EXECUTION | float,double | E: exact structural values remain exact; F: promote test contract |
+| Ray Trace runtime↔CTFE | success/iterations | CROSS | CROSS_EXECUTION | float,double | E: fixed float probe disproves portable success equality; fixed work budget remains separate exact algorithm contract |
+| mapped runtime↔CTFE | components | CROSS | CROSS_EXECUTION | float,double | E: derived coordinates use operation-specific acceptance, not generic bit identity |
+| encoded runtime↔CTFE | components | CROSS | CROSS_EXECUTION | float,double | E: derived coordinates use operation-specific acceptance, not generic bit identity |
 | compiler↔compiler | post-transform components | CROSS | CROSS_EXECUTION | float,double | E3: version-stable within both families; debug differs only in fixed float Ray runtime success metadata; release also differs by one ULP in ordinary double sRGB decode |
 | Debug↔Release | post-transform components | CROSS | CROSS_EXECUTION | float,double | E2/E3: DMD 2.111-2.113 show the same selected 1-ULP double decode release difference; LDC 1.41-1.43 snapshot identical across build modes |
 | CSS cross-space color equivalence | Oklab components ε=0.00001 | POLICY | CSS Color 4 2026-09-13 | CSS semantics | A/C: do not globalize |

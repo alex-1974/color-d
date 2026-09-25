@@ -1,8 +1,8 @@
 # R0.13-E — Cross-execution characterization
 
-**Status:** CHARACTERIZATION
+**Status:** CHARACTERIZED
 **Parent:** R0.13
-**Document revision:** 0.5
+**Document revision:** 0.6
 **Date:** 2026-09-25
 
 This harness characterizes numerical behavior across execution contexts after
@@ -387,3 +387,101 @@ compiler families while also showing that the observed portability differences
 are narrow and property-specific rather than broad numerical instability.
 
 No compiler-cross tolerance is frozen by E3.
+
+## E4 cross-execution policy synthesis
+
+E1-E3 show that cross-execution comparison is not a new numerical operation
+class with one tolerance. It is a portability dimension applied to the
+property-specific contracts established by R0.13-A-D.
+
+The resulting rule is:
+
+```text
+do not ask:
+    "are all executions numerically equal within one cross-execution epsilon?"
+
+ask:
+    "does each execution satisfy the same semantic/reference contract for
+     this property?"
+```
+
+Exact semantic properties remain exact in every execution context. Derived
+coordinates are not generally required to be bit-identical across runtime
+and CTFE, Debug and Release, DMD and LDC, or compiler versions unless the
+specific operation contract independently establishes exactness.
+
+Strict predicates keep their strict mathematical semantics. For derived
+values later classified by such a predicate, each execution must satisfy
+the semantic postcondition; no hidden epsilon is added merely to force
+cross-execution agreement.
+
+Algorithm metadata must be split by meaning. Structural contracts such as a
+fixed work budget may remain exact. Path-dependent metadata such as the
+experimental Ray Trace `success` flag is not automatically portable: D3/E1/E3
+show the same conceptual input can return different internal path status
+while yielding an acceptable strict in-gamut mapped color.
+
+CTFE and runtime therefore share the same public mathematical semantics, not
+a blanket bit-identity requirement for every derived floating-point result.
+Debug and Release likewise must satisfy the same property-specific contracts
+without requiring general bit identity.
+
+The tested compiler matrix provides no evidence for a DMD epsilon, an LDC
+epsilon, a compiler-version epsilon, a Debug epsilon or a Release epsilon.
+If a future compiler needs a distinct workaround or envelope, that requires
+direct evidence for the affected operation.
+
+Cross-execution tests should therefore remain layered:
+
+```text
+1. exact semantic assertions
+2. strict classifications / semantic postconditions
+3. independent or analytical reference comparisons
+4. derived / round-trip comparisons
+5. cross-execution diagnostics
+6. algorithm-metadata diagnostics where relevant
+```
+
+The cross-execution layer records portability drift. It does not replace the
+lower property-specific layers with a generic approximate-equality helper.
+
+R0.13-E provides no evidence for a production-facing cross-execution
+tolerance or compiler-specific numerical policy object.
+
+## E exit conclusion
+
+R0.13-E satisfies its exit criteria:
+
+```text
+runtime <-> CTFE:
+    semantic agreement required; generic bit identity not required
+
+Debug <-> Release:
+    same semantic/reference contract; generic bit identity not required
+
+compiler <-> compiler:
+    same semantic/reference contract; generic bit identity not required
+
+compiler version <-> compiler version:
+    same semantic/reference contract; no version-specific tolerance justified
+
+exact semantic properties:
+    remain exact
+
+strict classifications:
+    remain strict
+
+derived numerical values:
+    use operation-specific comparison rules
+
+path-dependent algorithm metadata:
+    diagnostic unless independently promoted
+```
+
+R0.13-E therefore closes as **CHARACTERIZED**.
+
+No universal cross-execution epsilon, compiler-specific tolerance or
+build-mode tolerance is promoted.
+
+The remaining work belongs to R0.13-F: consolidate A-E into the
+production-test and API numerical policy.
