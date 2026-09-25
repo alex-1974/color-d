@@ -125,7 +125,9 @@ if (isColorScalar!T)
     double localMaxOriginalDelta = 0;
     double rayMaxOriginalDelta = 0;
 
-    foreach (_; 0 .. sampleCount)
+    size_t accepted = 0;
+
+    while (accepted < sampleCount)
     {
         const auto original =
             LinearSRgb!T(
@@ -143,6 +145,8 @@ if (isColorScalar!T)
         // Stay on the intended in-gamut fast-path sample only.
         if (!input.inSrgbGamut)
             continue;
+
+        ++accepted;
 
         const auto local =
             gamutMapLocalMinde(input);
