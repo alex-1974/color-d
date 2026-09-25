@@ -1,6 +1,9 @@
 # R0.13 — Numerical tolerance and reference policy
 
 **Status:** CONTRACT
+**Research baseline:** R0.12 validated
+**Document revision:** 0.1
+**Date:** 2026-09-25
 **GitHub:** #9 — R0.13 — Define numerical tolerance and reference policy
 
 R0.13 defines the numerical comparison and reference strategy needed before
