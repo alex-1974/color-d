@@ -2,7 +2,7 @@
 
 **Status:** CHARACTERIZATION
 **Parent:** R0.13
-**Document revision:** 0.3
+**Document revision:** 0.4
 **Date:** 2026-09-25
 
 This harness carries the validated R0.8 gamut semantics into the R0.13
@@ -18,6 +18,91 @@ D1  strict gamut classification / explicit epsilon policy / clipping
 D2  Local MINDE numerical and algorithm-threshold characterization
 D3  Ray Trace numerical and algorithm-threshold characterization
 D4  mapping identity, idempotence, metadata and cross-method observations
+```
+
+## D2 observed results
+
+D2 has been run in debug builds on the same x86_64 Linux research host with:
+
+- DMD 2.111.0;
+- LDC 1.41.0 using DMD frontend 2.111.0 and LLVM 19.1.7.
+
+The complete D2 runtime output was byte-identical between the two tested
+compilers.
+
+For both `float` and `double` and both compilers:
+
+- `L >= 1` mapped exactly to linear-sRGB white with zero iterations and
+  success;
+- `L <= 0` mapped exactly to linear-sRGB black with zero iterations and
+  success;
+- the selected in-gamut fast-path case returned the expected linear-sRGB value
+  exactly with zero iterations and success;
+- negative-chroma canonicalization produced exactly the same mapped color,
+  iteration count and success flag as the equivalent positive-chroma /
+  hue-plus-180-degree representation;
+- non-finite input returned failure with zero iterations and did not yield a
+  strict in-gamut result;
+- all six selected R0.8 regression cases returned success and strict in-gamut
+  output;
+- the selected regression-case iteration counts matched between scalar types:
+  11, 10, 10, 12, 9 and 8 respectively.
+
+The algorithm constants observed by the harness remain:
+
+```text
+JND                     0.02
+chroma-search epsilon   0.0001
+defensive bound         128 iterations
+```
+
+These are algorithm semantics, not comparison tolerances.
+
+### Paired float/double generated characterization
+
+Across 4096 deterministic conceptual out-of-gamut inputs accepted in both
+scalar representations:
+
+```text
+float success failures        0
+double success failures       0
+float gamut failures          0
+double gamut failures         0
+iteration-count differences   2
+max float iterations          13
+max double iterations         13
+max RGB absolute difference   3.231754e-04
+max deltaEOK                  6.194942e-05
+```
+
+The two iteration-count differences are therefore a scalar-precision effect in
+this sample rather than a DMD-versus-LDC effect: both tested compilers produced
+the same two differences and the same generated maxima.
+
+This is an important metadata distinction. Local MINDE iteration count is exact
+for one execution of one scalar implementation, but D2 does not support
+treating the count as invariant across `float` and `double` for the same
+conceptual input.
+
+Likewise, the observed `3.231754e-04` RGB maximum and `6.194942e-05`
+deltaEOK maximum are descriptive measurements. They are not promoted into a
+float/double acceptance tolerance.
+
+The observed paired deltaEOK maximum is far below the Local MINDE
+`JND = 0.02`, but that comparison is only useful for scale context. The JND
+is part of the mapping algorithm and must not be reused as a generic numerical
+comparison rule.
+
+D2 therefore strengthens the R0.13 taxonomy:
+
+```text
+algorithm threshold
+    !=
+test tolerance
+    !=
+scalar-cross comparison rule
+    !=
+exact per-execution metadata
 ```
 
 Cross-execution behavior remains R0.13-E.
