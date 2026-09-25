@@ -2,7 +2,7 @@
 
 **Status:** EXPERIMENT
 **Parent:** R0.13 — Numerical tolerance and reference policy
-**Document revision:** 0.4
+**Document revision:** 0.5
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -14,10 +14,11 @@ Implemented blocks:
 ```text
 C1 — Oklab <-> OKLCH / hue
 C2 — alpha / premultiplication / source-over
+C3 — interpolation / hue paths / alpha-aware interpolation
 ```
 
-Later C blocks will cover interpolation, WCAG measurement and `deltaEOK` in
-separate source modules.
+Later C blocks will cover WCAG measurement and `deltaEOK` in separate source
+modules.
 
 ## C1 questions
 
@@ -291,6 +292,101 @@ not promoted to a general portability guarantee. Controlled Debug/Release,
 runtime/CTFE and compiler-version comparisons remain R0.13-E work.
 
 No C2 observation freezes a production tolerance or public API.
+
+
+## C3 questions
+
+C3 carries the validated R0.7 interpolation semantics into the R0.13
+comparison taxonomy. It deliberately separates semantic endpoint behavior from
+the numerical properties of the scalar interpolation formula.
+
+```text
+EXACT
+    selected dyadic scalar endpoints
+    deterministic hue-path branch decisions
+    exact 180-degree hue tie behavior
+    exact C == 0 hue borrowing
+    negative-chroma canonicalization on selected equivalent inputs
+    alpha-aware hidden-color behavior on selected canonical inputs
+    zero-alpha no-division structure
+
+REFERENCE
+    ordinary scalar interpolation against wider real arithmetic
+    extrapolation against wider real arithmetic
+    non-trivial hue interpolation after semantic endpoint adjustment
+
+DERIVED
+    alpha-aware rectangular interpolation after interpolation premultiplication
+    polar interpolation after chroma canonicalization and hue adjustment
+
+POLICY
+    near-achromatic values remain distinct from exact C == 0
+    no hidden chroma epsilon is introduced
+
+RANGE
+    finite opposite-sign endpoints near +/-T.max
+    subtraction overflow in a + (b - a) * t
+    endpoint failures caused by evaluating b - a before t is applied
+```
+
+### Legacy scalar form
+
+R0.7 uses:
+
+```text
+a + (b - a) * t
+```
+
+This form has attractive ordinary behavior and preserves extrapolation, but it
+does not provide a universal finite-input endpoint guarantee. If finite `a`
+and `b` are far enough apart, `b - a` can overflow before multiplication by
+`t`.
+
+C3 therefore keeps two functions distinct:
+
+- `legacyLerp`, which reproduces the R0.7 source form exactly;
+- `endpointAwareLerp`, which adds only explicit `t == 0` and `t == 1`
+  branches before delegating all other cases to the legacy form.
+
+The endpoint-aware helper is a research probe, not a complete robust
+interpolation algorithm. In particular, it intentionally does not claim to
+solve interior overflow or extrapolation-range questions.
+
+### Endpoint semantics versus numerical range
+
+If the project wants `t == 0` and `t == 1` to be exact semantic contracts,
+those contracts should be implemented structurally. A tolerance cannot repair
+a NaN or infinity produced before the endpoint multiplier becomes effective.
+
+Conversely, exact endpoint branches do not define the acceptable numerical
+envelope for interior interpolation. C3 reports those categories separately.
+
+### Hue and achromatic policy
+
+C3 retains the R0.7 hue rules:
+
+- `shorter`, `longer`, `increasing` and `decreasing` remain explicit;
+- exact +/-180-degree ties are deterministic;
+- exact `C == 0` may borrow the chromatic endpoint hue;
+- near-achromatic non-zero chroma does not implicitly borrow hue;
+- negative chroma is canonicalized before polar interpolation.
+
+These are semantic or policy decisions, not floating-point tolerance results.
+
+### C3 reference path
+
+Scalar references widen the target-type inputs to D `real` before evaluating
+the same interpolation equation. Hue references first apply the same semantic
+hue-path endpoint selection, then evaluate the scalar interpolation in wider
+arithmetic.
+
+This is a wider-arithmetic reference, not an independent interpolation
+specification oracle. As in C1 and C2, `real` remains local diagnostic
+evidence rather than portable ground truth.
+
+C3 remains observational until local DMD/LDC runs are recorded. No production
+tolerance, public interpolation spelling or complete robust-lerp algorithm is
+frozen by adding this harness.
 
 ## Characterization rule
 
