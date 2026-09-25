@@ -2,7 +2,7 @@
 
 **Status:** VALIDATED
 **Parent:** R0.13
-**Document revision:** 0.3
+**Document revision:** 0.4
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -58,8 +58,8 @@ No approximate threshold in this matrix is frozen.
 | epsilon gamut query | expanded boundary | POLICY | caller policy | float,double | D: keep separate |
 | clip | selected boundary/idempotence | EXACT candidate | clamp semantics | float,double | D: verify |
 | Local MINDE | convergence thresholds | ALGORITHM | pinned CSS algorithm | float,double | D: document separately |
-| Ray Trace | convergence thresholds | ALGORITHM | pinned CSS algorithm | float,double | D: document separately |
-| gamut mapping | status / iterations | EXACT candidate | algorithm semantics | float,double | D/E: verify |
+| Ray Trace | ray epsilon / fixed work budget | ALGORITHM | pinned CSS algorithm | float,double | D: scalar-specific ray epsilon and four-intersection budget characterized |
+| gamut mapping | status / iterations | EXACT / CROSS | algorithm semantics | float,double | D: exact within one execution where specified, but not scalar/compiler invariant; E: characterize cross execution |
 | gamut mapping | mapped coordinates | REFERENCE / DERIVED | reference algorithm | float,double | D: characterize |
 | WCAG luminance | valid/invalid domain | CLASSIFY | WCAG 2.2 | float,double | C: preserve |
 | WCAG luminance | branch boundary | REFERENCE / CLASSIFY | WCAG 2.2 | float,double | C: boundary probes |
@@ -73,7 +73,7 @@ No approximate threshold in this matrix is frozen.
 | raw tone/palette | copied components | EXACT | structural semantics | float,double | A/F: preserve |
 | raw tone/palette | cardinality/endpoints | EXACT | structural semantics | float,double | A/F: preserve |
 | palette runtime↔CTFE | raw values | EXACT | CROSS_EXECUTION | float,double | E: verify |
-| Ray Trace runtime↔CTFE | success/iterations | EXACT | CROSS_EXECUTION | float,double | E: verify |
+| Ray Trace runtime↔CTFE | success/iterations | CROSS | CROSS_EXECUTION | float,double | E: characterize; D3 already shows compiler-sensitive success metadata for a fixed float probe |
 | mapped runtime↔CTFE | components | CROSS | CROSS_EXECUTION | float,double | E: characterize |
 | encoded runtime↔CTFE | components | CROSS | CROSS_EXECUTION | float,double | E: characterize |
 | compiler↔compiler | post-transform components | CROSS | CROSS_EXECUTION | float,double | E: characterize |
@@ -109,6 +109,31 @@ claims remain R0.13-E work.
 No B observation is promoted here into a production tolerance constant.
 
 ---
+
+# R0.13-D promotion notes
+
+D1-D3 add the following constraints:
+
+```text
+strict gamut geometry != tolerant boundary policy
+algorithm epsilon != comparison tolerance
+fixed iteration budget != exact iteration count
+mapping success metadata != mapped-color validity
+per-execution metadata != cross-scalar/cross-compiler invariant
+```
+
+D2 observed Local MINDE iteration-count differences between `float` and
+`double` for the same conceptual inputs while both scalar paths remained
+successful and in gamut.
+
+D3 observed a stronger distinction for Ray Trace: a fixed `float` OKLCH probe
+returned `success=false` under DMD 2.111 and `success=true` under LDC 1.41,
+while both returned the same final mapped `float` RGB components and both
+remained in gamut. The divergence arose from compiler-dependent intermediate
+rounding around the scalar-specific Ray Trace interior/epsilon decisions.
+
+Therefore R0.13-E must not begin from an assumption that Ray Trace diagnostic
+metadata is bit- or value-identical across execution environments.
 
 # Matrix conclusions
 

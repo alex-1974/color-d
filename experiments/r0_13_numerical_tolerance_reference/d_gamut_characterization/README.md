@@ -2,7 +2,7 @@
 
 **Status:** CHARACTERIZATION
 **Parent:** R0.13
-**Document revision:** 0.5
+**Document revision:** 0.6
 **Date:** 2026-09-25
 
 This harness carries the validated R0.8 gamut semantics into the R0.13
@@ -312,5 +312,134 @@ from numerical output differences.
 The previously validated R0.8 no-atan2 implementation remains
 `INTERNAL_REGRESSION` evidence: it matched the baseline numerically over the
 R0.8 4096-case validation set. D3 does not copy that optimized implementation.
+
+## D3 observed results
+
+D3 has been run in debug builds on the same x86_64 Linux research host with:
+
+- DMD 2.111.0;
+- LDC 1.41.0 using DMD frontend 2.111.0 and LLVM 19.1.7.
+
+The selected exact semantic cases held for both scalar types in the observed
+runs:
+
+- lightness above/below the SDR interval returned exact white/black with zero
+  iterations and success;
+- the selected in-gamut fast path returned the expected linear-sRGB value
+  exactly with zero iterations and success;
+- negative-chroma canonicalization matched the equivalent positive-chroma /
+  hue-plus-180-degree representation;
+- non-finite input returned failure with zero iterations and did not produce a
+  strict in-gamut result.
+
+The Ray Trace algorithm parameters remain scalar-specific:
+
+```text
+float ray epsilon    1e-6
+double ray epsilon   1e-12
+iteration budget     4
+```
+
+These are algorithm parameters, not comparison tolerances.
+
+### Paired float/double generated characterization
+
+Across the deterministic 4096-case paired out-of-gamut sample:
+
+```text
+                                  DMD 2.111      LDC 1.41
+float success failures                 3              2
+double success failures                0              0
+float gamut failures                   0              0
+double gamut failures                  0              0
+float budget violations                0              0
+double budget violations               0              0
+iteration-count differences            0              0
+max float iterations                   4              4
+max double iterations                  4              4
+max RGB absolute difference      1.798316e-06   1.798316e-06
+max deltaEOK                     8.532310e-07   8.532310e-07
+```
+
+Thus the returned mapped colors remained strict in-gamut and the fixed work
+budget held in every sampled case, while the experimental Ray Trace
+`success` metadata was not compiler-invariant for `float`.
+
+### Fixed compiler-sensitive probe
+
+One DMD-only failure from the generated sample was promoted to a fixed
+`float` OKLCH probe:
+
+```text
+L = 0.88228511810302734375
+C = 0.343281686305999755859
+h = 19.4710636138916015625 degrees
+```
+
+For that identical target-type input:
+
+```text
+DMD 2.111:
+    success    false
+    iterations 4
+    mapped     (1, 0.5812702178955078125, 0.575607419013977050781)
+
+LDC 1.41:
+    success    true
+    iterations 4
+    mapped     (1, 0.5812702178955078125, 0.575607419013977050781)
+```
+
+The final mapped `float` components were identical, but the intermediate
+OKLCH -> linear-sRGB values differed between compilers.
+
+The trace locates the control-flow divergence at the interior-anchor decision.
+Under DMD, the third reconstructed point was approximately:
+
+```text
+(0.999998808, 0.581270635, 0.575607836)
+```
+
+and classified inside the Ray Trace interior, so it became the new anchor.
+The fourth reconstructed point was then only about one float epsilon-scale Ray
+step away. Every direction component was smaller than the algorithm's absolute
+`1e-6` ray epsilon, so the slab intersection treated all axes as parallel,
+left no finite intersection parameter, and triggered the fallback path.
+
+Under LDC, the corresponding third reconstructed point was approximately:
+
+```text
+(1.00000143, 0.581269383, 0.575607479)
+```
+
+and therefore did not become the interior anchor. The fourth iteration retained
+the earlier achromatic anchor and completed successfully.
+
+This behavior is consistent with the pinned CSS Ray Trace design: the
+32-bit ray epsilon is `1e-6`, the algorithm performs at most four
+intersections, and a failed intersection falls back to the previous result as
+a defensive catastrophic-failure path.
+
+For R0.13 the important numerical-policy conclusion is not that the fallback
+must be removed. It is that the experimental `success` flag describes
+internal algorithm-path completion and is not a portable color-result
+equivalence criterion.
+
+Therefore:
+
+```text
+same input
+    can produce
+different internal success metadata
+    while producing
+the same valid mapped color
+```
+
+D3 does not support treating Ray Trace `success` as exact across compilers.
+The iteration budget remains exact as an algorithm bound, while observed
+iteration counts and internal status require separate cross-execution
+characterization.
+
+No D3 observation is promoted into a generic tolerance.
 
 Cross-execution behavior remains R0.13-E.
