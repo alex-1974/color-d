@@ -2,7 +2,7 @@
 
 **Status:** EXPERIMENT
 **Parent:** R0.13 — Numerical tolerance and reference policy
-**Document revision:** 0.8
+**Document revision:** 0.9
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -534,8 +534,71 @@ Unresolved alpha remains outside the ordinary WCAG measurement primitive.
 Compositing/alpha semantics were characterized in C2; C4 assumes the color to
 be measured has already been resolved.
 
-C4 remains observational until local DMD/LDC runs are recorded. No production
-tolerance or final public WCAG API is frozen by adding this harness.
+### C4 observed results
+
+C4 has been run in debug builds on the same x86_64 Linux research host with:
+
+- DMD 2.111.0;
+- LDC 1.41.0 using DMD frontend 2.111.0 and LLVM 19.1.7.
+
+After excluding compiler/build banners and the preceding C1-C3 output, the C4
+runtime output from the two runs was byte-identical.
+
+For both scalar types and both tested compilers:
+
+- domain classification accepted the selected finite encoded/linear values in
+  [0,1] and rejected below-range, above-range, NaN and infinity probes;
+- selected linear black and white luminance identities held exactly;
+- selected same-color contrast and contrast symmetry held exactly;
+- the old R0.9 separately spelled WCAG route remained exactly equal to the
+  candidate route, confirming its classification as same-formula regression
+  rather than an independent oracle;
+- WCAG relative luminance remained observably distinct from XYZ-D65 Y by about
+  1.60212e-05 for the selected ordinary encoded color.
+
+The selected black/white contrast result illustrates why the normative 21:1
+value belongs to `REFERENCE`, not universally to `EXACT`:
+
+- `float` produced about 20.99999809, one ULP from target-rounded 21;
+- `double` produced exact 21 at runtime on both tested compilers.
+
+Ordinary encoded WCAG probes reached 1 ULP for float and 4 ULP for double in
+the selected cases. The selected ordinary contrast probe reached 3 ULP for
+float and 2 ULP for double. These are observations, not promoted thresholds.
+
+The encoded transfer-boundary luminance probes showed the same selected
+ULP-to-rounded-reference pattern for both scalar types:
+
+```text
+below   0 ULP
+at      1 ULP
+above   3 ULP
+```
+
+This is downstream evidence of the already-characterized R0.13-B1 transfer
+boundary. It does not justify a separate or larger generic WCAG tolerance.
+
+### CTFE/runtime follow-up
+
+Before black/white 21:1 was reclassified from `EXACT` to `REFERENCE`, DMD
+2.111 rejected a compile-time assertion equivalent to:
+
+```d
+static assert(ctfeContrast == 21.0);
+```
+
+even though the later DMD runtime probe of the same `double` computation
+reported exact 21 with zero ULP distance to the wider reference.
+
+That observation is retained as concrete motivation for R0.13-E
+runtime-versus-CTFE characterization. C4 does not infer its mechanism and does
+not turn it into a WCAG tolerance rule.
+
+The identical DMD/LDC C4 runtime output is useful cross-compiler evidence but
+is not a general portability guarantee. Controlled Debug/Release,
+runtime/CTFE and compiler-version comparisons remain R0.13-E work.
+
+No C4 observation freezes a production tolerance or final public WCAG API.
 
 ## Characterization rule
 
