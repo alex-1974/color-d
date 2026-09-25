@@ -2,7 +2,8 @@
 
 **Status:** CONTRACT
 **Research baseline:** R0.12 validated
-**Document revision:** 0.1
+**Research progress:** R0.13-A validated; R0.13-B characterized (`fc25044`)
+**Document revision:** 0.2
 **Date:** 2026-09-25
 **GitHub:** #9 — R0.13 — Define numerical tolerance and reference policy
 
@@ -679,20 +680,58 @@ XYZ D65 ↔ Oklab
 Measure and compare:
 
 ```text
-independent references
+independent and provenance-aware reference paths
 float
 double
 runtime
-CTFE
 round trips
-compiler/build variants
+exploratory compiler-cross behavior
 ```
+
+CTFE, Debug ↔ Release behavior and the controlled multi-version compiler matrix
+belong to R0.13-E. R0.13-B may record exploratory compiler-cross observations,
+but those observations do not satisfy or replace the R0.13-E portability work.
 
 Exit criteria:
 
 - comparison strategy per conversion class;
 - scalar-specific behavior characterized;
+- structural boundary cases separated from ordinary floating-point error;
+- provenance-route discrepancies separated from same-route reference error;
 - no arbitrary global threshold.
+
+### R0.13-B validated handoff
+
+R0.13-B is characterized by the reproducible harness committed as:
+
+```text
+fc25044
+research: characterize R0.13-B numerical references
+```
+
+The validated findings are:
+
+- exact-zero candidates remain separate from approximate numerical comparisons;
+- the rounded sRGB transfer thresholds form a structural round-trip special case
+  and must not enlarge a generic transfer tolerance;
+- the independently derived IEC/ICC linear-sRGB ↔ XYZ D65 matrix agrees with the
+  pinned CSS rational coefficient set to roughly `1e-20`–`1e-19` in the local
+  wider-`real` diagnostic path;
+- ULP and relative-error diagnostics become misleading near zero, so near-zero
+  comparisons require an absolute or property-specific zero treatment;
+- direct reference comparisons and derived round trips require distinct error
+  envelopes;
+- XYZ ↔ Oklab same-coefficient evaluation and the direct Ottosson linear-sRGB
+  route are different evidence classes: the latter exposes a coefficient-route
+  discrepancy floor and is not a precision oracle for the production XYZ route;
+- the tested DMD and LDC runtime runs on the current x86_64 Linux setup produced
+  byte-identical numerical program output;
+- D `real` remains a local diagnostic higher-precision path rather than portable
+  ground truth.
+
+No production tolerance is frozen by R0.13-B. Candidate acceptance rules remain
+a later synthesis task and must not be chosen by copying the largest observed
+error.
 
 ---
 

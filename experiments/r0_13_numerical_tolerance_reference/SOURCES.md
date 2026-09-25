@@ -1,13 +1,15 @@
-# R0.13-A — Reference source registry
+# R0.13 — Reference source registry
 
 **Status:** VALIDATED
-**Parent:** R0.13-A
-**Document revision:** 0.2
+**Parent:** R0.13
+**Document revision:** 0.3
 **Date:** 2026-09-25
 **GitHub:** #9
 
 This document records the external and independent sources used to establish
-numerical-reference provenance for R0.13.
+numerical-reference provenance for R0.13. R0.13-A established the source
+registry; R0.13-B adds validated evidence about how selected sources may and
+may not be used as numerical comparators.
 
 A reference source does not automatically establish a comparison tolerance.
 
@@ -119,6 +121,19 @@ pinned CSS Color 4 snapshot
 This does not make CSS the normative definition of sRGB. It gives R0.13 a
 pinned, inspectable and reproducible numerical representation of the transform
 while IEC remains the underlying colorimetric authority.
+
+### R0.13-B matrix-provenance result
+
+R0.13-B independently derived the linear-sRGB → XYZ D65 matrix from the IEC/ICC
+primaries and D65 white point, then compared that derivation with the pinned CSS
+rational matrix.
+
+On the tested x86_64 Linux setup, the local wider-`real` diagnostic route agreed
+with the pinned rational coefficients at roughly `1e-20` to `1e-19`.
+
+This is evidence that the two provenance routes are numerically consistent. It
+does not make D `real` portable ground truth, and it does not turn the observed
+difference into an acceptance tolerance.
 
 ---
 
@@ -292,10 +307,26 @@ Classification:
 PRIMARY
 ```
 
-R0.13-B must pin the exact coefficient set taken from this version.
+R0.13-B pins two coefficient routes for different purposes.
 
-CSS conversion code remains a useful independent standards-facing route but is
-not substituted for the defining Oklab source.
+The production-style XYZ D65 ↔ Oklab characterization uses the pinned CSS
+coefficient route and evaluates the same published coefficients through the
+local wider-`real` diagnostic path.
+
+The direct 2021 Ottosson linear-sRGB → Oklab coefficients are retained as a
+PRIMARY-source provenance and route-consistency comparator. They are not an
+independent high-precision oracle for the CSS/XYZ production route.
+
+In the B characterization, the direct Ottosson route and the production
+linear-sRGB → XYZ → Oklab route differed by roughly `3e-9` to `3.7e-8` in
+`double`. That discrepancy is far above ordinary double rounding error and
+reflects the different published coefficient routes. It must not be absorbed
+into the same tolerance used for same-route XYZ ↔ Oklab reference comparisons.
+
+CSS conversion code therefore remains a useful standards-facing numerical route
+while the Ottosson publication remains the defining primary source for Oklab.
+The two sources have different comparison roles rather than one serving as a
+drop-in numerical oracle for the other.
 
 ---
 
@@ -420,6 +451,33 @@ Runtime is not the mathematical reference for CTFE.
 CTFE is not the mathematical reference for runtime.
 
 Their comparison characterizes portability and evaluation differences.
+
+
+---
+
+# 10A. R0.13-B internal evidence
+
+The committed B harness is a research artifact:
+
+```text
+fc25044
+experiments/r0_13_numerical_tolerance_reference/b_reference_values/
+```
+
+Its captured output and result corpus are classified as:
+
+```text
+INTERNAL_REGRESSION
+```
+
+for reproducibility and continuity. The reference paths implemented inside the
+harness retain the provenance classes of the sources they evaluate; classifying
+the captured output as `INTERNAL_REGRESSION` does not replace those source-specific
+classes.
+
+Its captured observations do not outrank the normative or primary sources above.
+The harness records how the current candidate arithmetic behaves against those
+sources and against deliberately distinct derivation routes.
 
 ---
 

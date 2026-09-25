@@ -1,12 +1,14 @@
-# R0.13-A — Operation × property × comparison matrix
+# R0.13 — Operation × property × comparison matrix
 
 **Status:** VALIDATED
-**Parent:** R0.13-A
-**Document revision:** 0.2
+**Parent:** R0.13
+**Document revision:** 0.3
 **Date:** 2026-09-25
 **GitHub:** #9
 
 This matrix converts the R0.2–R0.12 inventory into explicit R0.13 work items.
+R0.13-A established the comparison taxonomy; validated R0.13-B findings are
+now promoted into the B rows without freezing production thresholds.
 
 Legend:
 
@@ -24,20 +26,20 @@ No approximate threshold in this matrix is frozen.
 
 | Operation | Property | Class | Reference | Scalar | R0.13 action |
 |---|---|---|---|---|---|
-| sRGB decode | zero endpoint | EXACT candidate | IEC / ICC | float,double | B: verify exactness |
-| sRGB encode | zero endpoint | EXACT candidate | IEC / ICC | float,double | B: verify exactness |
-| sRGB transfer | branch boundary | REFERENCE / CLASSIFY | IEC | float,double | B: boundary probes |
-| sRGB transfer | ordinary values | REFERENCE | IEC + pinned CSS samples | float,double | B: error characterize |
-| sRGB transfer | extended finite values | REFERENCE | formula-derived | float,double | B: characterize |
-| sRGB transfer | encode/decode round trip | DERIVED | self + independent formula | float,double | B: characterize |
-| linear sRGB→XYZ | black→zero | EXACT candidate | matrix algebra | float,double | B: verify |
-| linear sRGB↔XYZ | primaries / white | REFERENCE | IEC colorimetry | float,double | B: characterize |
-| linear sRGB↔XYZ | ordinary values | REFERENCE | pinned CSS rational matrix + independent derivation | float,double | B: characterize |
-| linear sRGB↔XYZ | round trip | DERIVED | pinned CSS rational matrix + independent derivation | float,double | B: characterize |
-| XYZ↔Oklab | black→zero | EXACT candidate | Oklab primary | float,double | B: verify |
-| XYZ↔Oklab | ordinary values | REFERENCE | primary + pinned CSS route | float,double | B: characterize |
-| XYZ↔Oklab | extended finite values | REFERENCE | independent route | float,double | B: characterize |
-| XYZ↔Oklab | round trip | DERIVED | independent route | float,double | B: characterize |
+| sRGB decode | zero endpoint | EXACT candidate | IEC / ICC | float,double | B: exact zero observed; F: promote only if semantic contract remains exact |
+| sRGB encode | zero endpoint | EXACT candidate | IEC / ICC | float,double | B: exact zero observed; F: promote only if semantic contract remains exact |
+| sRGB transfer | branch boundary | REFERENCE / CLASSIFY | IEC | float,double | B: rounded-threshold discontinuity characterized; keep targeted |
+| sRGB transfer | ordinary values | REFERENCE | IEC + pinned CSS samples | float,double | B: scalar-specific reference error characterized |
+| sRGB transfer | extended finite values | REFERENCE | formula-derived | float,double | B: scalar-specific reference error characterized |
+| sRGB transfer | encode/decode round trip | DERIVED | self + independent formula | float,double | B: derived envelope characterized; branch boundary remains separate |
+| linear sRGB→XYZ | black→zero | EXACT candidate | matrix algebra | float,double | B: exact black observed; F: promote only if semantic contract remains exact |
+| linear sRGB↔XYZ | primaries / white | REFERENCE | IEC colorimetry | float,double | B: characterized against independent derivation |
+| linear sRGB↔XYZ | ordinary values | REFERENCE | pinned CSS rational matrix + independent derivation | float,double | B: characterized; derivation agrees pinned coefficient set |
+| linear sRGB↔XYZ | round trip | DERIVED | pinned CSS rational matrix + independent derivation | float,double | B: derived envelope characterized separately |
+| XYZ↔Oklab | black→zero | EXACT candidate | Oklab primary | float,double | B: exact black observed in harness; F: promote only if semantic contract remains exact |
+| XYZ↔Oklab | ordinary values | REFERENCE | primary + pinned CSS route | float,double | B: CSS-route reference characterized; Ottosson direct route is comparator only |
+| XYZ↔Oklab | extended finite values | REFERENCE | pinned CSS route + primary route comparator | float,double | B: same-route reference characterized; route discrepancy kept separate |
+| XYZ↔Oklab | round trip | DERIVED | pinned CSS route | float,double | B: derived envelope characterized separately |
 | Oklab↔OkLCh | exact C==0 achromaticity | EXACT / CLASSIFY | color-d semantics | float,double | C: preserve |
 | Oklab↔OkLCh | near-achromatic decision | POLICY | caller policy | float,double | C: keep explicit |
 | CSS OkLCh conversion | powerless hue C<=0.000004 | POLICY | CSS Color 4 2026-09-13 | n/a | A/C: external semantic example only |
@@ -78,6 +80,33 @@ No approximate threshold in this matrix is frozen.
 | Debug↔Release | post-transform components | CROSS | CROSS_EXECUTION | float,double | E: characterize |
 | CSS cross-space color equivalence | Oklab components ε=0.00001 | POLICY | CSS Color 4 2026-09-13 | CSS semantics | A/C: do not globalize |
 | CSS same-space color equivalence | implementation-defined ε | POLICY | CSS Color 4 2026-09-13 | CSS semantics | A/C: do not infer portable bound |
+
+
+---
+
+# R0.13-B promotion notes
+
+The B characterization adds the following constraints to the matrix:
+
+```text
+no universal epsilon
+no universal ULP budget
+direct-reference envelope != round-trip envelope
+near-zero comparison != ordinary relative/ULP comparison
+transfer-boundary discontinuity != ordinary floating-point drift
+coefficient-route discrepancy != same-route implementation error
+```
+
+For B3 specifically, the direct 2021 Ottosson linear-sRGB → Oklab route is
+retained as primary-source provenance and route-consistency evidence. It is not
+an acceptance oracle for the production linear-sRGB → XYZ → Oklab route using
+the pinned CSS/XYZ coefficient path.
+
+The current DMD and LDC runtime outputs were identical on the tested x86_64 Linux
+setup. Full runtime ↔ CTFE, Debug ↔ Release and compiler-version portability
+claims remain R0.13-E work.
+
+No B observation is promoted here into a production tolerance constant.
 
 ---
 
