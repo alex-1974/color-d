@@ -2,7 +2,7 @@
 
 **Status:** CHARACTERIZATION
 **Parent:** R0.13
-**Document revision:** 0.4
+**Document revision:** 0.5
 **Date:** 2026-09-25
 
 This harness characterizes numerical behavior across execution contexts after
@@ -305,3 +305,85 @@ all future operations or targets. It does show that the current observed
 cross-compiler difference is narrower than a generic numerical-output drift.
 
 No E3 observation is promoted into a tolerance.
+
+### E3 release matrix
+
+The same controlled compiler-version matrix was repeated in release mode.
+
+Observed SHA-256 groups after removing environment-identification lines:
+
+```text
+DMD 2.111.0
+DMD 2.112.0
+DMD 2.112.1
+DMD 2.113.0
+    -> a27373701a6afc5ef46ac57262460c4dad8bd80d94589f635e8bb6abff705b2c
+
+LDC 1.41.0
+LDC 1.42.0
+LDC 1.43.0
+    -> cf18f8dcc21c331350677fa9a46482a4ea4498f0b37235144d7eebb158af5e2a
+```
+
+Thus release output was also version-stable within each compiler family.
+
+Compared with the debug hashes:
+
+```text
+DMD debug    b61fc8f1...
+DMD release  a2737370...   different
+
+LDC debug    cf18f8dc...
+LDC release  cf18f8dc...   identical
+```
+
+A direct DMD 2.111 versus LDC 1.41 release diff contained exactly two changed
+lines:
+
+1. the already isolated fixed `float` Ray Trace runtime `success` metadata;
+2. ordinary `double` sRGB decoding of `0.42`.
+
+For the latter:
+
+```text
+DMD release runtime = 0.147318999244498038959
+LDC release runtime = 0.147318999244498011203
+CTFE                = 0.147318999244498011203
+absolute difference = 2.775558e-17
+```
+
+At this magnitude the observed runtime difference is one binary64 ULP.
+
+No other selected numeric coordinate, classification, mapping metadata or exact
+property differed in the release family comparison.
+
+### E3 conclusion
+
+Across the tested matrix:
+
+```text
+DMD 2.111-2.113
+    version-stable in debug
+    version-stable in release
+    debug != release because of selected double decode behavior
+
+LDC 1.41-1.43
+    version-stable in debug
+    version-stable in release
+    debug == release for the selected snapshot
+
+DMD vs LDC
+    debug:
+        one Ray Trace runtime success-metadata difference
+    release:
+        same Ray success-metadata difference
+        plus one-ULP ordinary double sRGB decode difference
+```
+
+E3 therefore closes as **CHARACTERIZED**.
+
+The evidence rules out a general bit-identity requirement across build modes or
+compiler families while also showing that the observed portability differences
+are narrow and property-specific rather than broad numerical instability.
+
+No compiler-cross tolerance is frozen by E3.

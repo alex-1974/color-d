@@ -2,7 +2,7 @@
 
 **Status:** VALIDATED
 **Parent:** R0.13
-**Document revision:** 0.7
+**Document revision:** 0.8
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -76,8 +76,8 @@ No approximate threshold in this matrix is frozen.
 | Ray Trace runtime↔CTFE | success/iterations | CROSS | CROSS_EXECUTION | float,double | E: characterize; D3 already shows compiler-sensitive success metadata for a fixed float probe |
 | mapped runtime↔CTFE | components | CROSS | CROSS_EXECUTION | float,double | E: characterize |
 | encoded runtime↔CTFE | components | CROSS | CROSS_EXECUTION | float,double | E: characterize |
-| compiler↔compiler | post-transform components | CROSS | CROSS_EXECUTION | float,double | E3: selected debug snapshot stable within DMD 2.111-2.113 and LDC 1.41-1.43; only fixed float Ray runtime success metadata differed across families |
-| Debug↔Release | post-transform components | CROSS | CROSS_EXECUTION | float,double | E2: DMD 2.111 shows selected 1-ULP double decode difference; LDC 1.41 snapshot identical; E3: extend version matrix |
+| compiler↔compiler | post-transform components | CROSS | CROSS_EXECUTION | float,double | E3: version-stable within both families; debug differs only in fixed float Ray runtime success metadata; release also differs by one ULP in ordinary double sRGB decode |
+| Debug↔Release | post-transform components | CROSS | CROSS_EXECUTION | float,double | E2/E3: DMD 2.111-2.113 show the same selected 1-ULP double decode release difference; LDC 1.41-1.43 snapshot identical across build modes |
 | CSS cross-space color equivalence | Oklab components ε=0.00001 | POLICY | CSS Color 4 2026-09-13 | CSS semantics | A/C: do not globalize |
 | CSS same-space color equivalence | implementation-defined ε | POLICY | CSS Color 4 2026-09-13 | CSS semantics | A/C: do not infer portable bound |
 
