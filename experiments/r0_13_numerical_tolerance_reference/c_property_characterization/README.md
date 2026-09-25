@@ -2,7 +2,7 @@
 
 **Status:** EXPERIMENT
 **Parent:** R0.13 — Numerical tolerance and reference policy
-**Document revision:** 0.9
+**Document revision:** 1.0
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -16,9 +16,10 @@ C1 — Oklab <-> OKLCH / hue
 C2 — alpha / premultiplication / source-over
 C3 — interpolation / hue paths / alpha-aware interpolation
 C4 — WCAG 2 relative luminance / contrast
+C5 — deltaEOK
 ```
 
-The remaining C block will cover `deltaEOK` in a separate source module.
+C1-C5 now cover the planned R0.13-C operation families.
 
 ## C1 questions
 
@@ -599,6 +600,99 @@ is not a general portability guarantee. Controlled Debug/Release,
 runtime/CTFE and compiler-version comparisons remain R0.13-E work.
 
 No C4 observation freezes a production tolerance or final public WCAG API.
+
+
+## C5 questions
+
+C5 carries the validated R0.10 `deltaEOK` semantics into the R0.13 comparison
+taxonomy without inheriting R0.10's provisional `1e-12`, `2e-5` or
+`8 * epsilon` acceptance bounds.
+
+```text
+EXACT
+    identity distance == 0
+    selected one-axis distances
+    analytical 3-4-12 distance == 13
+    selected finite symmetry
+
+CLASSIFY
+    NaN delta -> NaN
+    finite/infinite delta without NaN -> +Inf
+    NaN takes precedence over infinity
+
+REFERENCE
+    ordinary Oklab distance against wider real scaled norm
+    extended finite distance against wider real scaled norm
+
+DERIVED
+    deterministic 4096-sample identity/non-negativity/symmetry observations
+    deterministic 4096-sample wider-reference ULP/absolute-error maxima
+    deterministic 4096-sample triangle-inequality positive-slack observations
+
+RANGE
+    direct sqrt(dL*dL + da*da + db*db) overflow
+    direct squared-sum underflow
+    guarded three-argument hypot finite-range behavior
+    normal, minimum-normal and smallest-subnormal one-axis probes
+
+POLICY
+    no JND threshold
+    no hidden color-space conversion
+    no clipping, gamut mapping or alpha resolution
+```
+
+### Candidate and reference
+
+The C5 candidate is the R0.10 preferred direction:
+
+1. form the three same-type Oklab component differences;
+2. return NaN if any difference is NaN;
+3. otherwise return positive infinity if any difference is infinite;
+4. otherwise delegate the finite Euclidean norm to Phobos three-argument
+   `hypot`.
+
+The reference is a separately implemented scaled three-dimensional norm in D
+`real`. Scaling avoids the direct squared-sum overflow/underflow mechanism.
+As elsewhere in R0.13, `real` is local wider-precision evidence when it is
+wider than `double`, not portable arbitrary precision.
+
+### Property characterization without a provisional epsilon
+
+R0.10 used operation-local tolerances to turn generated properties into
+pass/fail tests. C5 deliberately removes those thresholds.
+
+For 4096 deterministic generated triples per scalar type, C5 instead records:
+
+- any exact identity failures;
+- any negative distances;
+- any non-zero symmetry differences;
+- the maximum absolute and ULP distance to the wider reference;
+- the count and maximum magnitude of positive floating-point triangle slack.
+
+These measurements can inform later policy, but their maxima are not
+automatically promoted to production tolerances.
+
+### Range versus tolerance
+
+The direct squared-sum implementation remains a range diagnostic only. An
+overflow to infinity or an underflow to zero for a mathematically representable
+finite norm is an algorithm/range failure and must not be accepted by widening
+a comparison tolerance.
+
+C5 also extends the R0.10 one-axis range observation from `T.min_normal` to
+the smallest positive subnormal. This is observational: the harness does not
+assume beforehand that every compiler/build will produce the same result.
+
+### Special values
+
+Raw three-argument Phobos `hypot` special-value behavior is not used as the
+public semantic contract. C5 retains R0.10's explicit guard order so NaN takes
+precedence over infinity. The raw result is reported only as diagnostic
+evidence where useful.
+
+C5 remains observational until local DMD/LDC runs are recorded. No numerical
+tolerance, JND policy or public `deltaEOK` API is frozen by adding this
+harness.
 
 ## Characterization rule
 
