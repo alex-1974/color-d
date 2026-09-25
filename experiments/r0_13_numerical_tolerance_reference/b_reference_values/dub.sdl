@@ -1,0 +1,6 @@
+name "color-d-r0-13-b-reference-values"
+description "color-d R0.13-B: reference-value characterization"
+authors "Alexander"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
