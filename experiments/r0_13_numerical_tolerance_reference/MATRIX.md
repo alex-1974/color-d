@@ -2,7 +2,7 @@
 
 **Status:** VALIDATED
 **Parent:** R0.13
-**Document revision:** 0.4
+**Document revision:** 0.5
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -60,7 +60,7 @@ No approximate threshold in this matrix is frozen.
 | Local MINDE | convergence thresholds | ALGORITHM | pinned CSS algorithm | float,double | D: document separately |
 | Ray Trace | ray epsilon / fixed work budget | ALGORITHM | pinned CSS algorithm | float,double | D: scalar-specific ray epsilon and four-intersection budget characterized |
 | gamut mapping | status / iterations | EXACT / CROSS | algorithm semantics | float,double | D: exact within one execution where specified, but not scalar/compiler invariant; E: characterize cross execution |
-| gamut mapping | mapped coordinates | REFERENCE / DERIVED | reference algorithm | float,double | D: characterize |
+| gamut mapping | mapped coordinates | REFERENCE / DERIVED | reference algorithm | float,double | D: algorithm-specific coordinates and derived idempotence characterized; no cross-method equality assumption |
 | WCAG luminance | valid/invalid domain | CLASSIFY | WCAG 2.2 | float,double | C: preserve |
 | WCAG luminance | branch boundary | REFERENCE / CLASSIFY | WCAG 2.2 | float,double | C: boundary probes |
 | WCAG luminance | numerical value | REFERENCE | WCAG 2.2 | float,double | C: characterize |
@@ -134,6 +134,18 @@ rounding around the scalar-specific Ray Trace interior/epsilon decisions.
 
 Therefore R0.13-E must not begin from an assumption that Ray Trace diagnostic
 metadata is bit- or value-identical across execution environments.
+
+
+D4 further established that alpha preservation is exact structural semantics,
+while complete mapping idempotence after `mapped RGB -> OKLCH -> mapping` is
+derived numerical behavior. Local MINDE required zero second-pass iterations in
+the sampled set; Ray Trace frequently re-entered its mapping path and the count
+was compiler-sensitive, while every second result remained strict in-gamut.
+
+D4 also observed no bit-identical Local MINDE / Ray Trace result pairs across
+4096 common out-of-gamut cases, with maximum cross-method deltaEOK around
+`0.08`. This is expected algorithm-policy divergence, not a numerical error
+envelope.
 
 # Matrix conclusions
 

@@ -2,8 +2,8 @@
 
 **Status:** CONTRACT
 **Research baseline:** R0.12 validated
-**Research progress:** R0.13-A validated; R0.13-B characterized (`fc25044`)
-**Document revision:** 0.2
+**Research progress:** R0.13-A validated; R0.13-B/C/D characterized
+**Document revision:** 0.3
 **Date:** 2026-09-25
 **GitHub:** #9 — R0.13 — Define numerical tolerance and reference policy
 
@@ -791,6 +791,39 @@ Exit criteria:
 - mapping comparisons have operation-specific rules.
 
 ---
+
+## R0.13-D — gamut boundary and gamut mapping
+
+Status: **CHARACTERIZED**
+
+R0.13-D is implemented by:
+
+```text
+d_gamut_characterization/
+    D1 strict classification / explicit policy / clipping
+    D2 Local MINDE
+    D3 Ray Trace
+    D4 mapping identity / idempotence / alpha / cross-method behavior
+```
+
+The D characterization establishes:
+
+- strict sRGB gamut membership remains exact finite `[0,1]^3` classification;
+- epsilon-aware boundary membership remains explicit caller policy;
+- clipping selected finite coordinates is exact/idempotent and does not repair
+  non-finite values;
+- Local MINDE JND/search epsilon and Ray Trace intersection epsilon are
+  algorithm thresholds, not generic comparison tolerances;
+- Local MINDE iteration counts are not invariant across `float` and `double`;
+- Ray Trace diagnostic success metadata is not compiler-invariant for all
+  `float` inputs, even when the final mapped color is identical;
+- alpha preservation is exact structural semantics;
+- mapped-color idempotence after a color-space round trip is derived numerical
+  behavior, not bit equality;
+- Local MINDE and Ray Trace are distinct mapping policies whose outputs need
+  not numerically coincide.
+
+No production tolerance is frozen by R0.13-D.
 
 ## R0.13-E — CTFE/runtime and compiler-cross behavior
 

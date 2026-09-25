@@ -1,8 +1,8 @@
 # R0.13-D — Gamut boundary and mapping characterization
 
-**Status:** CHARACTERIZATION
+**Status:** CHARACTERIZED
 **Parent:** R0.13
-**Document revision:** 0.7
+**Document revision:** 0.8
 **Date:** 2026-09-25
 
 This harness carries the validated R0.8 gamut semantics into the R0.13
@@ -485,3 +485,149 @@ structurally without transforming it, so selected alpha values are tested as an
 exact semantic contract.
 
 Cross-execution equivalence remains R0.13-E.
+
+## D4 observed results
+
+D4 has been run in debug builds on the same x86_64 Linux research host with:
+
+- DMD 2.111.0;
+- LDC 1.41.0 using DMD frontend 2.111.0 and LLVM 19.1.7.
+
+### Exact alpha preservation
+
+For both `float` and `double`, both Local MINDE and Ray Trace preserved the
+selected alpha values exactly:
+
+```text
+0
+0.37
+1
+```
+
+This is structural copy semantics and remains an exact candidate.
+
+### In-gamut identity / fast path
+
+For 4096 accepted in-gamut samples per scalar type, both compilers observed:
+
+```text
+local exact-fast-path failures     0
+ray exact-fast-path failures       0
+local success failures             0
+ray success failures               0
+local non-zero iterations          0
+ray non-zero iterations            0
+```
+
+The mapped result was exact relative to the direct `OKLCH -> linear-sRGB`
+value used by the fast path.
+
+Relative to the original linear-sRGB value before the
+`RGB -> OKLCH -> RGB` round trip, the largest observed deltaEOK was:
+
+```text
+float   4.951133e-07
+double  1.300668e-15
+```
+
+These are conversion-round-trip observations, not mapping tolerances.
+
+### Idempotence after mapped RGB -> OKLCH -> mapped RGB
+
+Across 4096 common out-of-gamut conceptual inputs:
+
+```text
+                                  DMD 2.111      LDC 1.41
+Local float second non-zero             0              0
+Ray float second non-zero            1976           1979
+Local double second non-zero            0              0
+Ray double second non-zero           2021           2023
+
+Local float exact idempotent            30             30
+Ray float exact idempotent              72             71
+Local double exact idempotent             8              8
+Ray double exact idempotent               3              3
+
+second-map gamut failures                 0              0
+```
+
+The maximum observed idempotence distances were identical between the tested
+compilers:
+
+```text
+Local float   4.097142e-07
+Ray float     9.410174e-07
+Local double  1.029578e-15
+Ray double    1.864381e-15
+```
+
+Therefore idempotence of the complete
+`mapped RGB -> OKLCH -> mapping` route is a derived numerical property rather
+than an exact component-equality property.
+
+Local MINDE entered no second mapping iteration in this sample. Its rare
+bit-identical second results still reflect ordinary conversion-round-trip
+rounding on the fast path.
+
+Ray Trace frequently entered the mapping path again after the same round trip.
+The first mapped result was strict in-gamut, but conversion through OKLCH can
+place the reconstructed value on the other side of the strict target-space
+boundary. The exact number of such second-pass iterations is compiler-sensitive
+in this sample.
+
+This does not justify widening strict gamut membership. It confirms that strict
+classification and derived idempotence answer different questions.
+
+### Local MINDE versus Ray Trace
+
+No Local MINDE / Ray Trace result pair was bit-identical in the 4096-case
+out-of-gamut sample for either scalar type.
+
+The largest observed cross-method deltaEOK was:
+
+```text
+float   7.997055e-02
+double  7.997047e-02
+```
+
+The values were identical between the tested compiler runs.
+
+This is algorithm-policy divergence, not ordinary floating-point error.
+Local MINDE and Ray Trace therefore must not be compared using a generic
+"same mapping result" tolerance merely because both map into the same target
+gamut.
+
+### D exit conclusion
+
+R0.13-D satisfies its exit criteria:
+
+```text
+strict geometry
+    !=
+boundary-proximity policy
+
+algorithm threshold
+    !=
+comparison tolerance
+
+per-execution metadata
+    !=
+cross-scalar / cross-compiler invariant
+
+mapped-color validity
+    !=
+diagnostic success metadata
+
+idempotence
+    == derived numerical property after conversion
+
+Local MINDE result
+    !=
+Ray Trace result by definition
+```
+
+R0.13-D therefore closes as **CHARACTERIZED**. No generic gamut epsilon,
+mapping tolerance or cross-method tolerance is promoted.
+
+The remaining runtime/CTFE, Debug/Release and compiler-version portability
+questions belong to R0.13-E.
