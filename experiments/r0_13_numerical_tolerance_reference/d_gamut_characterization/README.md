@@ -2,7 +2,7 @@
 
 **Status:** CHARACTERIZATION
 **Parent:** R0.13
-**Document revision:** 0.2
+**Document revision:** 0.3
 **Date:** 2026-09-25
 
 This harness carries the validated R0.8 gamut semantics into the R0.13
@@ -125,3 +125,57 @@ caller-selected numerical boundary policy
 No approximate comparator is needed to express strict sRGB gamut membership.
 
 No public API or production numerical threshold is frozen by this harness.
+
+## D2 Local MINDE plan
+
+D2 characterizes the validated R0.8 Local MINDE implementation without copying
+or replacing the mapping algorithm.
+
+The comparison roles are:
+
+```text
+EXACT
+    L >= 1 -> white, zero iterations, success
+    L <= 0 -> black, zero iterations, success
+    selected in-gamut fast-path result and metadata
+    negative-chroma canonicalization equivalence
+
+CLASSIFY
+    non-finite input fails rather than being silently repaired
+    mapped finite outputs must classify in strict sRGB gamut
+
+ALGORITHM
+    JND = 0.02
+    chroma-search epsilon = 0.0001
+    defensive iteration bound = 128
+
+INTERNAL_REGRESSION
+    selected R0.8 mapping cases including the published-yellow input
+
+DERIVED
+    paired float/double 4096-sample characterization
+    success/gamut failures
+    iteration-count differences
+    maximum observed iterations
+    maximum RGB absolute difference
+    maximum deltaEOK between paired mapped outputs
+```
+
+The Local MINDE `JND` and search `epsilon` are algorithm semantics inherited
+from the pinned CSS-facing implementation. They are not:
+
+- generic test tolerances;
+- strict-gamut boundary epsilons;
+- runtime/CTFE tolerances;
+- DMD/LDC tolerances.
+
+The generated float/double maxima are observations only. They do not become
+acceptance thresholds merely because they are the largest values seen in this
+sample.
+
+The previously validated R0.8 cached-hue implementation remains useful
+`INTERNAL_REGRESSION` evidence: it matched the baseline numerically over the
+R0.8 4096-case validation set. D2 does not duplicate that optimized
+implementation merely to repeat the comparison.
+
+Cross-execution behavior remains R0.13-E.

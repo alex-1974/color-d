@@ -13,6 +13,8 @@ import std.math : nextDown, nextUp;
 import std.math.traits : isIdentical, isNaN;
 import std.stdio : writefln, writeln;
 
+import d2_local_minde : runD2;
+
 
 private void runD1For(T)(string scalarName)
 if (isColorScalar!T)
@@ -233,4 +235,6 @@ void main()
 
     runD1For!float("float");
     runD1For!double("double");
+
+    runD2();
 }
