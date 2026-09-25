@@ -15,6 +15,7 @@ import std.stdio : writefln, writeln;
 
 import d2_local_minde : runD2;
 import d3_ray_trace : runD3;
+import d4_mapping_semantics : runD4;
 
 
 private void runD1For(T)(string scalarName)
@@ -239,4 +240,5 @@ void main()
 
     runD2();
     runD3();
+    runD4();
 }

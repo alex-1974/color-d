@@ -2,7 +2,7 @@
 
 **Status:** CHARACTERIZATION
 **Parent:** R0.13
-**Document revision:** 0.6
+**Document revision:** 0.7
 **Date:** 2026-09-25
 
 This harness carries the validated R0.8 gamut semantics into the R0.13
@@ -443,3 +443,45 @@ characterization.
 No D3 observation is promoted into a generic tolerance.
 
 Cross-execution behavior remains R0.13-E.
+
+## D4 mapping-semantics plan
+
+D4 closes the R0.13-D characterization by testing relationships that span the
+individual mapping algorithms.
+
+The comparison roles are:
+
+```text
+EXACT
+    alpha is copied unchanged by per-color mapping
+    fast-path output equals the direct target conversion used by that same path
+
+DERIVED
+    original in-gamut RGB -> OKLCH -> mapped RGB round-trip distance
+    map(map(color)) versus map(color)
+    second-map iteration behavior
+    Local MINDE versus Ray Trace mapped-color distance
+
+CLASSIFY
+    second mapping remains in strict sRGB gamut
+
+POLICY
+    Local MINDE and Ray Trace remain distinct explicit mapping choices
+```
+
+D4 deliberately does not require Local MINDE and Ray Trace to agree. They are
+different gamut-mapping algorithms and R0.8 already established that numerical
+differences between them are expected.
+
+Likewise, idempotence after converting the first mapped linear-sRGB result back
+through OKLCH is characterized rather than assumed to be bit-exact. That route
+contains ordinary floating-point color-space conversions.
+
+The generated maxima in D4 are descriptive evidence only. No idempotence or
+cross-method tolerance is frozen in this phase.
+
+Alpha preservation is different: the validated mapping wrappers copy alpha
+structurally without transforming it, so selected alpha values are tested as an
+exact semantic contract.
+
+Cross-execution equivalence remains R0.13-E.
