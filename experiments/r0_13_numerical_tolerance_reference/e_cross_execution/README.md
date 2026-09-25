@@ -2,7 +2,7 @@
 
 **Status:** CHARACTERIZATION
 **Parent:** R0.13
-**Document revision:** 0.3
+**Document revision:** 0.4
 **Date:** 2026-09-25
 
 This harness characterizes numerical behavior across execution contexts after
@@ -229,3 +229,79 @@ compiler.
 
 No E2 observation is promoted into a tolerance. The next phase extends the same
 deterministic snapshot across the controlled compiler-version matrix.
+
+## E3 compiler-version matrix observations
+
+E3 reused the E1 snapshot in debug mode across the controlled compiler matrix:
+
+```text
+DMD 2.111.0
+DMD 2.112.0
+DMD 2.112.1
+DMD 2.113.0
+
+LDC 1.41.0
+LDC 1.42.0
+LDC 1.43.0
+```
+
+Environment-identification lines were excluded before hashing so that the
+hashes represented only the selected numerical/semantic output.
+
+Observed SHA-256 groups:
+
+```text
+all DMD versions:
+    b61fc8f1b2a4258efea09478d7cfaee4b22b847f7618c66b4b1697995419a23e
+
+all LDC versions:
+    cf18f8dcc21c331350677fa9a46482a4ea4498f0b37235144d7eebb158af5e2a
+```
+
+Therefore no numerical-version drift was observed within either compiler family
+for this deterministic debug snapshot.
+
+A direct diff between DMD 2.111.0 and LDC 1.41.0 contained exactly one changed
+line:
+
+```text
+float Ray Trace fixed probe metadata
+
+DMD runtime:
+    iterations=4
+    success=false
+    in-gamut=true
+
+LDC runtime:
+    iterations=4
+    success=true
+    in-gamut=true
+
+both CTFE paths:
+    iterations=4
+    success=true
+    in-gamut=true
+```
+
+The mapped RGB coordinates for the fixed probe were byte-identical in the
+printed snapshot across the compiler families. The difference was confined to
+the experimental runtime success metadata already isolated in D3/E1.
+
+The tested compiler-version matrix therefore supports three separate statements:
+
+```text
+within-family numerical snapshot stability
+    observed across the tested versions
+
+cross-family mapped-coordinate stability
+    observed for the selected snapshot
+
+cross-family internal Ray success metadata stability
+    disproved by the fixed float probe
+```
+
+This evidence does not justify a blanket compiler-independence guarantee for
+all future operations or targets. It does show that the current observed
+cross-compiler difference is narrower than a generic numerical-output drift.
+
+No E3 observation is promoted into a tolerance.
