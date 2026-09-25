@@ -588,6 +588,43 @@ static assert(ctfeRayWhite.success);
 static assert(ctfeRayBlack.success);
 
 
+private void reportKnownCompilerProbe()
+{
+    const auto input =
+        Oklch!float(
+            0.88228511810302734375f,
+            0.343281686305999755859f,
+            OklabHue!float(
+                19.4710636138916015625f
+            )
+        );
+
+    const auto inputRgb =
+        input.toLinearSRgb;
+
+    const auto result =
+        gamutMapRayTrace(input);
+
+    writefln(
+        "D3-CROSS-float-known-probe = input-r=% .21g input-g=% .21g input-b=% .21g success=%s iterations=%s in-gamut=%s result-r=% .21g result-g=% .21g result-b=% .21g",
+        cast(real)inputRgb.r,
+        cast(real)inputRgb.g,
+        cast(real)inputRgb.b,
+        result.success,
+        result.iterations,
+        result.color.inSrgbGamut,
+        cast(real)result.color.r,
+        cast(real)result.color.g,
+        cast(real)result.color.b
+    );
+
+    traceFloatFailure(
+        999,
+        input
+    );
+}
+
+
 void runD3()
 {
     writeln();
@@ -600,5 +637,6 @@ void runD3()
     reportSemanticCases!double("double");
 
     reportSelectedCases();
+    reportKnownCompilerProbe();
     reportGeneratedPaired();
 }
