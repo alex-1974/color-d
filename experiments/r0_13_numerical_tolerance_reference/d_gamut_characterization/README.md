@@ -2,7 +2,7 @@
 
 **Status:** CHARACTERIZATION
 **Parent:** R0.13
-**Document revision:** 0.1
+**Document revision:** 0.2
 **Date:** 2026-09-25
 
 This harness carries the validated R0.8 gamut semantics into the R0.13
@@ -80,5 +80,48 @@ MINDE JND/convergence thresholds and Ray Trace intersection epsilon.
 
 Those values are `ALGORITHM` semantics. They must not be reused as generic
 test tolerances, gamut-membership epsilons or cross-execution tolerances.
+
+## D1 observed results
+
+D1 has been run in debug builds on the same x86_64 Linux research host with:
+
+- DMD 2.111.0;
+- LDC 1.41.0 using DMD frontend 2.111.0 and LLVM 19.1.7.
+
+The complete D1 numerical output was byte-identical between the two tested
+compilers.
+
+For both `float` and `double`:
+
+- strict linear-sRGB membership accepted black, white and the selected interior
+  color exactly;
+- `nextDown(0)` and `nextUp(1)` were strictly outside the target gamut;
+- NaN and both infinities were strictly outside;
+- encoded-sRGB strict membership showed the same selected boundary behavior;
+- the explicit sample policy `8 * T.epsilon` admitted the immediately adjacent
+  outside representable values but rejected the selected values at twice that
+  expansion;
+- negative policy epsilon was normalized by magnitude;
+- zero policy epsilon matched strict membership for the selected boundary case;
+- clipping preserved the selected interior value exactly, saturated the selected
+  low/high values exactly to 0/1, and was exactly idempotent;
+- clipping preserved the sign bit of selected negative zero;
+- clipping did not repair NaN or infinities, and the resulting values remained
+  outside strict gamut;
+- the selected neutral OKLCH value classified in gamut after conversion while
+  the selected high-chroma value classified out of gamut.
+
+The sample `8 * T.epsilon` remains an explicit probe value only. It is not a
+candidate default gamut tolerance and is not promoted into production policy.
+
+The D1 result strengthens the R0.13 distinction:
+
+```text
+strict target-space membership
+    !=
+caller-selected numerical boundary policy
+```
+
+No approximate comparator is needed to express strict sRGB gamut membership.
 
 No public API or production numerical threshold is frozen by this harness.
