@@ -2,7 +2,7 @@
 
 **Status:** EXPERIMENT
 **Parent:** R0.13 — Numerical tolerance and reference policy
-**Document revision:** 0.5
+**Document revision:** 0.6
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -384,9 +384,62 @@ This is a wider-arithmetic reference, not an independent interpolation
 specification oracle. As in C1 and C2, `real` remains local diagnostic
 evidence rather than portable ground truth.
 
-C3 remains observational until local DMD/LDC runs are recorded. No production
-tolerance, public interpolation spelling or complete robust-lerp algorithm is
-frozen by adding this harness.
+### C3 observed results
+
+C3 has been run in debug builds on the same x86_64 Linux research host with:
+
+- DMD 2.111.0;
+- LDC 1.41.0 using DMD frontend 2.111.0 and LLVM 19.1.7.
+
+After excluding compiler/build banners and the preceding C1/C2 output, all 57
+C3 output lines from the two runs were byte-identical.
+
+For both scalar types and both tested compilers:
+
+- the selected ordinary endpoint, hue-path, 180-degree-tie, equal-normalized-hue,
+  exact-achromatic-borrowing, negative-chroma-canonicalization and alpha
+  structural probes all produced the expected exact decisions;
+- the near-achromatic non-zero chroma probe remained distinct from exact
+  achromatic borrowing, confirming that this remains an explicit policy
+  boundary rather than an implicit epsilon rule;
+- ordinary scalar interpolation differed from the wider-arithmetic reference
+  by 1 ULP in the selected float and double probes;
+- the selected scalar extrapolation and hue reference probes rounded to the
+  same target-type values as the wider reference;
+- selected derived OKLCH interpolation differed by at most 1 ULP for float and
+  rounded to the same target-type values for double;
+- selected alpha-aware rectangular interpolation differed by at most 1 ULP for
+  float and by at most 2 ULP for double.
+
+The range probe exposed a structural failure of the legacy scalar form
+`a + (b - a) * t` for finite opposite-sign endpoints `-T.max` and `T.max`:
+
+- at `t == 0`, the legacy expression produced NaN instead of `a`;
+- at `t == 1`, it produced positive infinity instead of `b`;
+- at `t == 0.5`, it produced positive infinity instead of the finite
+  mathematical midpoint zero.
+
+The failure occurs because `b - a` overflows before multiplication by `t`.
+It is therefore a range/algorithm issue, not an approximate-comparison issue.
+
+The research-local `endpointAwareLerp` restored the two endpoint identities
+exactly by handling `t == 0` and `t == 1` before evaluating the legacy form.
+It deliberately did not claim to solve the interior-overflow case.
+
+This yields two distinct R1 design questions:
+
+1. whether exact endpoint semantics should be guaranteed structurally;
+2. whether production interpolation must remain finite whenever the
+   mathematical interpolation of finite endpoints is finite.
+
+Those questions must not be collapsed into one numerical tolerance.
+
+The identical DMD/LDC C3 debug output is useful cross-compiler evidence but is
+not a general portability guarantee. Controlled Debug/Release, runtime/CTFE
+and compiler-version comparisons remain R0.13-E work.
+
+No C3 observation freezes a production tolerance, public interpolation spelling
+or complete robust-lerp algorithm.
 
 ## Characterization rule
 
