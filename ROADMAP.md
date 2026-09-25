@@ -146,10 +146,11 @@ runtime-versus-CTFE floating-point differences remain input to R0.13.
 
 No public palette API is frozen by R0.12.
 
-Remaining R0 work is now tracked through the `v0.1.0` release milestone:
+R0.13 numerical/reference policy (#9) and the durable `color-d` / `imagery-d`
+responsibility boundary (#1) are complete.
 
-- #9 — R0.13 numerical tolerance and reference policy;
-- #1 — durable `color-d` / `imagery-d` responsibility boundary;
+Remaining R0 work is tracked through the `v0.1.0` release milestone:
+
 - #5 — performance baselines and targeted compiler/code-generation evidence;
 - #10 — R0.14 final v0.1 scope and R0→R1 promotion gate.
 
