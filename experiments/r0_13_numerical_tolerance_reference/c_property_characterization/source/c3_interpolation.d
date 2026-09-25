@@ -2,10 +2,11 @@ module c3_interpolation;
 
 import common : reportScalar;
 import std.stdio : writefln, writeln;
+import std.traits : Unqual;
 
 
 private enum bool isColorScalar(T) =
-    is(T == float) || is(T == double);
+    is(Unqual!T == float) || is(Unqual!T == double);
 
 
 struct LinearSRgb(T)
