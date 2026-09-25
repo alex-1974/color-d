@@ -2,7 +2,7 @@
 
 **Status:** EXPERIMENT
 **Parent:** R0.13 — Numerical tolerance and reference policy
-**Document revision:** 0.6
+**Document revision:** 0.7
 **Date:** 2026-09-25
 **GitHub:** #9
 
@@ -15,10 +15,10 @@ Implemented blocks:
 C1 — Oklab <-> OKLCH / hue
 C2 — alpha / premultiplication / source-over
 C3 — interpolation / hue paths / alpha-aware interpolation
+C4 — WCAG 2 relative luminance / contrast
 ```
 
-Later C blocks will cover WCAG measurement and `deltaEOK` in separate source
-modules.
+The remaining C block will cover `deltaEOK` in a separate source module.
 
 ## C1 questions
 
@@ -440,6 +440,88 @@ and compiler-version comparisons remain R0.13-E work.
 
 No C3 observation freezes a production tolerance, public interpolation spelling
 or complete robust-lerp algorithm.
+
+
+## C4 questions
+
+C4 carries the validated R0.9 WCAG-2 luminance/contrast semantics into the
+R0.13 comparison taxonomy.
+
+```text
+CLASSIFY
+    finite encoded/linear sRGB components
+    all components in [0, 1]
+
+EXACT
+    linear black luminance == 0
+    linear white luminance == 1 on the selected published coefficients
+    selected same-color contrast == 1
+    selected black/white contrast == 21
+    contrast symmetry on selected valid inputs
+
+REFERENCE
+    encoded-sRGB decode in wider real arithmetic
+    WCAG relative luminance in wider real arithmetic
+    contrast ratio in wider real arithmetic
+    primary coefficients as published WCAG values
+
+BOUNDARY
+    nextDown / at / nextUp around encoded 0.04045
+    reuse the R0.13-B transfer characterization rather than inventing a new
+    transfer tolerance
+
+DISTINCT
+    WCAG relative luminance is not XYZ-D65 Y
+
+REGRESSION
+    the old R0.9 "independent direct WCAG reference path" is same-formula
+    regression evidence, not an independent numerical oracle
+```
+
+### Reference provenance
+
+WCAG relative luminance is a standards-defined computation. C4 therefore
+distinguishes the normative formula from numerical independence.
+
+The wider-arithmetic C4 reference widens the target-type input to D `real`
+before applying the WCAG sRGB decode and the published weights
+`0.2126/0.7152/0.0722`. This is useful for characterizing target-type rounding,
+but it is still the same defining formula.
+
+R0.9 also contained a separately spelled "direct WCAG reference" implementation.
+Because that route used the same transfer constants, branch and published
+weights, C4 reclassifies it as same-formula regression evidence. Exact agreement
+between those two spellings cannot establish an independent tolerance envelope.
+
+### Transfer boundary
+
+C4 does not reopen R0.13-B1. The encoded threshold probes use
+`nextDown(0.04045)`, target-type `0.04045`, and `nextUp(0.04045)` so WCAG
+luminance can be observed across the same rounded sRGB decode boundary.
+
+The B1 finding remains authoritative for the transfer primitive itself:
+ordinary floating-point drift and the rounded-threshold structural behavior
+must not be collapsed into one generic epsilon.
+
+### WCAG versus XYZ Y
+
+The WCAG published luminance coefficients remain intentionally distinct from
+the more precise linear-sRGB -> XYZ-D65 matrix used elsewhere in color-d.
+C4 reports that difference as a semantic distinction, not as an error against
+one preferred value.
+
+### Domain and alpha boundary
+
+The standards-facing measurement domain remains finite sRGB or linear-sRGB
+components in `[0, 1]`. Extended color-d values are valid color mathematics
+but are not valid WCAG measurements.
+
+Unresolved alpha remains outside the ordinary WCAG measurement primitive.
+Compositing/alpha semantics were characterized in C2; C4 assumes the color to
+be measured has already been resolved.
+
+C4 remains observational until local DMD/LDC runs are recorded. No production
+tolerance or final public WCAG API is frozen by adding this harness.
 
 ## Characterization rule
 

@@ -3,6 +3,7 @@ module app;
 import c1_oklch_hue : runC1For;
 import c2_alpha_compositing : runC2For;
 import c3_interpolation : runC3For;
+import c4_wcag : runC4For;
 import std.stdio : writefln, writeln;
 
 void main()
@@ -42,4 +43,7 @@ void main()
 
     runC3For!float("float");
     runC3For!double("double");
+
+    runC4For!float("float");
+    runC4For!double("double");
 }
