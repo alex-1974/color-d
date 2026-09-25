@@ -149,9 +149,14 @@ No public palette API is frozen by R0.12.
 R0.13 numerical/reference policy (#9) and the durable `color-d` / `imagery-d`
 responsibility boundary (#1) are complete.
 
+The performance baseline and targeted compiler/code-generation work in #5 is
+complete. It established LDC as the v0.1 release-performance reference compiler,
+validated equivalent native C++ baselines, isolated the Phobos
+`pow(real, real)` hot-path bottleneck, and demonstrated a CTFE-preserving LDC
+runtime path at C++-competitive performance.
+
 Remaining R0 work is tracked through the `v0.1.0` release milestone:
 
-- #5 — performance baselines and targeted compiler/code-generation evidence;
 - #10 — R0.14 final v0.1 scope and R0→R1 promotion gate.
 
 Issue #2 is the R0 closeout umbrella.

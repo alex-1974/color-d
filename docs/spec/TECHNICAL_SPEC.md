@@ -770,16 +770,82 @@ R0.9 found that the compact scalar result and `try(..., ref T)` have similar
 encoded-sRGB and contrast performance on the measured system.
 
 DMD 2.111 showed a large regression specifically for the two-field
-`{ double, bool }` result representation.
+`{ double, bool }` result representation. DMD 2.113 removed most of that
+specific result-shape regression, so the 2.111 behavior is not a durable ABI
+rule and must not drive a permanent public representation choice.
 
-Explicit `pragma(inline, true)` did not remove that regression.
+The later release-gate investigation isolated a separate and much larger
+transfer-function bottleneck. On the tested x86-64 toolchain,
+floating/floating `std.math.pow` in both DMD 2.113 and LDC 1.43 routes through
+Phobos `_powImpl(real, real)`. Under LDC this executes the general extended-
+precision/x87 implementation and made the encoded sRGB/WCAG paths roughly four
+times slower than equivalent optimized C++ using the same formulas.
 
-Generated-code inspection showed that the relative-luminance benchmark paths
-were already integrated into the benchmark loop, so the observed difference
-cannot be explained simply by one candidate failing to inline.
+Replacing only that power operation with the native `float`/`double`
+runtime path removed the gap. A five-run interleaved comparison measured the
+LDC runtime-`llvm_pow` path within approximately 0.999x--1.057x of Clang for
+the encoded sRGB operations and approximately 1.027x--1.044x for the measured
+contrast operations. This is sufficient evidence that the color-d algorithm
+itself can be C++-competitive without `-ffast-math`.
 
-This is compiler/version-specific evidence and must not be generalized into a
-universal D ABI rule.
+For the sRGB decode domain tested here, LDC `llvm_pow` and direct libm were
+bit-identical over 1,000,000 deterministic extended-range `double` samples
+and 1,000,000 `float` samples. Relative to the current Phobos path, the
+maximum observed finite difference was 1 ULP, with no NaN/Inf classification
+mismatches. Explicit tests also preserved the tested signed-zero, transfer-
+boundary, infinity and NaN bit patterns.
+
+A portable internal wrapper was validated with this shape:
+
+```d
+T colorPow24(T)(T base)
+@safe pure nothrow @nogc
+{
+    if (__ctfe)
+        return cast(T)pow(base, cast(T)2.4);
+
+    version (LDC)
+    {
+        import ldc.intrinsics : llvm_pow;
+        return llvm_pow!T(base, cast(T)2.4);
+    }
+    else
+    {
+        return cast(T)pow(base, cast(T)2.4);
+    }
+}
+```
+
+Both DMD 2.113 and LDC 1.43 compile and execute this form, including CTFE.
+Generated-code inspection confirms that the LDC runtime branch lowers to native
+`pow`/`powf`, while DMD continues through the Phobos `_powImpl` path.
+
+DMD remains materially slower even after using its best measured release flags
+(`-O -inline -release -boundscheck=off -mcpu=native`) and a direct-libm
+probe. In the best-known comparison it remained approximately 1.28x--1.56x
+slower than LDC/Clang on encoded operations and approximately 1.51x--1.58x
+slower on the measured contrast operations; the pow-free linear controls were
+roughly 5x--8x slower.
+
+Therefore v0.1 uses the following compiler-performance policy:
+
+- LDC is the release-performance reference compiler.
+- Release-critical hot paths shall be checked against equivalent optimized C++
+  implementations using the same algorithm, scalar type, semantics, input set
+  and machine.
+- Material unexplained LDC-vs-C++ gaps are release concerns.
+- DMD remains a supported correctness and portability compiler, but is not
+  required to satisfy the same performance gate when reproduced evidence
+  isolates the remaining gap to compiler/code-generation behavior.
+- Compiler-specific internal optimization paths are permitted when they preserve
+  the public API and are separately justified by numerical, CTFE, attribute and
+  generated-code evidence.
+- `-ffast-math` or equivalent semantic weakening is not part of the default
+  performance gate.
+
+These are compiler/version-specific measurements, not universal cross-platform
+guarantees. Targeted retesting remains required when compiler changes are
+likely to affect a validated hot path.
 
 ## 16.7 Future contrast metrics
 
@@ -1737,6 +1803,24 @@ Runtime conversion remains available for:
 - tooling.
 
 The mathematical core itself should nevertheless remain efficient enough for normal hot-path use.
+
+For v0.1, "efficient enough" includes a release-performance gate for
+release-critical hot paths. LDC is the performance reference compiler. Where a
+direct comparison is meaningful, color-d should be competitive with an
+equivalent optimized C++ implementation using the same algorithm, mathematical
+semantics, scalar type, deterministic input set, machine and release-oriented
+target flags.
+
+The gate does not require every compiler to generate identical performance.
+DMD remains a supported correctness/portability target, while compiler-specific
+internal runtime optimizations may be selected when reproduced evidence shows a
+material backend or standard-library difference and the public API, CTFE
+behavior and numerical contracts remain intact.
+
+Performance work must not silently weaken color semantics. In particular,
+`-ffast-math` is excluded from the default reference comparison because
+NaN/Inf/invalid-state behavior and property-specific numerical contracts are
+part of the library design.
 
 ---
 
