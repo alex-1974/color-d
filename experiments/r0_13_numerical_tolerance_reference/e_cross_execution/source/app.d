@@ -590,17 +590,26 @@ if (isColorScalar!T)
         ctfe.encodedRay
     );
 
+    // Materialize enum fields into their declared scalar type before
+    // reporting them. Directly casting a manifest constant to real can expose
+    // compile-time excess precision and is not evidence about stored T bits.
+    const T ctfeLocalAlpha =
+        ctfe.localAlpha;
+
+    const T ctfeRayAlpha =
+        ctfe.rayAlpha;
+
     writefln(
         "E1-EXACT-%s-alpha = local:%s ray:%s runtime-local=% .21g ctfe-local=% .21g runtime-ray=% .21g ctfe-ray=% .21g",
         scalarName,
-        runtime.localAlpha == ctfe.localAlpha &&
+        runtime.localAlpha == ctfeLocalAlpha &&
             runtime.localAlpha == cast(T)0.37,
-        runtime.rayAlpha == ctfe.rayAlpha &&
+        runtime.rayAlpha == ctfeRayAlpha &&
             runtime.rayAlpha == cast(T)0.37,
         cast(real)runtime.localAlpha,
-        cast(real)ctfe.localAlpha,
+        cast(real)ctfeLocalAlpha,
         cast(real)runtime.rayAlpha,
-        cast(real)ctfe.rayAlpha
+        cast(real)ctfeRayAlpha
     );
 }
 
