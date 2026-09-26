@@ -12,3 +12,4 @@ public import color.oklch;
 public import color.gamut;
 public import color.alpha;
 public import color.composite;
+public import color.interpolate;
