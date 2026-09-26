@@ -147,14 +147,10 @@ The source code should visibly show when color semantics change.
 
 ## 4.3 Storage and computation are different concerns
 
-Packed storage types:
+Packed storage and mathematical computation are distinct concerns.
 
-```d
-SRgb8
-SRgba8
-```
-
-are distinct from mathematical working types:
+If bounded packed color-value types such as future `SRgb8` / `SRgba8` are
+promoted later, they remain distinct from mathematical working types such as:
 
 ```d
 SRgb!float
@@ -162,15 +158,20 @@ LinearSRgb!float
 Oklab!float
 ```
 
-Storage types are bounded representations intended for:
+Potential packed storage types are intended for use cases such as:
 
-- files;
 - UI interoperability;
 - textures;
 - compact tables;
 - renderer upload.
 
+Image-file and pixel-layout ownership remains with the image/raster layer as
+defined by the `imagery-d` boundary.
+
 Computational types use floating-point values and may temporarily contain values outside the nominal display gamut.
+
+R0.14 deliberately defers concrete packed color-value types from v0.1 until a
+consumer justifies and validates their quantization/storage contract.
 
 ---
 
@@ -1622,12 +1623,12 @@ This gives:
 
 A built-in theme may optionally generate more than one final representation during CTFE.
 
-Example:
+Using only accepted v0.1 computational types, for example:
 
 ```d
 struct ThemeColor
 {
-    SRgba8 encoded;
+    SRgbf encoded;
     LinearSRgbf linear;
 }
 ```
@@ -1638,10 +1639,14 @@ This permits:
 Theme seed
     ↓ compile time
 
-SRgba8 representation
-LinearSRgb representation
-GPU-oriented tables
+encoded sRGB representation
+linear sRGB representation
+consumer-specific renderer/GPU tables
 ```
+
+A consumer may later convert these values into its own packed or GPU-specific
+storage representation. Promotion of a generic packed `SRgb8` / `SRgba8`
+type is not required for this architecture.
 
 Runtime initialization can then reduce to simple table access or buffer upload.
 
