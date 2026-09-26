@@ -136,8 +136,14 @@ Start with:
 
 ## Project status
 
-R0 research and architecture are complete with the R0.14 v0.1 promotion
-decision. The next phase is **R1 — mathematical core production API**.
+R0 research and architecture are complete, and **R1 — mathematical core
+production API** is complete as of 2026-09-26. The promoted production core now
+covers the accepted float/double value types, explicit conversion chain, sRGB
+transfer functions, strict sRGB gamut diagnostics and explicit hard clipping.
+
+The integrated R1 exit audit is recorded in
+[`docs/research/R1_CLOSEOUT.md`](docs/research/R1_CLOSEOUT.md). The next
+production phases are R2 (alpha/interpolation) and R3 (perceptual utilities).
 
 The accepted v0.1 production scope is intentionally smaller than the early
 candidate list. In particular, `SRgb8` / `SRgba8` and HSL/HSV are deferred
