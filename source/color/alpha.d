@@ -30,6 +30,9 @@ private enum bool isSupportedAlphaColor(Color) =
     isInstanceOf!(Oklab, Color) ||
     isInstanceOf!(Oklch, Color);
 
+private enum bool isSupportedPremultipliedColor(Color) =
+    isInstanceOf!(LinearSRgb, Color);
+
 /**
  * Straight-alpha color value.
  *
@@ -66,18 +69,33 @@ if (isSupportedAlphaColor!Color)
     }
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const value = Alpha!SRgbf(
+        SRgbf(0.2f, 0.4f, 0.8f),
+        0.5f
+    );
+
+    assert(value.color == SRgbf(0.2f, 0.4f, 0.8f));
+    assert(value.alpha == 0.5f);
+    assert(value.isValidAlpha);
+}
+
 /**
  * Premultiplied-alpha color representation.
  *
- * This type is deliberately distinct from `Alpha!Color`. Merely being
- * representable does not imply that every color space has premultiplication
- * or compositing semantics. R2 compositing operations will define their own
- * accepted color-space contracts explicitly.
+ * This type is deliberately distinct from `Alpha!Color`. Encoded and
+ * perceptual color spaces do not automatically gain premultiplication or
+ * compositing semantics. The initial production representation is therefore
+ * restricted to linear-light sRGB.
  *
- * Construction stores the supplied values unchanged.
+ * Construction stores the supplied values unchanged. Direct construction is
+ * an unchecked representation claim: the caller is responsible for supplying
+ * coordinates that are already premultiplied by the associated alpha.
  */
 struct Premultiplied(Color)
-if (isSupportedAlphaColor!Color)
+if (isSupportedPremultipliedColor!Color)
 {
     /// Wrapped premultiplied color coordinates.
     Color color;
@@ -102,6 +120,19 @@ if (isSupportedAlphaColor!Color)
     }
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const value = Premultiplied!LinearSRgbf(
+        LinearSRgbf(0.1f, 0.2f, 0.4f),
+        0.5f
+    );
+
+    assert(value.color == LinearSRgbf(0.1f, 0.2f, 0.4f));
+    assert(value.alpha == 0.5f);
+    assert(value.isValidAlpha);
+}
+
 static assert(is(Alpha!SRgbf.Scalar == float));
 static assert(is(Alpha!SRgbd.Scalar == double));
 static assert(is(Alpha!LinearSRgbf.Scalar == float));
@@ -109,11 +140,8 @@ static assert(is(Alpha!XyzD65f.Scalar == float));
 static assert(is(Alpha!Oklabf.Scalar == float));
 static assert(is(Alpha!Oklchf.Scalar == float));
 
-static assert(is(Premultiplied!SRgbf.Scalar == float));
+static assert(is(Premultiplied!LinearSRgbf.Scalar == float));
 static assert(is(Premultiplied!LinearSRgbd.Scalar == double));
-static assert(is(Premultiplied!XyzD65d.Scalar == double));
-static assert(is(Premultiplied!Oklabd.Scalar == double));
-static assert(is(Premultiplied!Oklchd.Scalar == double));
 
 static assert(!is(Alpha!LinearSRgbf == Premultiplied!LinearSRgbf));
 
@@ -123,6 +151,10 @@ static assert(!__traits(compiles, Alpha!OklabHuef));
 static assert(!__traits(compiles, Premultiplied!int));
 static assert(!__traits(compiles, Premultiplied!double));
 static assert(!__traits(compiles, Premultiplied!OklabHuef));
+static assert(!__traits(compiles, Premultiplied!SRgbf));
+static assert(!__traits(compiles, Premultiplied!XyzD65f));
+static assert(!__traits(compiles, Premultiplied!Oklabf));
+static assert(!__traits(compiles, Premultiplied!Oklchf));
 
 @safe pure nothrow @nogc unittest
 {
