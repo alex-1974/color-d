@@ -147,14 +147,10 @@ The source code should visibly show when color semantics change.
 
 ## 4.3 Storage and computation are different concerns
 
-Packed storage types:
+Packed storage and mathematical computation are distinct concerns.
 
-```d
-SRgb8
-SRgba8
-```
-
-are distinct from mathematical working types:
+If bounded packed color-value types such as future `SRgb8` / `SRgba8` are
+promoted later, they remain distinct from mathematical working types such as:
 
 ```d
 SRgb!float
@@ -162,15 +158,20 @@ LinearSRgb!float
 Oklab!float
 ```
 
-Storage types are bounded representations intended for:
+Potential packed storage types are intended for use cases such as:
 
-- files;
 - UI interoperability;
 - textures;
 - compact tables;
 - renderer upload.
 
+Image-file and pixel-layout ownership remains with the image/raster layer as
+defined by the `imagery-d` boundary.
+
 Computational types use floating-point values and may temporarily contain values outside the nominal display gamut.
+
+R0.14 deliberately defers concrete packed color-value types from v0.1 until a
+consumer justifies and validates their quantization/storage contract.
 
 ---
 
@@ -196,7 +197,14 @@ promoted production capability; `color-d` must remain independent of
 
 # 5. Scalar model
 
-Computational color types are generic over floating-point scalar type:
+Computational color types in the accepted v0.1 core are generic over:
+
+```text
+float
+double
+```
+
+The promoted computational value types are:
 
 ```d
 struct SRgb(T);
@@ -204,20 +212,26 @@ struct LinearSRgb(T);
 struct XyzD65(T);
 struct Oklab(T);
 struct Oklch(T);
-struct Hsl(T);
-struct Hsv(T);
 ```
 
-with constraints limiting `T` to supported floating-point types.
+with constraints rejecting unsupported scalar types.
 
-Convenience aliases should be provided:
+`real` is not part of the initial scalar contract. The public numerical and
+performance contract should not depend on platform-specific extended precision.
+
+Convenience aliases should be provided for both accepted scalar widths:
 
 ```d
-alias SRgbf       = SRgb!float;
-alias SRgbd       = SRgb!double;
-
-alias Oklabf      = Oklab!float;
-alias Oklabd      = Oklab!double;
+alias SRgbf        = SRgb!float;
+alias SRgbd        = SRgb!double;
+alias LinearSRgbf  = LinearSRgb!float;
+alias LinearSRgbd  = LinearSRgb!double;
+alias XyzD65f      = XyzD65!float;
+alias XyzD65d      = XyzD65!double;
+alias Oklabf       = Oklab!float;
+alias Oklabd       = Oklab!double;
+alias Oklchf       = Oklch!float;
+alias Oklchd       = Oklch!double;
 ```
 
 Expected use:
@@ -237,11 +251,14 @@ Integer color representations remain separate explicit storage types.
 
 ```d
 SRgb!T
-SRgb8
-SRgba8
 ```
 
 Represents standard nonlinear sRGB encoding.
+
+The earlier packed candidates `SRgb8` and `SRgba8` are deliberately deferred
+from v0.1. Their ownership remains with `color-d` if later promoted, but R0 did
+not validate the quantization/storage contract and no first consumer currently
+requires them.
 
 ---
 
@@ -316,41 +333,13 @@ Primary uses:
 
 ---
 
-### HSL
-
-```d
-Hsl!T
-```
-
-Provided mainly for:
-
-- CSS/UI interoperability;
-- legacy workflows.
-
-HSL is not the preferred space for perceptual theme manipulation.
-
----
-
-### HSV / HSB
-
-```d
-Hsv!T
-```
-
-Provided mainly for:
-
-- conventional color pickers;
-- familiar user-facing manipulation.
-
-HSV is not used as the basis for perceptually uniform theme generation.
-
----
-
 # 7. Deferred color spaces
 
 Not required for the first public implementation:
 
 ```text
+HSL
+HSV / HSB
 XYZ D50
 CIELAB
 CIELCh
@@ -361,6 +350,11 @@ Okhsl
 Okhsv
 HDR-specific spaces
 ```
+
+HSL and HSV were present in the early v0.1 candidate list for legacy/UI and
+color-picker interoperability. They are deliberately deferred because the
+executable R0 work did not validate them as part of the modern mathematical
+core and no first consumer currently requires them.
 
 Display-P3 is expected to be the first major wide-gamut extension after the initial sRGB-centered core.
 
@@ -431,6 +425,18 @@ but NaN and infinity should remain visible to the caller unless an explicitly na
 
 CSS-specific concepts such as missing components expressed through `none` are parser-layer semantics and do not belong in the mathematical core types.
 
+### 9.1 `.init` policy
+
+Promoted computational value types do not redefine `.init` to mean black,
+transparent black or another valid color.
+
+The natural floating-point `.init` state remains non-finite and therefore
+visibly invalid/uninitialized for semantic use.
+
+Operations that require finite or domain-valid input apply their own explicit
+contract instead of treating default initialization as an implicit color
+policy.
+
 ---
 
 # 10. Conversion API
@@ -443,8 +449,6 @@ toSRgb
 toXyzD65
 toOklab
 toOklch
-toHsl
-toHsv
 ```
 
 Conversions should be allocation-free.
@@ -1619,12 +1623,12 @@ This gives:
 
 A built-in theme may optionally generate more than one final representation during CTFE.
 
-Example:
+Using only accepted v0.1 computational types, for example:
 
 ```d
 struct ThemeColor
 {
-    SRgba8 encoded;
+    SRgbf encoded;
     LinearSRgbf linear;
 }
 ```
@@ -1635,10 +1639,14 @@ This permits:
 Theme seed
     ↓ compile time
 
-SRgba8 representation
-LinearSRgb representation
-GPU-oriented tables
+encoded sRGB representation
+linear sRGB representation
+consumer-specific renderer/GPU tables
 ```
+
+A consumer may later convert these values into its own packed or GPU-specific
+storage representation. Promotion of a generic packed `SRgb8` / `SRgba8`
+type is not required for this architecture.
 
 Runtime initialization can then reduce to simple table access or buffer upload.
 
@@ -1960,39 +1968,58 @@ This guards against accidental divergence when implementations are optimized.
 
 ---
 
-# 35. Preliminary module structure
+# 35. Initial production module structure
 
-The structure remains provisional.
+R0.14 promotes the following directly supported public-module shape for the
+initial v0.1 implementation:
 
 ```text
 source/color/
     package.d
 
     rgb.d
-    linear_rgb.d
     xyz.d
-
     oklab.d
     oklch.d
 
-    hsl.d
-    hsv.d
-
     alpha.d
     composite.d
-
-    convert.d
-    luminance.d
-    contrast.d
-
     interpolate.d
-    gamut.d
 
+    gamut.d
+    wcag.d
     difference.d
-    palette.d
+    tone.d
 ```
 
-Possible later modules:
+Responsibilities:
+
+- `color.rgb` — encoded/linear sRGB value types, aliases and transfer
+  conversion;
+- `color.xyz` — `XyzD65!T` and accepted RGB/XYZ conversion;
+- `color.oklab` — `Oklab!T` and accepted XYZ/Oklab conversion;
+- `color.oklch` — `Oklch!T`, Oklab/OKLCH conversion and raw OKLCH component
+  operations;
+- `color.alpha` — straight-alpha and premultiplied value types and explicit
+  representation transitions;
+- `color.composite` — linear-light source-over reference compositing;
+- `color.interpolate` — rectangular/polar interpolation and `HuePath`;
+- `color.gamut` — gamut diagnostics, clipping and explicit perceptual mapping;
+- `color.wcag` — WCAG-2-specific luminance and contrast measurement;
+- `color.difference` — explicit perceptual difference operations such as
+  `deltaEOK`;
+- `color.tone` — low-level OKLCH tone/schedule primitives.
+
+`import color;` is the curated convenience entry point and re-exports the
+accepted public v0.1 surface. The modules above are also directly supported
+documented imports.
+
+Implementation/helper modules are not part of the supported public contract
+merely because D can technically import them.
+
+There is no initial public `palette.d`, `hsl.d` or `hsv.d` module.
+
+Possible later modules remain consumer-driven, for example:
 
 ```text
 source/color/cie/
@@ -2004,11 +2031,15 @@ source/color/widegamut/
     rec2020.d
 
 source/color/picker/
+    hsl.d
+    hsv.d
     okhsl.d
     okhsv.d
 ```
 
-Module boundaries should follow actual implementation dependencies rather than this draft mechanically.
+Module boundaries may still receive implementation-level ergonomic refinement,
+but R1 must preserve the accepted responsibility boundaries and documented
+public import surface.
 
 ---
 
@@ -2045,49 +2076,58 @@ However, `color-d` intentionally differs by emphasizing:
 
 ---
 
-# 37. Initial v0.1 scope
+# 37. Accepted v0.1 scope
 
-Target functionality:
+R0.14 accepts the following production-promotion scope:
 
 ```text
-SRgb8
-SRgba8
-
 SRgb!T
 LinearSRgb!T
 XyzD65!T
-
 Oklab!T
 Oklch!T
+    T = float | double
 
-Hsl!T
-Hsv!T
+explicit conversions among the validated computational spaces
 
-explicit conversions
-
-Alpha!Color
+straight-alpha representation
 premultiplied-alpha representation
-
+explicit premultiply / unpremultiply
 linear-light source-over compositing
 
-relative luminance
-WCAG-style contrast ratio
-
 same-space interpolation
-HuePath handling
+OKLCH polar interpolation
+HuePath
 
+WCAG-2 relative luminance
+WCAG-2 contrast
 deltaEOK
 
 inGamut
 clip
-
 explicit perceptual gamut mapping
-with Local MINDE and Ray Trace as validated initial candidates
+    Local MINDE
+    Ray Trace
+    no frozen default mapper
 
-OKLCH tone-scale generation
+low-level OKLCH component/tone/schedule primitives
 
-CTFE support and tests
+CTFE support and tests where technically appropriate
+allocation-free scalar mathematical operations
 ```
+
+The following earlier candidates are deliberately not part of v0.1:
+
+```text
+SRgb8
+SRgba8
+Hsl!T
+Hsv!T
+```
+
+R0.12 also rejects the need for a semantic `Palette`, `Theme`,
+`PaletteBuilder` or `ThemeBuilder` abstraction in the mathematical library.
+Ordinary arrays plus explicit low-level primitives are the validated model.
 
 ---
 
@@ -2096,6 +2136,8 @@ CTFE support and tests
 Later only with concrete consumers:
 
 ```text
+SRgb8 / SRgba8
+HSL / HSV
 Display-P3
 Rec.2020
 CIELAB / LCh
@@ -2160,7 +2202,9 @@ They are:
 
 # 41. Implementation strategy
 
-Before freezing a public v0.1 API, perform a focused architecture/prototype phase covering:
+R0 has completed the architecture/prototype phase. R1--R3 now promote the
+accepted scope into production modules while preserving the following validated
+concerns:
 
 1. concrete D struct layouts;
 2. `float`/`double` generic implementation;
@@ -2177,7 +2221,10 @@ Before freezing a public v0.1 API, perform a focused architecture/prototype phas
 13. comparison against standards/reference vectors;
 14. basic performance and generated-code inspection.
 
-No API should be considered stable until these questions have been exercised by at least one real consumer.
+No API is considered release-stable merely because it is promoted from R0.
+Before v0.1 publication, both the `imagery-d` consumer gate (#4) and the OSM
+editor theme/style consumer gate (#13) must exercise the public surface and any
+material API friction must be resolved or deliberately documented.
 
 ---
 

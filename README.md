@@ -47,6 +47,9 @@ spikes:
 | R0.9 | WCAG-2 relative luminance and contrast semantics | PASS |
 | R0.10 | Oklab `deltaEOK` semantics and numerical robustness | PASS |
 | R0.11 | OKLCH tone-scale semantics, CTFE and representation | PASS |
+| R0.12 | Compile-time palette construction and validation | PASS |
+| R0.13 | Numerical tolerance and reference policy | PASS |
+| R0.14 | v0.1 scope and R0→R1 promotion decision | ACCEPTED |
 
 The currently validated computational chain is:
 
@@ -86,6 +89,7 @@ In particular:
 - [`R0.9 luminance / contrast results`](experiments/r0_9_luminance_contrast/RESULTS.md)
 - [`R0.10 deltaEOK results`](experiments/r0_10_delta_e_ok/RESULTS.md)
 - [`R0.11 tone-scale results`](experiments/r0_11_tone_scales/RESULTS.md)
+- [`R0.14 promotion gate`](docs/research/R0_14_PROMOTION_GATE.md)
 
 ## Workspace role
 
@@ -132,9 +136,12 @@ Start with:
 
 ## Project status
 
-Current phase: **R0 — research and architecture closeout**.
+R0 research and architecture are complete with the R0.14 v0.1 promotion
+decision. The next phase is **R1 — mathematical core production API**.
 
-Executable research is validated through **R0.12**.
+The accepted v0.1 production scope is intentionally smaller than the early
+candidate list. In particular, `SRgb8` / `SRgba8` and HSL/HSV are deferred
+until concrete consumer evidence justifies them.
 
 The current first-release target is:
 
@@ -142,22 +149,22 @@ The current first-release target is:
 v0.1.0 — First public release
 ```
 
-Remaining R0 work covers:
-
-- numerical tolerance/reference policy;
-- the `color-d` / `imagery-d` responsibility boundary;
-- targeted performance/compiler evidence;
-- the final v0.1 scope and R0→R1 promotion decision.
-
-After R0 closes, validated semantics are promoted deliberately into production
-modules:
+Production and stabilization sequence:
 
 ```text
 R1  mathematical core
 R2  alpha and interpolation
 R3  perceptual utilities
 R4  real consumer validation
+    - imagery-d
+    - OSM editor theme/style
+↓
+v0.1.0 release hardening and publication
 ```
+
+R1--R3 promote validated R0 semantics into deliberate production modules.
+R4 consumer validation remains mandatory before release stabilization, and the
+pre-1.0 API may still be corrected when real consumer use reveals friction.
 
 Initial R4 consumers are:
 

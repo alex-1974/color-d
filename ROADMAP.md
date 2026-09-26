@@ -36,7 +36,7 @@ duplicating issue-level task lists.
 
 ## R0 — Research and architecture
 
-Current phase.
+Closeout phase; R0.14 is the final promotion decision.
 
 Goals:
 
@@ -155,15 +155,23 @@ validated equivalent native C++ baselines, isolated the Phobos
 `pow(real, real)` hot-path bottleneck, and demonstrated a CTFE-preserving LDC
 runtime path at C++-competitive performance.
 
-Remaining R0 work is tracked through the `v0.1.0` release milestone:
+R0.14 (#10) is the final synthesis gate. Its accepted promotion matrix:
 
-- #10 — R0.14 final v0.1 scope and R0→R1 promotion gate.
+- promotes the validated computational core
+  `SRgb!T` / `LinearSRgb!T` / `XyzD65!T` / `Oklab!T` / `Oklch!T`
+  for `float` and `double`;
+- promotes the validated alpha/compositing, interpolation, WCAG-2,
+  `deltaEOK`, explicit gamut and low-level OKLCH tone primitives;
+- deliberately defers `SRgb8`, `SRgba8`, `Hsl!T` and `Hsv!T` from v0.1;
+- rejects a policy-heavy semantic Palette/Theme/builder abstraction in
+  `color-d`;
+- defines the initial supported public module/import surface;
+- carries forward the R0.13 numerical policy and #5 compiler/performance policy;
+- requires both real-consumer gates #4 and #13 before v0.1 stabilization.
 
-Issue #2 is the R0 closeout umbrella.
-
-R0.14 is the synthesis gate: it consumes the relevant conclusions from the
-other remaining R0 work, fixes the intended v0.1 scope, and determines whether
-production API promotion may begin.
+Once #10 and the R0 closeout umbrella #2 are closed, production promotion may
+begin through R1--R3. Public API remains pre-1.0 and consumer-correctable until
+the release gate.
 
 ## R1 — Mathematical core
 
@@ -172,45 +180,49 @@ Tracked by GitHub issue #3.
 R1 promotes accepted R0 research into deliberate production modules and API.
 Research experiment code is evidence, not production code to copy mechanically.
 
-Candidate scope:
+Accepted v0.1 scope:
 
-- `SRgb8`
-- `SRgba8`
 - `SRgb!T`
 - `LinearSRgb!T`
 - `XyzD65!T`
 - `Oklab!T`
 - `Oklch!T`
-- `Hsl!T`
-- `Hsv!T`
+- `T = float | double`
 - explicit color-space conversions
 - gamut testing
-- clipping
-- CTFE/reference tests
+- explicit hard clipping
+- supported root/direct-module import surface
+- CTFE/reference/compile-negative tests
+
+The earlier packed `SRgb8` / `SRgba8` and HSL/HSV candidates are not part of
+R1 for v0.1; R0.14 deliberately defers them.
 
 ## R2 — Alpha and interpolation
 
 Tracked by GitHub issue #11.
 
-Candidate scope:
+Accepted v0.1 scope:
 
 - straight alpha representation
-- premultiplied alpha representation
+- statically distinct premultiplied representation
+- explicit premultiply / unpremultiply
 - linear-light source-over compositing
 - same-space interpolation
-- polar hue interpolation policy
+- OKLCH polar interpolation
+- explicit `HuePath`
+- validated alpha-aware interpolation
 
 ## R3 — Perceptual utilities
 
 Tracked by GitHub issue #12.
 
-Candidate scope:
+Accepted v0.1 scope:
 
 - WCAG-2 relative luminance
 - WCAG-2 contrast ratio
 - `deltaEOK`
-- OKLCH tone scales
-- perceptual gamut mapping
+- explicit perceptual gamut mapping with Local MINDE and Ray Trace
+- low-level OKLCH component/tone/schedule primitives
 
 ## R4 — First consumer integration
 
@@ -250,6 +262,8 @@ they evolve with the production APIs that introduce them.
 
 Only with concrete consumer requirements:
 
+- `SRgb8` / `SRgba8`
+- HSL / HSV
 - Display-P3
 - Rec.2020
 - CIELAB / LCh
