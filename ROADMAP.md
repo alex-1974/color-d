@@ -180,45 +180,49 @@ Tracked by GitHub issue #3.
 R1 promotes accepted R0 research into deliberate production modules and API.
 Research experiment code is evidence, not production code to copy mechanically.
 
-Candidate scope:
+Accepted v0.1 scope:
 
-- `SRgb8`
-- `SRgba8`
 - `SRgb!T`
 - `LinearSRgb!T`
 - `XyzD65!T`
 - `Oklab!T`
 - `Oklch!T`
-- `Hsl!T`
-- `Hsv!T`
+- `T = float | double`
 - explicit color-space conversions
 - gamut testing
-- clipping
-- CTFE/reference tests
+- explicit hard clipping
+- supported root/direct-module import surface
+- CTFE/reference/compile-negative tests
+
+The earlier packed `SRgb8` / `SRgba8` and HSL/HSV candidates are not part of
+R1 for v0.1; R0.14 deliberately defers them.
 
 ## R2 — Alpha and interpolation
 
 Tracked by GitHub issue #11.
 
-Candidate scope:
+Accepted v0.1 scope:
 
 - straight alpha representation
-- premultiplied alpha representation
+- statically distinct premultiplied representation
+- explicit premultiply / unpremultiply
 - linear-light source-over compositing
 - same-space interpolation
-- polar hue interpolation policy
+- OKLCH polar interpolation
+- explicit `HuePath`
+- validated alpha-aware interpolation
 
 ## R3 — Perceptual utilities
 
 Tracked by GitHub issue #12.
 
-Candidate scope:
+Accepted v0.1 scope:
 
 - WCAG-2 relative luminance
 - WCAG-2 contrast ratio
 - `deltaEOK`
-- OKLCH tone scales
-- perceptual gamut mapping
+- explicit perceptual gamut mapping with Local MINDE and Ray Trace
+- low-level OKLCH component/tone/schedule primitives
 
 ## R4 — First consumer integration
 
@@ -258,6 +262,8 @@ they evolve with the production APIs that introduce them.
 
 Only with concrete consumer requirements:
 
+- `SRgb8` / `SRgba8`
+- HSL / HSV
 - Display-P3
 - Rec.2020
 - CIELAB / LCh
