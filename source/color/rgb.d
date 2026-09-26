@@ -1,5 +1,7 @@
 module color.rgb;
 
+private import std.traits : Unqual;
+
 /**
  * Encoded nonlinear sRGB color value.
  *
@@ -86,7 +88,6 @@ private auto srgbDecodePow24(T)(T base)
 if (is(Unqual!T == float) || is(Unqual!T == double))
 {
     import std.math : pow;
-    import std.traits : Unqual;
 
     alias U = Unqual!T;
     const U value = cast(U)base;
