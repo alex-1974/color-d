@@ -81,23 +81,27 @@ private T signOf(T)(T value)
  * The intrinsic path is used only for the sRGB decode power with a positive
  * base and exponent 2.4. CTFE and non-LDC builds retain std.math.pow.
  */
-private T srgbDecodePow24(T)(T base)
+private auto srgbDecodePow24(T)(T base)
 @safe pure nothrow @nogc
-if (is(T == float) || is(T == double))
+if (is(Unqual!T == float) || is(Unqual!T == double))
 {
     import std.math : pow;
+    import std.traits : Unqual;
+
+    alias U = Unqual!T;
+    const U value = cast(U)base;
 
     if (__ctfe)
-        return cast(T)pow(base, cast(T)2.4);
+        return cast(U)pow(value, cast(U)2.4);
 
     version (LDC)
     {
         import ldc.intrinsics : llvm_pow;
-        return llvm_pow!T(base, cast(T)2.4);
+        return llvm_pow!U(value, cast(U)2.4);
     }
     else
     {
-        return cast(T)pow(base, cast(T)2.4);
+        return cast(U)pow(value, cast(U)2.4);
     }
 }
 
@@ -378,4 +382,3 @@ version (unittest)
         assert(specialRoundTrip.b == -double.infinity);
     }
 }
-
