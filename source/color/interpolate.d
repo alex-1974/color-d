@@ -1,5 +1,8 @@
 module color.interpolate;
 
+private import color.alpha :
+    Alpha;
+
 private import color.rgb :
     SRgb,
     LinearSRgb;
@@ -40,6 +43,39 @@ private T lerp(T)(
 @safe pure nothrow @nogc
 {
     return first + (second - first) * t;
+}
+
+/*
+ * Interpolate one alpha-weighted rectangular coordinate.
+ *
+ * This is interpolation-specific premultiplication. It deliberately does not
+ * use the persistent Premultiplied!Color compositing representation.
+ *
+ * If interpolated alpha is exactly zero, the weighted coordinate is retained
+ * without division. At zero alpha the straight coordinate is mathematically
+ * powerless, so this provides the deterministic R0.7 representation without
+ * introducing division by zero.
+ */
+private T interpolateAlphaCoordinate(T)(
+    T firstCoordinate,
+    T firstAlpha,
+    T secondCoordinate,
+    T secondAlpha,
+    T t,
+    T alpha
+)
+@safe pure nothrow @nogc
+{
+    T coordinate = lerp(
+        firstCoordinate * firstAlpha,
+        secondCoordinate * secondAlpha,
+        t
+    );
+
+    if (alpha != cast(T)0)
+        coordinate /= alpha;
+
+    return coordinate;
 }
 
 private HueEndpoints!T adjustedHueEndpoints(T)(
@@ -337,8 +373,380 @@ Oklch!T interpolate(T)(
     assert(value.h.rawDegrees == 360.0);
 }
 
+/**
+ * Alpha-aware interpolation in encoded sRGB.
+ *
+ * RGB coordinates are multiplied by their endpoint alpha values before
+ * interpolation. The interpolated coordinates are divided by interpolated
+ * alpha when that alpha is nonzero.
+ *
+ * This weighting occurs in encoded-sRGB coordinates. It is interpolation
+ * mathematics, not linear-light Porter-Duff compositing, and it does not use
+ * the persistent `Premultiplied!Color` representation.
+ *
+ * A fully transparent endpoint therefore cannot leak hidden encoded RGB into
+ * a visible intermediate result. At interpolated alpha zero, division is
+ * skipped and the interpolated weighted coordinates are retained
+ * deterministically. Consequently hidden straight color is not generally
+ * preserved at transparent endpoints, and raw endpoint identity is not
+ * guaranteed for a fully transparent endpoint even at `t == 0` or `t == 1`.
+ *
+ * Neither `t` nor alpha is clamped or validated. No color-space conversion,
+ * clipping, or gamut mapping is performed.
+ */
+Alpha!(SRgb!T) interpolate(T)(
+    Alpha!(SRgb!T) first,
+    Alpha!(SRgb!T) second,
+    T t
+)
+@safe pure nothrow @nogc
+{
+    const T alpha =
+        lerp(first.alpha, second.alpha, t);
+
+    return Alpha!(SRgb!T)(
+        SRgb!T(
+            interpolateAlphaCoordinate(
+                first.color.r,
+                first.alpha,
+                second.color.r,
+                second.alpha,
+                t,
+                alpha
+            ),
+            interpolateAlphaCoordinate(
+                first.color.g,
+                first.alpha,
+                second.color.g,
+                second.alpha,
+                t,
+                alpha
+            ),
+            interpolateAlphaCoordinate(
+                first.color.b,
+                first.alpha,
+                second.color.b,
+                second.alpha,
+                t,
+                alpha
+            )
+        ),
+        alpha
+    );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    import color.alpha : Alpha;
+    import color.rgb : SRgbd;
+
+    const value = interpolate(
+        Alpha!SRgbd(
+            SRgbd(1.0, 0.0, 0.0),
+            1.0
+        ),
+        Alpha!SRgbd(
+            SRgbd(0.0, 0.0, 1.0),
+            0.0
+        ),
+        0.5
+    );
+
+    assert(value.color == SRgbd(1.0, 0.0, 0.0));
+    assert(value.alpha == 0.5);
+}
+
+/**
+ * Alpha-aware interpolation in linear-light sRGB.
+ *
+ * Linear RGB coordinates participate in interpolation-specific alpha
+ * weighting. A transparent endpoint therefore cannot contribute hidden RGB to
+ * a visible intermediate result.
+ *
+ * This operation returns straight `Alpha!(LinearSRgb!T)` and remains distinct
+ * from the persistent `Premultiplied!(LinearSRgb!T)` representation used by
+ * compositing.
+ *
+ * At interpolated alpha zero, division is skipped and the interpolated
+ * alpha-weighted coordinates are retained. They are not reconstructed hidden
+ * straight color. Consequently raw endpoint identity is not guaranteed for a
+ * fully transparent endpoint even at `t == 0` or `t == 1`.
+ *
+ * Neither `t` nor alpha is clamped or validated. Extended-range coordinates
+ * remain representable and no clipping or gamut mapping is performed.
+ */
+Alpha!(LinearSRgb!T) interpolate(T)(
+    Alpha!(LinearSRgb!T) first,
+    Alpha!(LinearSRgb!T) second,
+    T t
+)
+@safe pure nothrow @nogc
+{
+    const T alpha =
+        lerp(first.alpha, second.alpha, t);
+
+    return Alpha!(LinearSRgb!T)(
+        LinearSRgb!T(
+            interpolateAlphaCoordinate(
+                first.color.r,
+                first.alpha,
+                second.color.r,
+                second.alpha,
+                t,
+                alpha
+            ),
+            interpolateAlphaCoordinate(
+                first.color.g,
+                first.alpha,
+                second.color.g,
+                second.alpha,
+                t,
+                alpha
+            ),
+            interpolateAlphaCoordinate(
+                first.color.b,
+                first.alpha,
+                second.color.b,
+                second.alpha,
+                t,
+                alpha
+            )
+        ),
+        alpha
+    );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    import color.alpha : Alpha;
+    import color.rgb : LinearSRgbd;
+
+    const value = interpolate(
+        Alpha!LinearSRgbd(
+            LinearSRgbd(1.0, 0.0, 0.0),
+            1.0
+        ),
+        Alpha!LinearSRgbd(
+            LinearSRgbd(0.0, 0.0, 1.0),
+            0.0
+        ),
+        0.5
+    );
+
+    assert(value.color == LinearSRgbd(1.0, 0.0, 0.0));
+    assert(value.alpha == 0.5);
+}
+
+/**
+ * Alpha-aware rectangular interpolation in Oklab.
+ *
+ * `L`, `a`, and `b` are multiplied by endpoint alpha before interpolation and
+ * divided by interpolated alpha when that alpha is nonzero.
+ *
+ * The weighting is an internal interpolation step and does not imply
+ * compositing semantics or a persistent premultiplied Oklab representation.
+ *
+ * At interpolated alpha zero, division is skipped and the alpha-weighted
+ * coordinates are retained. Hidden straight Oklab coordinates are therefore
+ * not reconstructed, and raw endpoint identity is not guaranteed for a fully
+ * transparent endpoint even at `t == 0` or `t == 1`.
+ *
+ * Neither `t` nor alpha is clamped or validated, and no conversion, clipping,
+ * or gamut mapping occurs.
+ */
+Alpha!(Oklab!T) interpolate(T)(
+    Alpha!(Oklab!T) first,
+    Alpha!(Oklab!T) second,
+    T t
+)
+@safe pure nothrow @nogc
+{
+    const T alpha =
+        lerp(first.alpha, second.alpha, t);
+
+    return Alpha!(Oklab!T)(
+        Oklab!T(
+            interpolateAlphaCoordinate(
+                first.color.l,
+                first.alpha,
+                second.color.l,
+                second.alpha,
+                t,
+                alpha
+            ),
+            interpolateAlphaCoordinate(
+                first.color.a,
+                first.alpha,
+                second.color.a,
+                second.alpha,
+                t,
+                alpha
+            ),
+            interpolateAlphaCoordinate(
+                first.color.b,
+                first.alpha,
+                second.color.b,
+                second.alpha,
+                t,
+                alpha
+            )
+        ),
+        alpha
+    );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    import color.alpha : Alpha;
+    import color.oklab : Oklabd;
+
+    const value = interpolate(
+        Alpha!Oklabd(
+            Oklabd(0.25, 0.5, -0.5),
+            0.25
+        ),
+        Alpha!Oklabd(
+            Oklabd(0.75, -0.5, 0.5),
+            0.75
+        ),
+        0.5
+    );
+
+    assert(value.color == Oklabd(0.625, -0.25, 0.25));
+    assert(value.alpha == 0.5);
+}
+
+/**
+ * Alpha-aware polar interpolation in OKLCH.
+ *
+ * Endpoint colors are first canonicalized to non-negative chroma, matching the
+ * non-alpha polar interpolation contract.
+ *
+ * `L` and `C` participate in interpolation-specific alpha weighting. Hue does
+ * not: it remains an angular coordinate governed only by the explicit
+ * `HuePath`.
+ *
+ * Therefore a transparent endpoint cannot leak hidden lightness or chroma into
+ * a visible result, while its hue may still participate in the selected hue
+ * trajectory. Hue is never numerically multiplied by alpha.
+ *
+ * Exact achromatic hue borrowing follows the ordinary OKLCH interpolation
+ * semantics: when exactly one canonicalized endpoint has `C == 0`, its
+ * interpolation hue is borrowed from the chromatic endpoint. No hidden
+ * near-achromatic epsilon is applied.
+ *
+ * At interpolated alpha zero, `L` and `C` remain in their interpolated weighted
+ * form rather than being divided by zero. Hidden straight `L` and `C` are not
+ * reconstructed, so raw endpoint identity is not guaranteed for a fully
+ * transparent endpoint even at `t == 0` or `t == 1`. Hue remains independently
+ * interpolated.
+ *
+ * Neither `t` nor alpha is clamped or validated. No color-space conversion,
+ * clipping, or gamut mapping is performed.
+ */
+Alpha!(Oklch!T) interpolate(T)(
+    Alpha!(Oklch!T) first,
+    Alpha!(Oklch!T) second,
+    T t,
+    HuePath path
+)
+@safe pure nothrow @nogc
+{
+    first.color = first.color.canonicalized;
+    second.color = second.color.canonicalized;
+
+    OklabHue!T firstHue = first.color.h;
+    OklabHue!T secondHue = second.color.h;
+
+    if (first.color.c == cast(T)0 &&
+        second.color.c != cast(T)0)
+    {
+        firstHue = secondHue;
+    }
+    else if (second.color.c == cast(T)0 &&
+             first.color.c != cast(T)0)
+    {
+        secondHue = firstHue;
+    }
+
+    const OklabHue!T hue =
+        interpolateHue(
+            firstHue,
+            secondHue,
+            t,
+            path
+        );
+
+    const T alpha =
+        lerp(first.alpha, second.alpha, t);
+
+    return Alpha!(Oklch!T)(
+        Oklch!T(
+            interpolateAlphaCoordinate(
+                first.color.l,
+                first.alpha,
+                second.color.l,
+                second.alpha,
+                t,
+                alpha
+            ),
+            interpolateAlphaCoordinate(
+                first.color.c,
+                first.alpha,
+                second.color.c,
+                second.alpha,
+                t,
+                alpha
+            ),
+            hue
+        ),
+        alpha
+    );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    import color.alpha : Alpha;
+    import color.oklch :
+        OklabHued,
+        Oklchd;
+
+    const value = interpolate(
+        Alpha!Oklchd(
+            Oklchd(
+                0.4,
+                0.2,
+                OklabHued.fromDegrees(30.0)
+            ),
+            0.0
+        ),
+        Alpha!Oklchd(
+            Oklchd(
+                0.8,
+                0.2,
+                OklabHued.fromDegrees(210.0)
+            ),
+            1.0
+        ),
+        0.5,
+        HuePath.shorter
+    );
+
+    assert(value.color.l == 0.8);
+    assert(value.color.c == 0.2);
+    assert(value.color.h.rawDegrees == 120.0);
+    assert(value.alpha == 0.5);
+}
+
 version (unittest)
 {
+    private import color.alpha :
+        Premultiplied;
+
     private import color.rgb :
         SRgbf,
         SRgbd,
@@ -830,5 +1238,507 @@ version (unittest)
 
     static assert(
         floatPolar.h.rawDegrees == 360.0f
+    );
+
+    // Alpha-aware interpolation remains restricted to the R0.7-validated
+    // interpolation spaces.
+    static assert(!__traits(compiles,
+        interpolate(
+            Alpha!XyzD65f(
+                XyzD65f(0.1f, 0.2f, 0.3f),
+                0.5f
+            ),
+            Alpha!XyzD65f(
+                XyzD65f(0.4f, 0.5f, 0.6f),
+                0.5f
+            ),
+            0.5f
+        )
+    ));
+
+    // Alpha-wrapped endpoints still may not silently cross color spaces.
+    static assert(!__traits(compiles,
+        interpolate(
+            Alpha!SRgbf(
+                SRgbf(1, 0, 0),
+                1
+            ),
+            Alpha!LinearSRgbf(
+                LinearSRgbf(0, 0, 1),
+                1
+            ),
+            0.5f
+        )
+    ));
+
+    // Scalar types must match across both endpoints and the factor.
+    static assert(!__traits(compiles,
+        interpolate(
+            Alpha!LinearSRgbf(
+                LinearSRgbf(1, 0, 0),
+                1
+            ),
+            Alpha!LinearSRgbd(
+                LinearSRgbd(0, 0, 1),
+                1
+            ),
+            0.5
+        )
+    ));
+
+    // Alpha-aware OKLCH retains the explicit HuePath requirement.
+    static assert(!__traits(compiles,
+        interpolate(
+            Alpha!Oklchd(
+                Oklchd(
+                    0.5,
+                    0.2,
+                    OklabHued.fromDegrees(30.0)
+                ),
+                1.0
+            ),
+            Alpha!Oklchd(
+                Oklchd(
+                    0.5,
+                    0.2,
+                    OklabHued.fromDegrees(90.0)
+                ),
+                1.0
+            ),
+            0.5
+        )
+    ));
+
+    // Persistent compositing-premultiplied values are not interpolation input.
+    static assert(!__traits(compiles,
+        interpolate(
+            Premultiplied!LinearSRgbd(
+                LinearSRgbd(0.5, 0, 0),
+                0.5
+            ),
+            Premultiplied!LinearSRgbd(
+                LinearSRgbd(0, 0, 0.5),
+                0.5
+            ),
+            0.5
+        )
+    ));
+
+    // Opaque red -> transparent blue: hidden transparent blue must not leak.
+    enum alphaOpaqueRed = Alpha!LinearSRgbd(
+        LinearSRgbd(1, 0, 0),
+        1
+    );
+
+    enum alphaTransparentBlue = Alpha!LinearSRgbd(
+        LinearSRgbd(0, 0, 1),
+        0
+    );
+
+    enum alphaRedBlueMid = interpolate(
+        alphaOpaqueRed,
+        alphaTransparentBlue,
+        0.5
+    );
+
+    static assert(
+        alphaRedBlueMid ==
+        Alpha!LinearSRgbd(
+            LinearSRgbd(1, 0, 0),
+            0.5
+        )
+    );
+
+    // Reverse direction gives the corresponding visible blue contribution.
+    enum alphaTransparentRed = Alpha!LinearSRgbd(
+        LinearSRgbd(1, 0, 0),
+        0
+    );
+
+    enum alphaOpaqueBlue = Alpha!LinearSRgbd(
+        LinearSRgbd(0, 0, 1),
+        1
+    );
+
+    enum alphaReverseMid = interpolate(
+        alphaTransparentRed,
+        alphaOpaqueBlue,
+        0.5
+    );
+
+    static assert(
+        alphaReverseMid ==
+        Alpha!LinearSRgbd(
+            LinearSRgbd(0, 0, 1),
+            0.5
+        )
+    );
+
+    // General fractional-alpha weighting.
+    enum alphaFractional = interpolate(
+        Alpha!LinearSRgbd(
+            LinearSRgbd(1, 0, 0),
+            0.25
+        ),
+        Alpha!LinearSRgbd(
+            LinearSRgbd(0, 0, 1),
+            0.75
+        ),
+        0.5
+    );
+
+    static assert(
+        alphaFractional ==
+        Alpha!LinearSRgbd(
+            LinearSRgbd(0.25, 0, 0.75),
+            0.5
+        )
+    );
+
+    // The same alpha weighting applies in encoded sRGB coordinates.
+    enum alphaEncoded = interpolate(
+        Alpha!SRgbd(
+            SRgbd(1, 0, 0),
+            0.25
+        ),
+        Alpha!SRgbd(
+            SRgbd(0, 0, 1),
+            0.75
+        ),
+        0.5
+    );
+
+    static assert(
+        alphaEncoded ==
+        Alpha!SRgbd(
+            SRgbd(0.25, 0, 0.75),
+            0.5
+        )
+    );
+
+    // All rectangular coordinates participate in Oklab weighting.
+    enum alphaLab = interpolate(
+        Alpha!Oklabd(
+            Oklabd(0.25, 0.5, -0.5),
+            0.25
+        ),
+        Alpha!Oklabd(
+            Oklabd(0.75, -0.5, 0.5),
+            0.75
+        ),
+        0.5
+    );
+
+    static assert(
+        alphaLab ==
+        Alpha!Oklabd(
+            Oklabd(0.625, -0.25, 0.25),
+            0.5
+        )
+    );
+
+    // With both endpoint alphas at zero, hidden rectangular color collapses.
+    enum alphaZeroRect = interpolate(
+        Alpha!LinearSRgbd(
+            LinearSRgbd(1, 2, 3),
+            0
+        ),
+        Alpha!LinearSRgbd(
+            LinearSRgbd(-1, -2, -3),
+            0
+        ),
+        0.5
+    );
+
+    static assert(
+        alphaZeroRect ==
+        Alpha!LinearSRgbd(
+            LinearSRgbd(0, 0, 0),
+            0
+        )
+    );
+
+    // Alpha-aware interpolation does not preserve hidden straight color at a
+    // fully transparent endpoint, even when t selects that endpoint exactly.
+    enum alphaTransparentEndpoint = interpolate(
+        Alpha!LinearSRgbd(
+            LinearSRgbd(1, 2, 3),
+            0
+        ),
+        Alpha!LinearSRgbd(
+            LinearSRgbd(4, 5, 6),
+            1
+        ),
+        0.0
+    );
+
+    static assert(
+        alphaTransparentEndpoint ==
+        Alpha!LinearSRgbd(
+            LinearSRgbd(0, 0, 0),
+            0
+        )
+    );
+
+    // If unclamped extrapolation lands exactly at alpha zero, division is
+    // still skipped and the weighted coordinates remain deterministic.
+    enum alphaExtrapolatedZero = interpolate(
+        Alpha!LinearSRgbd(
+            LinearSRgbd(1, 0, 0),
+            0.25
+        ),
+        Alpha!LinearSRgbd(
+            LinearSRgbd(0, 0, 1),
+            0.75
+        ),
+        -0.5
+    );
+
+    static assert(alphaExtrapolatedZero.alpha == 0);
+    static assert(
+        alphaExtrapolatedZero.color ==
+        LinearSRgbd(0.375, 0, -0.375)
+    );
+
+    // Neither t nor alpha is silently clamped.
+    enum alphaExtended = interpolate(
+        Alpha!LinearSRgbd(
+            LinearSRgbd(1, 0, 0),
+            0.25
+        ),
+        Alpha!LinearSRgbd(
+            LinearSRgbd(1, 0, 0),
+            0.75
+        ),
+        2.0
+    );
+
+    static assert(alphaExtended.alpha == 1.25);
+    static assert(alphaExtended.color == LinearSRgbd(1, 0, 0));
+    static assert(!alphaExtended.isValidAlpha);
+
+    // Polar alpha weighting applies only to L and C. Hue remains angular.
+    enum alphaPolarMid = interpolate(
+        Alpha!Oklchd(
+            Oklchd(
+                0.4,
+                0.2,
+                OklabHued.fromDegrees(30.0)
+            ),
+            0
+        ),
+        Alpha!Oklchd(
+            Oklchd(
+                0.8,
+                0.2,
+                OklabHued.fromDegrees(210.0)
+            ),
+            1
+        ),
+        0.5,
+        HuePath.shorter
+    );
+
+    static assert(alphaPolarMid.alpha == 0.5);
+    static assert(alphaPolarMid.color.l == 0.8);
+    static assert(alphaPolarMid.color.c == 0.2);
+    static assert(
+        alphaPolarMid.color.h.rawDegrees == 120.0
+    );
+
+    // At zero alpha, L and C remain weighted while hue remains independently
+    // interpolated.
+    enum alphaZeroPolar = interpolate(
+        Alpha!Oklchd(
+            Oklchd(
+                0.4,
+                0.2,
+                OklabHued.fromDegrees(30.0)
+            ),
+            0
+        ),
+        Alpha!Oklchd(
+            Oklchd(
+                0.8,
+                0.3,
+                OklabHued.fromDegrees(90.0)
+            ),
+            0
+        ),
+        0.5,
+        HuePath.shorter
+    );
+
+    static assert(alphaZeroPolar.alpha == 0);
+    static assert(alphaZeroPolar.color.l == 0);
+    static assert(alphaZeroPolar.color.c == 0);
+    static assert(
+        alphaZeroPolar.color.h.rawDegrees == 60.0
+    );
+
+    // At a transparent polar endpoint, hidden L/C collapse through
+    // interpolation weighting while hue remains an independent angle.
+    enum alphaTransparentPolarEndpoint = interpolate(
+        Alpha!Oklchd(
+            Oklchd(
+                0.4,
+                0.2,
+                OklabHued.fromDegrees(30.0)
+            ),
+            0
+        ),
+        Alpha!Oklchd(
+            Oklchd(
+                0.8,
+                0.3,
+                OklabHued.fromDegrees(90.0)
+            ),
+            1
+        ),
+        0.0,
+        HuePath.shorter
+    );
+
+    static assert(alphaTransparentPolarEndpoint.alpha == 0);
+    static assert(alphaTransparentPolarEndpoint.color.l == 0);
+    static assert(alphaTransparentPolarEndpoint.color.c == 0);
+    static assert(
+        alphaTransparentPolarEndpoint.color.h.rawDegrees == 30.0
+    );
+
+    // Exact achromatic hue borrowing remains part of alpha-aware polar
+    // interpolation as well.
+    enum alphaAchromatic = interpolate(
+        Alpha!Oklchd(
+            Oklchd(
+                0.4,
+                0,
+                OklabHued.fromDegrees(10.0)
+            ),
+            1
+        ),
+        Alpha!Oklchd(
+            Oklchd(
+                0.8,
+                0.2,
+                OklabHued.fromDegrees(200.0)
+            ),
+            1
+        ),
+        0.5,
+        HuePath.shorter
+    );
+
+    static assert(
+        alphaAchromatic.color.h.rawDegrees == 200.0
+    );
+
+    // With two exactly achromatic endpoints, neither hue is borrowed.
+    enum alphaBothAchromatic = interpolate(
+        Alpha!Oklchd(
+            Oklchd(
+                0.4,
+                0,
+                OklabHued.fromDegrees(350.0)
+            ),
+            1
+        ),
+        Alpha!Oklchd(
+            Oklchd(
+                0.8,
+                0,
+                OklabHued.fromDegrees(10.0)
+            ),
+            1
+        ),
+        0.5,
+        HuePath.shorter
+    );
+
+    static assert(alphaBothAchromatic.color.c == 0);
+    static assert(
+        alphaBothAchromatic.color.h.rawDegrees == 360.0
+    );
+
+    // Near-zero chroma is not silently classified as exactly achromatic.
+    enum alphaNearAchromatic = interpolate(
+        Alpha!Oklchd(
+            Oklchd(
+                0.4,
+                1e-12,
+                OklabHued.fromDegrees(10.0)
+            ),
+            1
+        ),
+        Alpha!Oklchd(
+            Oklchd(
+                0.8,
+                0.2,
+                OklabHued.fromDegrees(200.0)
+            ),
+            1
+        ),
+        0.5,
+        HuePath.shorter
+    );
+
+    static assert(
+        alphaNearAchromatic.color.h.rawDegrees == 285.0
+    );
+
+    // Negative chroma is canonicalized before polar alpha interpolation.
+    enum alphaNegativeChroma = interpolate(
+        Alpha!Oklchd(
+            Oklchd(
+                0.5,
+                -0.25,
+                OklabHued.fromDegrees(30.0)
+            ),
+            0.5
+        ),
+        Alpha!Oklchd(
+            Oklchd(
+                0.5,
+                0.25,
+                OklabHued.fromDegrees(210.0)
+            ),
+            0.5
+        ),
+        0.5,
+        HuePath.shorter
+    );
+
+    static assert(alphaNegativeChroma.color.c == 0.25);
+    static assert(
+        alphaNegativeChroma.color.h.rawDegrees == 210.0
+    );
+
+    // Exercise alpha-aware float interpolation during CTFE.
+    enum alphaFloat = interpolate(
+        Alpha!Oklchf(
+            Oklchf(
+                0.5f,
+                0.25f,
+                OklabHuef.fromDegrees(350.0f)
+            ),
+            0.0f
+        ),
+        Alpha!Oklchf(
+            Oklchf(
+                0.5f,
+                0.25f,
+                OklabHuef.fromDegrees(10.0f)
+            ),
+            1.0f
+        ),
+        0.5f,
+        HuePath.shorter
+    );
+
+    static assert(alphaFloat.alpha == 0.5f);
+    static assert(alphaFloat.color.l == 0.5f);
+    static assert(alphaFloat.color.c == 0.25f);
+    static assert(
+        alphaFloat.color.h.rawDegrees == 360.0f
     );
 }
