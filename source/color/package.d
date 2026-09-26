@@ -6,3 +6,4 @@ module color;
  * Direct imports of documented public modules remain supported as well.
  */
 public import color.rgb;
+public import color.xyz;
