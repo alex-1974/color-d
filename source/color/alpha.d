@@ -133,6 +133,113 @@ if (isSupportedPremultipliedColor!Color)
     assert(value.isValidAlpha);
 }
 
+/**
+ * Converts straight linear-light sRGB to premultiplied alpha.
+ *
+ * Each RGB coordinate is multiplied by the associated alpha. Alpha itself is
+ * preserved unchanged.
+ *
+ * The operation does not validate or clamp alpha, clip RGB, perform gamut
+ * mapping, or convert color spaces. Extended-range linear RGB is therefore
+ * preserved by the arithmetic.
+ *
+ * At zero alpha, finite hidden straight RGB collapses to zero and cannot later
+ * be recovered by unpremultiplication.
+ */
+Premultiplied!(LinearSRgb!T) premultiply(T)(
+    Alpha!(LinearSRgb!T) value
+)
+@safe pure nothrow @nogc
+{
+    return Premultiplied!(LinearSRgb!T)(
+        LinearSRgb!T(
+            value.color.r * value.alpha,
+            value.color.g * value.alpha,
+            value.color.b * value.alpha
+        ),
+        value.alpha
+    );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const straight = Alpha!LinearSRgbf(
+        LinearSRgbf(0.5f, 1.25f, -0.25f),
+        0.5f
+    );
+
+    const value = premultiply(straight);
+
+    assert(value.color == LinearSRgbf(0.25f, 0.625f, -0.125f));
+    assert(value.alpha == 0.5f);
+}
+
+/**
+ * Converts premultiplied linear-light sRGB back to straight alpha.
+ *
+ * For nonzero alpha, each RGB coordinate is divided by alpha and alpha itself
+ * is preserved unchanged.
+ *
+ * For zero alpha, straight RGB cannot be reconstructed from the canonical
+ * premultiplied representation. The operation therefore returns canonical
+ * transparent black without dividing by zero, including for non-canonical raw
+ * zero-alpha premultiplied values.
+ *
+ * The operation does not validate or clamp alpha, clip RGB, perform gamut
+ * mapping, or convert color spaces.
+ */
+Alpha!(LinearSRgb!T) unpremultiply(T)(
+    Premultiplied!(LinearSRgb!T) value
+)
+@safe pure nothrow @nogc
+{
+    if (value.alpha == cast(T)0)
+    {
+        return Alpha!(LinearSRgb!T)(
+            LinearSRgb!T(
+                cast(T)0,
+                cast(T)0,
+                cast(T)0
+            ),
+            cast(T)0
+        );
+    }
+
+    return Alpha!(LinearSRgb!T)(
+        LinearSRgb!T(
+            value.color.r / value.alpha,
+            value.color.g / value.alpha,
+            value.color.b / value.alpha
+        ),
+        value.alpha
+    );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const premultiplied = Premultiplied!LinearSRgbf(
+        LinearSRgbf(0.25f, 0.625f, -0.125f),
+        0.5f
+    );
+
+    const straight = unpremultiply(premultiplied);
+
+    assert(straight.color == LinearSRgbf(0.5f, 1.25f, -0.25f));
+    assert(straight.alpha == 0.5f);
+
+    const transparent = unpremultiply(
+        Premultiplied!LinearSRgbf(
+            LinearSRgbf(1.0f, -2.0f, 3.0f),
+            0.0f
+        )
+    );
+
+    assert(transparent.color == LinearSRgbf(0.0f, 0.0f, 0.0f));
+    assert(transparent.alpha == 0.0f);
+}
+
 static assert(is(Alpha!SRgbf.Scalar == float));
 static assert(is(Alpha!SRgbd.Scalar == double));
 static assert(is(Alpha!LinearSRgbf.Scalar == float));
@@ -155,6 +262,107 @@ static assert(!__traits(compiles, Premultiplied!SRgbf));
 static assert(!__traits(compiles, Premultiplied!XyzD65f));
 static assert(!__traits(compiles, Premultiplied!Oklabf));
 static assert(!__traits(compiles, Premultiplied!Oklchf));
+
+// Alpha representation is generic, but compositing premultiplication is not.
+static assert(!__traits(compiles,
+    premultiply(
+        Alpha!SRgbf(
+            SRgbf(0.2f, 0.4f, 0.8f),
+            0.5f
+        )
+    )
+));
+
+static assert(!__traits(compiles,
+    premultiply(
+        Alpha!Oklabf(
+            Oklabf(0.5f, 0.1f, -0.1f),
+            0.5f
+        )
+    )
+));
+
+static assert(!__traits(compiles,
+    unpremultiply(
+        Alpha!LinearSRgbf(
+            LinearSRgbf(0.2f, 0.4f, 0.8f),
+            0.5f
+        )
+    )
+));
+
+version (unittest)
+{
+    // CTFE transition and exact binary-friendly reference values.
+    enum ctfeStraight = Alpha!LinearSRgbd(
+        LinearSRgbd(0.5, 1.25, -0.25),
+        0.5
+    );
+
+    enum ctfePremultiplied = premultiply(ctfeStraight);
+
+    static assert(
+        ctfePremultiplied.color ==
+        LinearSRgbd(0.25, 0.625, -0.125)
+    );
+    static assert(ctfePremultiplied.alpha == 0.5);
+
+    enum ctfeRoundTrip = unpremultiply(ctfePremultiplied);
+
+    static assert(ctfeRoundTrip.color == ctfeStraight.color);
+    static assert(ctfeRoundTrip.alpha == ctfeStraight.alpha);
+
+    // Different finite hidden colors collapse at zero alpha.
+    enum transparentRed = premultiply(
+        Alpha!LinearSRgbd(
+            LinearSRgbd(1, 0, 0),
+            0
+        )
+    );
+
+    enum transparentBlue = premultiply(
+        Alpha!LinearSRgbd(
+            LinearSRgbd(0, 0, 1),
+            0
+        )
+    );
+
+    static assert(transparentRed == transparentBlue);
+    static assert(transparentRed.color == LinearSRgbd(0, 0, 0));
+    static assert(transparentRed.alpha == 0);
+
+    // Even a non-canonical raw zero-alpha premultiplied value
+    // unpremultiplies deterministically to transparent black.
+    enum nonCanonicalZero = Premultiplied!LinearSRgbd(
+        LinearSRgbd(2, -3, 4),
+        0
+    );
+
+    enum canonicalZero = unpremultiply(nonCanonicalZero);
+
+    static assert(canonicalZero.color == LinearSRgbd(0, 0, 0));
+    static assert(canonicalZero.alpha == 0);
+
+    // Invalid raw alpha remains representable and is not silently clamped.
+    enum invalidStraight = Alpha!LinearSRgbd(
+        LinearSRgbd(0.5, -0.25, 1.0),
+        1.5
+    );
+
+    enum invalidPremultiplied = premultiply(invalidStraight);
+
+    static assert(invalidPremultiplied.alpha == 1.5);
+    static assert(!invalidPremultiplied.isValidAlpha);
+    static assert(
+        invalidPremultiplied.color ==
+        LinearSRgbd(0.75, -0.375, 1.5)
+    );
+
+    enum invalidBack = unpremultiply(invalidPremultiplied);
+
+    static assert(invalidBack.color == invalidStraight.color);
+    static assert(invalidBack.alpha == invalidStraight.alpha);
+}
 
 @safe pure nothrow @nogc unittest
 {
