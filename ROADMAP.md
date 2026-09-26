@@ -177,8 +177,14 @@ the release gate.
 
 Tracked by GitHub issue #3.
 
-R1 promotes accepted R0 research into deliberate production modules and API.
-Research experiment code is evidence, not production code to copy mechanically.
+**Status: COMPLETE — 2026-09-26.**
+
+R1 promoted accepted R0 research into deliberate production modules and API.
+The integrated exit audit is recorded in
+[`docs/research/R1_CLOSEOUT.md`](docs/research/R1_CLOSEOUT.md).
+
+Research experiment code remains evidence, not production code to copy
+mechanically.
 
 Accepted v0.1 scope:
 
