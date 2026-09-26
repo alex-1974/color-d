@@ -205,7 +205,12 @@ R1 for v0.1; R0.14 deliberately defers them.
 
 ## R2 — Alpha and interpolation
 
+Status: **COMPLETE**
+
 Tracked by GitHub issue #11.
+
+Production closeout:
+[`docs/research/R2_CLOSEOUT.md`](docs/research/R2_CLOSEOUT.md).
 
 Accepted v0.1 scope:
 

@@ -142,8 +142,12 @@ covers the accepted float/double value types, explicit conversion chain, sRGB
 transfer functions, strict sRGB gamut diagnostics and explicit hard clipping.
 
 The integrated R1 exit audit is recorded in
-[`docs/research/R1_CLOSEOUT.md`](docs/research/R1_CLOSEOUT.md). The next
-production phases are R2 (alpha/interpolation) and R3 (perceptual utilities).
+[`docs/research/R1_CLOSEOUT.md`](docs/research/R1_CLOSEOUT.md).
+
+R2 alpha/interpolation production work is also complete and recorded in
+[`docs/research/R2_CLOSEOUT.md`](docs/research/R2_CLOSEOUT.md). R3 perceptual
+utilities remain the active accepted production scope before R4 consumer
+validation.
 
 The accepted v0.1 production scope is intentionally smaller than the early
 candidate list. In particular, `SRgb8` / `SRgba8` and HSL/HSV are deferred
