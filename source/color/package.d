@@ -11,3 +11,4 @@ public import color.oklab;
 public import color.oklch;
 public import color.gamut;
 public import color.alpha;
+public import color.composite;
