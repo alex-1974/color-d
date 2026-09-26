@@ -62,6 +62,116 @@ alias LinearSRgbf = LinearSRgb!float;
 /// Linear-light sRGB with `double` components.
 alias LinearSRgbd = LinearSRgb!double;
 
+
+private T magnitude(T)(T value)
+@safe pure nothrow @nogc
+{
+    return value < cast(T)0 ? -value : value;
+}
+
+private T signOf(T)(T value)
+@safe pure nothrow @nogc
+{
+    return value < cast(T)0 ? cast(T)-1 : cast(T)1;
+}
+
+/*
+ * Narrow LDC runtime optimization validated by the R0 performance gate.
+ *
+ * The intrinsic path is used only for the sRGB decode power with a positive
+ * base and exponent 2.4. CTFE and non-LDC builds retain std.math.pow.
+ */
+private T srgbDecodePow24(T)(T base)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    import std.math : pow;
+
+    if (__ctfe)
+        return cast(T)pow(base, cast(T)2.4);
+
+    version (LDC)
+    {
+        import ldc.intrinsics : llvm_pow;
+        return llvm_pow!T(base, cast(T)2.4);
+    }
+    else
+    {
+        return cast(T)pow(base, cast(T)2.4);
+    }
+}
+
+private T srgbToLinearComponent(T)(T encoded)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    const T absEncoded = magnitude(encoded);
+
+    if (absEncoded <= cast(T)0.04045)
+        return encoded / cast(T)12.92;
+
+    const T base =
+        (absEncoded + cast(T)0.055) /
+        cast(T)1.055;
+
+    return signOf(encoded) * srgbDecodePow24(base);
+}
+
+private T linearToSrgbComponent(T)(T linear)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    import std.math : pow;
+
+    const T absLinear = magnitude(linear);
+
+    if (absLinear <= cast(T)0.0031308)
+        return linear * cast(T)12.92;
+
+    const T exponent = cast(T)(1.0 / 2.4);
+
+    const T encodedMagnitude =
+        cast(T)1.055 *
+        cast(T)pow(absLinear, exponent) -
+        cast(T)0.055;
+
+    return signOf(linear) * encodedMagnitude;
+}
+
+/**
+ * Decode nonlinear sRGB into linear-light sRGB.
+ *
+ * The conversion is explicit, allocation-free and does not clamp extended
+ * component values. Negative extended values use the sign-preserving extension
+ * validated during R0.
+ */
+LinearSRgb!T toLinear(T)(SRgb!T color)
+@safe pure nothrow @nogc
+{
+    return LinearSRgb!T(
+        srgbToLinearComponent(color.r),
+        srgbToLinearComponent(color.g),
+        srgbToLinearComponent(color.b)
+    );
+}
+
+/**
+ * Encode linear-light sRGB into nonlinear sRGB.
+ *
+ * The conversion is explicit, allocation-free and does not clamp extended
+ * component values. Negative extended values use the sign-preserving extension
+ * validated during R0.
+ */
+SRgb!T toSRgb(T)(LinearSRgb!T color)
+@safe pure nothrow @nogc
+{
+    return SRgb!T(
+        linearToSrgbComponent(color.r),
+        linearToSrgbComponent(color.g),
+        linearToSrgbComponent(color.b)
+    );
+}
+
 @safe pure nothrow @nogc unittest
 {
     const encoded = SRgbf(0.25f, 0.5f, 0.75f);
@@ -108,3 +218,164 @@ unittest
     assert(LinearSRgbd.init.g != LinearSRgbd.init.g);
     assert(LinearSRgbd.init.b != LinearSRgbd.init.b);
 }
+
+static assert(!__traits(compiles, toLinear(LinearSRgbf.init)));
+static assert(!__traits(compiles, toSRgb(SRgbf.init)));
+
+version (unittest)
+{
+    private bool transferReferenceClose(T)(
+        T actual,
+        T expected,
+        T absoluteTolerance,
+        T relativeTolerance
+    )
+    @safe pure nothrow @nogc
+    {
+        const T diff = magnitude(actual - expected);
+        if (diff <= absoluteTolerance)
+            return true;
+
+        const T absActual = magnitude(actual);
+        const T absExpected = magnitude(expected);
+        const T scale =
+            absActual > absExpected ? absActual : absExpected;
+
+        return diff <= relativeTolerance * scale;
+    }
+
+    // REFERENCE: sRGB transfer equation, double.
+    static assert(transferReferenceClose(
+        srgbToLinearComponent(0.5),
+        0.21404114048223255,
+        1e-15,
+        1e-14
+    ));
+
+    static assert(transferReferenceClose(
+        srgbToLinearComponent(-0.5),
+        -0.21404114048223255,
+        1e-15,
+        1e-14
+    ));
+
+    static assert(transferReferenceClose(
+        srgbToLinearComponent(1.2),
+        1.5168374366863642,
+        1e-14,
+        1e-14
+    ));
+
+    // REFERENCE: exact branch boundary is intentionally probed directly.
+    static assert(transferReferenceClose(
+        srgbToLinearComponent(0.04045),
+        0.0031308049535603713,
+        1e-15,
+        1e-14
+    ));
+
+    // REFERENCE: separate float characterization.
+    static assert(transferReferenceClose(
+        srgbToLinearComponent(0.5f),
+        0.21404114f,
+        1e-7f,
+        1e-6f
+    ));
+
+    static assert(transferReferenceClose(
+        srgbToLinearComponent(1.2f),
+        1.5168374f,
+        2e-7f,
+        2e-6f
+    ));
+
+    // REFERENCE: inverse transfer.
+    static assert(transferReferenceClose(
+        linearToSrgbComponent(0.21404114048223255),
+        0.5,
+        1e-15,
+        1e-14
+    ));
+
+    static assert(transferReferenceClose(
+        linearToSrgbComponent(-0.21404114048223255),
+        -0.5,
+        1e-15,
+        1e-14
+    ));
+
+    // CTFE + DERIVED round trip for an ordinary float color.
+    enum encodedCtfe = SRgbf(0.691f, 0.139f, 0.259f);
+    enum linearCtfe = encodedCtfe.toLinear;
+    enum roundTripCtfe = linearCtfe.toSRgb;
+
+    static assert(transferReferenceClose(
+        roundTripCtfe.r,
+        encodedCtfe.r,
+        2e-7f,
+        2e-6f
+    ));
+    static assert(transferReferenceClose(
+        roundTripCtfe.g,
+        encodedCtfe.g,
+        2e-7f,
+        2e-6f
+    ));
+    static assert(transferReferenceClose(
+        roundTripCtfe.b,
+        encodedCtfe.b,
+        2e-7f,
+        2e-6f
+    ));
+
+    // CTFE + DERIVED extended-range round trip.
+    enum extendedCtfe = SRgbd(-0.5, 1.2, 0.5);
+    enum extendedLinearCtfe = extendedCtfe.toLinear;
+    enum extendedRoundTripCtfe = extendedLinearCtfe.toSRgb;
+
+    static assert(extendedLinearCtfe.r < 0.0);
+    static assert(extendedLinearCtfe.g > 1.0);
+    static assert(transferReferenceClose(
+        extendedRoundTripCtfe.r,
+        extendedCtfe.r,
+        1e-14,
+        1e-14
+    ));
+    static assert(transferReferenceClose(
+        extendedRoundTripCtfe.g,
+        extendedCtfe.g,
+        1e-14,
+        1e-14
+    ));
+
+    @safe pure nothrow @nogc unittest
+    {
+        // EXACT structural zero behavior, including the linear branch.
+        const black = SRgbd(0.0, 0.0, 0.0).toLinear;
+        assert(black == LinearSRgbd(0.0, 0.0, 0.0));
+
+        // Special values remain visible rather than being repaired.
+        const specialEncoded = SRgbd(
+            double.nan,
+            double.infinity,
+            -double.infinity
+        );
+        const specialLinear = specialEncoded.toLinear;
+
+        assert(specialLinear.r != specialLinear.r);
+        assert(specialLinear.g == double.infinity);
+        assert(specialLinear.b == -double.infinity);
+
+        const specialLinearInput = LinearSRgbd(
+            double.nan,
+            double.infinity,
+            -double.infinity
+        );
+        const specialRoundTrip = specialLinearInput.toSRgb;
+
+        assert(specialRoundTrip.r != specialRoundTrip.r);
+        assert(specialRoundTrip.g == double.infinity);
+        assert(specialRoundTrip.b == -double.infinity);
+    }
+}
+
