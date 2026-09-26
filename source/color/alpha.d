@@ -19,7 +19,8 @@ private import color.oklch :
     Oklch,
     Oklchf,
     Oklchd,
-    OklabHuef;
+    OklabHuef,
+    OklabHued;
 private import std.traits : isInstanceOf;
 
 private enum bool isSupportedAlphaColor(Color) =
@@ -223,7 +224,7 @@ version (unittest)
         Oklchd(
             0.5,
             0.2,
-            color.oklch.OklabHued.fromDegrees(30.0)
+            OklabHued.fromDegrees(30.0)
         ),
         0.5
     );
