@@ -9,3 +9,4 @@ public import color.rgb;
 public import color.xyz;
 public import color.oklab;
 public import color.oklch;
+public import color.gamut;
