@@ -1,6 +1,6 @@
 # R0.14 — v0.1 scope and R0→R1 promotion gate
 
-Status: proposed R0 synthesis for issue #10.
+Status: accepted R0 synthesis decision for issue #10.
 
 This document consumes the validated R0 evidence and defines the intended
 production-promotion boundary. Research prototypes remain evidence rather than
