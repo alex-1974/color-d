@@ -101,3 +101,11 @@ A document subordinate to a research block may use metadata such as:
 A standalone design document may instead identify its research baseline:
 
     **Status:** DESIGN INPUT / CONSUMER RESEARCH
+
+
+## R0.14 — v0.1 scope and R0→R1 promotion gate
+
+- `docs/research/R0_14_PROMOTION_GATE.md`
+- Synthesizes the validated R0 evidence into the accepted v0.1 production
+  scope, explicit deferrals, public module/import boundary, compiler policy and
+  real-consumer stabilization gate.

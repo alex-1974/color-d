@@ -36,7 +36,7 @@ duplicating issue-level task lists.
 
 ## R0 — Research and architecture
 
-Current phase.
+Closeout phase; R0.14 is the final promotion decision.
 
 Goals:
 
@@ -155,15 +155,23 @@ validated equivalent native C++ baselines, isolated the Phobos
 `pow(real, real)` hot-path bottleneck, and demonstrated a CTFE-preserving LDC
 runtime path at C++-competitive performance.
 
-Remaining R0 work is tracked through the `v0.1.0` release milestone:
+R0.14 (#10) is the final synthesis gate. Its accepted promotion matrix:
 
-- #10 — R0.14 final v0.1 scope and R0→R1 promotion gate.
+- promotes the validated computational core
+  `SRgb!T` / `LinearSRgb!T` / `XyzD65!T` / `Oklab!T` / `Oklch!T`
+  for `float` and `double`;
+- promotes the validated alpha/compositing, interpolation, WCAG-2,
+  `deltaEOK`, explicit gamut and low-level OKLCH tone primitives;
+- deliberately defers `SRgb8`, `SRgba8`, `Hsl!T` and `Hsv!T` from v0.1;
+- rejects a policy-heavy semantic Palette/Theme/builder abstraction in
+  `color-d`;
+- defines the initial supported public module/import surface;
+- carries forward the R0.13 numerical policy and #5 compiler/performance policy;
+- requires both real-consumer gates #4 and #13 before v0.1 stabilization.
 
-Issue #2 is the R0 closeout umbrella.
-
-R0.14 is the synthesis gate: it consumes the relevant conclusions from the
-other remaining R0 work, fixes the intended v0.1 scope, and determines whether
-production API promotion may begin.
+Once #10 and the R0 closeout umbrella #2 are closed, production promotion may
+begin through R1--R3. Public API remains pre-1.0 and consumer-correctable until
+the release gate.
 
 ## R1 — Mathematical core
 
