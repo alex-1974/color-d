@@ -16,6 +16,7 @@ Start here:
 - [Accuracy and validation](accuracy-and-validation.md)
 - [Architecture](architecture.md)
 - [Performance](performance.md)
+- [Documentation publication](pages-publication.md)
 - [Architecture decision records](adr/)
 
 The material under [`research/`](research/) and [`../experiments/`](../experiments/)
