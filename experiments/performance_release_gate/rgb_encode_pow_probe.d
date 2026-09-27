@@ -102,8 +102,12 @@ private T generatedInput(T)(ref uint state)
 }
 
 private ulong orderedBits(double value)
-@safe pure nothrow @nogc
+@trusted pure nothrow @nogc
 {
+    // Safety proof: bitCast transports one local double into an equal-size
+    // ulong. No pointer escapes and no lifetime/aliasing relationship is
+    // exposed to callers.
+    static assert(double.sizeof == ulong.sizeof);
     const ulong bits = bitCast!ulong(value);
     return (bits & (1UL << 63)) != 0
         ? ~bits
@@ -111,8 +115,12 @@ private ulong orderedBits(double value)
 }
 
 private uint orderedBits(float value)
-@safe pure nothrow @nogc
+@trusted pure nothrow @nogc
 {
+    // Safety proof: bitCast transports one local float into an equal-size
+    // uint. No pointer escapes and no lifetime/aliasing relationship is
+    // exposed to callers.
+    static assert(float.sizeof == uint.sizeof);
     const uint bits = bitCast!uint(value);
     return (bits & (1U << 31)) != 0
         ? ~bits
@@ -148,12 +156,7 @@ private bool sameSpecialClass(T)(const T a, const T b)
     }
 
     if (a == cast(T)0 && b == cast(T)0)
-    {
-        static if (is(T == float))
-            return bitCast!uint(a) == bitCast!uint(b);
-        else
-            return bitCast!ulong(a) == bitCast!ulong(b);
-    }
+        return orderedBits(a) == orderedBits(b);
 
     return true;
 }
