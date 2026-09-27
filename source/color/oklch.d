@@ -236,6 +236,244 @@ alias Oklchf = Oklch!float;
 alias Oklchd = Oklch!double;
 
 
+/**
+ * Return a copy of an OKLCH value with raw lightness replaced.
+ *
+ * Chroma and stored hue are preserved exactly. No range restriction,
+ * clipping, gamut mapping, canonicalization, or other policy is applied.
+ * Finite extended and non-finite lightness values therefore remain visible
+ * exactly as supplied by the caller.
+ *
+ * Example:
+ * ---
+ * enum color = Oklchd(
+ *     0.55,
+ *     0.12,
+ *     OklabHued.fromDegrees(250.0)
+ * );
+ * enum changed = color.withLightness(1.25);
+ *
+ * static assert(changed.l == 1.25);
+ * static assert(changed.c == color.c);
+ * static assert(changed.h.rawDegrees == color.h.rawDegrees);
+ * ---
+ */
+Oklch!T withLightness(T)(
+    Oklch!T color,
+    T lightness
+)
+@safe pure nothrow @nogc
+{
+    color.l = lightness;
+    return color;
+}
+
+
+/**
+ * Return a copy of an OKLCH value with raw chroma replaced.
+ *
+ * Lightness and stored hue are preserved exactly. Negative chroma is not
+ * canonicalized, zero chroma does not erase powerless hue, and no clipping or
+ * gamut mapping is performed.
+ *
+ * Example:
+ * ---
+ * enum color = Oklchd(
+ *     0.55,
+ *     0.12,
+ *     OklabHued.fromDegrees(250.0)
+ * );
+ * enum changed = color.withChroma(-0.10);
+ *
+ * static assert(changed.l == color.l);
+ * static assert(changed.c == -0.10);
+ * static assert(changed.h.rawDegrees == color.h.rawDegrees);
+ * ---
+ */
+Oklch!T withChroma(T)(
+    Oklch!T color,
+    T chroma
+)
+@safe pure nothrow @nogc
+{
+    color.c = chroma;
+    return color;
+}
+
+
+/**
+ * Return a copy of an OKLCH value with raw stored hue replaced.
+ *
+ * Lightness and chroma are preserved exactly. The supplied
+ * `OklabHue!T` value is stored without normalization, wrapping, chroma
+ * adjustment, clipping, or gamut mapping.
+ *
+ * Example:
+ * ---
+ * enum color = Oklchd(
+ *     0.55,
+ *     0.12,
+ *     OklabHued.fromDegrees(250.0)
+ * );
+ * enum changed =
+ *     color.withHue(
+ *         OklabHued.fromDegrees(725.0)
+ *     );
+ *
+ * static assert(changed.l == color.l);
+ * static assert(changed.c == color.c);
+ * static assert(changed.h.rawDegrees == 725.0);
+ * ---
+ */
+Oklch!T withHue(T)(
+    Oklch!T color,
+    OklabHue!T hue
+)
+@safe pure nothrow @nogc
+{
+    color.h = hue;
+    return color;
+}
+
+
+@safe pure nothrow @nogc unittest
+{
+    enum seedD =
+        Oklchd(
+            0.55,
+            0.12,
+            OklabHued.fromDegrees(250.0)
+        );
+
+    enum changedLightnessD =
+        seedD.withLightness(-0.25);
+
+    static assert(changedLightnessD.l == -0.25);
+    static assert(changedLightnessD.c == seedD.c);
+    static assert(
+        changedLightnessD.h.rawDegrees ==
+        seedD.h.rawDegrees
+    );
+
+    enum changedChromaD =
+        seedD.withChroma(-0.10);
+
+    static assert(changedChromaD.l == seedD.l);
+    static assert(changedChromaD.c == -0.10);
+    static assert(
+        changedChromaD.h.rawDegrees ==
+        seedD.h.rawDegrees
+    );
+
+    enum powerlessD =
+        seedD.withChroma(0.0);
+
+    static assert(powerlessD.c == 0.0);
+    static assert(
+        powerlessD.h.rawDegrees ==
+        seedD.h.rawDegrees
+    );
+
+    enum restoredD =
+        powerlessD.withChroma(seedD.c);
+
+    static assert(restoredD == seedD);
+
+    enum changedHueD =
+        seedD.withHue(
+            OklabHued.fromDegrees(725.0)
+        );
+
+    static assert(changedHueD.l == seedD.l);
+    static assert(changedHueD.c == seedD.c);
+    static assert(changedHueD.h.rawDegrees == 725.0);
+
+    enum seedF =
+        Oklchf(
+            1.25f,
+            -0.20f,
+            OklabHuef.fromDegrees(-390.0f)
+        );
+
+    enum changedLightnessF =
+        seedF.withLightness(-1.5f);
+
+    static assert(changedLightnessF.l == -1.5f);
+    static assert(changedLightnessF.c == seedF.c);
+    static assert(
+        changedLightnessF.h.rawDegrees ==
+        seedF.h.rawDegrees
+    );
+
+    enum changedChromaF =
+        seedF.withChroma(0.0f);
+
+    static assert(changedChromaF.l == seedF.l);
+    static assert(changedChromaF.c == 0.0f);
+    static assert(
+        changedChromaF.h.rawDegrees ==
+        seedF.h.rawDegrees
+    );
+
+    enum changedHueF =
+        seedF.withHue(
+            OklabHuef.fromDegrees(1080.0f)
+        );
+
+    static assert(changedHueF.l == seedF.l);
+    static assert(changedHueF.c == seedF.c);
+    static assert(changedHueF.h.rawDegrees == 1080.0f);
+}
+
+
+@safe pure nothrow @nogc unittest
+{
+    const seed =
+        Oklchd(
+            0.55,
+            0.12,
+            OklabHued.fromDegrees(250.0)
+        );
+
+    const nonFiniteLightness =
+        seed.withLightness(double.nan);
+
+    assert(
+        nonFiniteLightness.l !=
+        nonFiniteLightness.l
+    );
+    assert(nonFiniteLightness.c == seed.c);
+    assert(
+        nonFiniteLightness.h.rawDegrees ==
+        seed.h.rawDegrees
+    );
+
+    const nonFiniteChroma =
+        seed.withChroma(double.infinity);
+
+    assert(nonFiniteChroma.l == seed.l);
+    assert(nonFiniteChroma.c == double.infinity);
+    assert(
+        nonFiniteChroma.h.rawDegrees ==
+        seed.h.rawDegrees
+    );
+
+    const nonFiniteHue =
+        seed.withHue(
+            OklabHued.fromDegrees(
+                -double.infinity
+            )
+        );
+
+    assert(nonFiniteHue.l == seed.l);
+    assert(nonFiniteHue.c == seed.c);
+    assert(
+        nonFiniteHue.h.rawDegrees ==
+        -double.infinity
+    );
+}
+
+
 unittest
 {
     /*
