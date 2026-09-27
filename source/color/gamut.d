@@ -292,6 +292,11 @@ private T maximum(T)(T first, T second)
 private T rayEpsilon(T)()
 @safe pure nothrow @nogc
 {
+    /*
+     * R0.8 validated these as Ray Trace interior/progress tolerances for the
+     * respective scalar types. They are algorithm-local numerical controls,
+     * not a public or library-wide comparison epsilon.
+     */
     static if (is(T == float))
         return cast(T)1e-6;
     else

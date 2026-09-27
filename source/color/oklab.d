@@ -245,7 +245,7 @@ static assert(!__traits(compiles, Oklab!real));
 static assert(!__traits(compiles, Oklabf.init.toOklab));
 static assert(!__traits(compiles, XyzD65f.init.toXyzD65));
 
-unittest
+@safe pure nothrow @nogc unittest
 {
     assert(Oklabf.sizeof == 3 * float.sizeof);
     assert(Oklabd.sizeof == 3 * double.sizeof);

@@ -168,11 +168,17 @@ if (is(T == float) || is(T == double))
  *
  * Returns:
  *     `true` when `abs(c) <= epsilon`.
+ *
+ * Preconditions:
+ *     `epsilon >= 0`. This is a programmer precondition; callers that need
+ *     recoverable validation must validate external input before calling.
  */
 
     bool isNearAchromatic(T epsilon) const
     @safe pure nothrow @nogc
     {
+        assert(epsilon >= cast(T)0);
+
         const T magnitude =
             c < cast(T)0
                 ? -c
@@ -532,7 +538,7 @@ Oklch!T withHue(T)(
 }
 
 
-unittest
+@safe pure nothrow @nogc unittest
 {
     /*
      * Negative-chroma canonicalization preserves ordinary raw hue
@@ -858,7 +864,7 @@ static assert(!__traits(compiles, Oklch!real));
 static assert(!__traits(compiles, Oklchf.init.toOklch));
 static assert(!__traits(compiles, Oklabf.init.toOklab));
 
-unittest
+@safe pure nothrow @nogc unittest
 {
     assert(OklabHuef.sizeof == float.sizeof);
     assert(OklabHued.sizeof == double.sizeof);
