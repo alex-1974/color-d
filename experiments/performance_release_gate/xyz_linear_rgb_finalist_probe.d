@@ -320,6 +320,81 @@ private T scaledMax(T)(double factor)
     );
 }
 
+private void characterizeExtremeChannels(T)()
+{
+    alias R = ReferenceScalar!T;
+
+    const double[9] factors = [
+        -1.0, -0.75, -0.50, -0.25,
+         0.0,
+         0.25, 0.50, 0.75, 1.0
+    ];
+
+    size_t representable = 0;
+    size_t redNonfinite = 0;
+    size_t greenNonfinite = 0;
+    size_t blueNonfinite = 0;
+    size_t redOnly = 0;
+    size_t greenOnly = 0;
+    size_t blueOnly = 0;
+    size_t multi = 0;
+
+    foreach (fx; factors)
+    foreach (fy; factors)
+    foreach (fz; factors)
+    {
+        const auto xyz = XyzD65!T(
+            scaledMax!T(fx),
+            scaledMax!T(fy),
+            scaledMax!T(fz)
+        );
+
+        const auto refValue = reference!(T, R)(xyz);
+        if (!referenceFits!T(refValue))
+            continue;
+
+        ++representable;
+
+        const auto actual = xyz.toLinearSRgb;
+        const bool badR = !finite(actual.r);
+        const bool badG = !finite(actual.g);
+        const bool badB = !finite(actual.b);
+
+        redNonfinite += badR;
+        greenNonfinite += badG;
+        blueNonfinite += badB;
+
+        const uint badCount =
+            cast(uint)badR +
+            cast(uint)badG +
+            cast(uint)badB;
+
+        if (badCount == 1)
+        {
+            redOnly += badR;
+            greenOnly += badG;
+            blueOnly += badB;
+        }
+        else if (badCount > 1)
+        {
+            ++multi;
+        }
+    }
+
+    writefln(
+        "%s extreme channels: representable=%s r=%s g=%s b=%s r_only=%s g_only=%s b_only=%s multi=%s",
+        is(T == double) ? "double" : "float",
+        representable,
+        redNonfinite,
+        greenNonfinite,
+        blueNonfinite,
+        redOnly,
+        greenOnly,
+        blueOnly,
+        multi
+    );
+}
+
 private bool validateExtreme(T)()
 {
     alias R = ReferenceScalar!T;
@@ -663,6 +738,8 @@ int main()
     characterizeSubnormal!float();
     characterizeNonFinite!double();
     characterizeNonFinite!float();
+    characterizeExtremeChannels!double();
+    characterizeExtremeChannels!float();
     ok = validateExtreme!double() && ok;
     ok = validateExtreme!float() && ok;
 
