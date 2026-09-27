@@ -62,7 +62,8 @@ if (is(T == float) || is(T == double))
  *     The corresponding CIE XYZ D65 value.
  *
  * Standards:
- *     Uses the sRGB/D65 linear transformation to CIE XYZ.
+ *     Uses the high-precision sRGB/D65 linear transformation represented by
+ *     the W3C CSS Color Module Level 4 reference matrix.
  *
  * See_Also:
  *     toLinearSRgb
@@ -111,7 +112,8 @@ XyzD65!T toXyzD65(T)(LinearSRgb!T rgb)
  *     The corresponding linear-light sRGB value.
  *
  * Standards:
- *     Uses the inverse sRGB/D65 linear transformation from CIE XYZ.
+ *     Uses the inverse of the high-precision sRGB/D65 transformation
+ *     represented by the W3C CSS Color Module Level 4 reference matrix.
  *
  * See_Also:
  *     toXyzD65
