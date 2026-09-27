@@ -3,7 +3,7 @@
 `color-d` is a small, type-safe, allocation-free modern color mathematics
 library for D.
 
-Public API documentation: https://alex-1974.github.io/color-d/
+Development API documentation: https://alex-1974.github.io/color-d/dev/
 
 The library is intended to provide explicit color-space types, correct
 linear-light operations, perceptual color workflows, alpha compositing,
@@ -278,4 +278,7 @@ examples are developed together with the production API rather than postponed
 to release cleanup.
 
 See the [documentation index](docs/README.md), [ROADMAP.md](ROADMAP.md), and
-the published DDox API documentation linked at the top of this README.
+the development DDox API documentation linked at the top of this README.
+
+The public documentation publication model is described in
+[docs/pages-publication.md](docs/pages-publication.md).
