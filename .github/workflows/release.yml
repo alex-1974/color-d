@@ -103,10 +103,60 @@ jobs:
 
           static assert(mapped.inGamut);
 
+          bool toneBatchCtfe()
+          @safe pure nothrow @nogc
+          {
+              const seed =
+                  Oklchd(
+                      0.50,
+                      0.10,
+                      OklabHued.fromDegrees(210.0)
+                  );
+
+              const double[3] lightnesses =
+                  [0.20, 0.50, 0.80];
+
+              const double[3] chromas =
+                  [0.04, 0.10, 0.06];
+
+              Oklchd[3] tones;
+
+              tonesAtLightnessAndChromaInto(
+                  seed,
+                  lightnesses,
+                  chromas,
+                  tones
+              );
+
+              return
+                  tones[0].l == 0.20 &&
+                  tones[1].c == 0.10 &&
+                  tones[2].l == 0.80;
+          }
+
+          static assert(toneBatchCtfe());
+
           @safe pure nothrow @nogc
           LinearSRgbd mapColor(Oklchd value)
           {
               return value.gamutMapLocalMindeToLinearSRgb();
+          }
+
+          @safe pure nothrow @nogc
+          bool writeToneFamily(
+              Oklchd seed,
+              const(double)[] lightnesses,
+              const(double)[] chromas,
+              Oklchd[] output
+          )
+          {
+              return
+                  tryTonesAtLightnessAndChromaInto(
+                      seed,
+                      lightnesses,
+                      chromas,
+                      output
+                  );
           }
           D
 
@@ -155,6 +205,35 @@ jobs:
           alias InvalidOklch = Oklch!int;
           D
 
+          cat > "$tmp/tone_batch_length_negative.d" <<'D'
+          import color;
+
+          void probe()
+          {
+              const seed =
+                  Oklchd(
+                      0.50,
+                      0.10,
+                      OklabHued.fromDegrees(210.0)
+                  );
+
+              const double[2] lightnesses =
+                  [0.25, 0.75];
+
+              const double[1] chromas =
+                  [0.10];
+
+              Oklchd[2] output;
+
+              tonesAtLightnessAndChromaInto(
+                  seed,
+                  lightnesses,
+                  chromas,
+                  output
+              );
+          }
+          D
+
           compile_ok "$tmp/root_positive.d" "$tmp/root_positive.o"
           compile_ok "$tmp/direct_positive.d" "$tmp/direct_positive.o"
 
@@ -162,6 +241,7 @@ jobs:
           compile_fail "$tmp/method_enum_negative.d" "$tmp/method_enum_negative.o"
           compile_fail "$tmp/wrong_space_negative.d" "$tmp/wrong_space_negative.o"
           compile_fail "$tmp/unsupported_scalar_negative.d" "$tmp/unsupported_scalar_negative.o"
+          compile_fail "$tmp/tone_batch_length_negative.d" "$tmp/tone_batch_length_negative.o"
 
       - name: External DUB consumer
         shell: bash
@@ -199,6 +279,30 @@ jobs:
                   .gamutMapRayTraceToLinearSRgb();
 
               assert(mapped.inGamut);
+
+              double[3] lightnesses =
+                  [0.20, 0.50, 0.80];
+
+              double[3] chromas =
+                  [0.04, 0.10, 0.06];
+
+              Oklchd[3] tones;
+
+              assert(
+                  tryTonesAtLightnessAndChromaInto(
+                      Oklchd(
+                          0.50,
+                          0.10,
+                          OklabHued.fromDegrees(210.0)
+                      ),
+                      lightnesses[],
+                      chromas[],
+                      tones[]
+                  )
+              );
+
+              assert(tones[2].l == 0.80);
+              assert(tones[2].c == 0.06);
           }
           D
 

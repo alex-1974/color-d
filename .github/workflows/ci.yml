@@ -69,8 +69,61 @@ jobs:
 
           static assert(mapped.inGamut);
 
+          bool toneBatchCtfe()
+          @safe pure nothrow @nogc
+          {
+              const seed =
+                  Oklchd(
+                      0.50,
+                      0.10,
+                      OklabHued.fromDegrees(210.0)
+                  );
+
+              const double[3] lightnesses =
+                  [0.20, 0.50, 0.80];
+
+              const double[3] chromas =
+                  [0.04, 0.10, 0.06];
+
+              Oklchd[3] tones;
+
+              tonesAtLightnessAndChromaInto(
+                  seed,
+                  lightnesses,
+                  chromas,
+                  tones
+              );
+
+              return
+                  tones[0].l == 0.20 &&
+                  tones[1].c == 0.10 &&
+                  tones[2].c == 0.06;
+          }
+
+          static assert(toneBatchCtfe());
+
           void main()
           {
+              double[2] lightnesses =
+                  [0.25, 0.75];
+
+              double[2] chromas =
+                  [0.05, 0.15];
+
+              Oklchd[2] output;
+
+              assert(
+                  tryTonesAtLightnessAndChromaInto(
+                      Oklchd(
+                          0.50,
+                          0.10,
+                          OklabHued.fromDegrees(210.0)
+                      ),
+                      lightnesses[],
+                      chromas[],
+                      output[]
+                  )
+              );
           }
           D
 

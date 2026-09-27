@@ -1,5 +1,7 @@
 module color.tone;
 
+import color.oklch : Oklch, OklabHue, withLightness, withChroma;
+
 /**
  * Low-level scalar schedule primitives for OKLCH tone construction.
  *
@@ -114,6 +116,597 @@ if (
     }
 
     return result;
+}
+
+
+/**
+ * Write a raw OKLCH tone family into compile-time-sized caller storage.
+ *
+ * The lightness schedule, chroma schedule, and output have the same static
+ * cardinality `N`. Their types therefore enforce the length relationship at
+ * compile time.
+ *
+ * Each element is exactly the scalar composition:
+ *
+ * ---
+ * seed.withLightness(lightnesses[i]).withChroma(chromas[i])
+ * ---
+ *
+ * The seed's stored hue is preserved exactly for every output element.
+ * Lightness and chroma remain raw mathematical values: no clamping,
+ * canonicalization, hue normalization, anchoring, clipping, gamut mapping, or
+ * target-space conversion is performed.
+ *
+ * `N == 0` and `N == 1` are valid because caller-supplied schedules are
+ * unambiguous at those cardinalities.
+ *
+ * The static-array output is caller-owned rather than returned by value. This
+ * is part of the supported toolchain contract for current DMD versions.
+ *
+ * Example:
+ * ---
+ * const seed = Oklch!double(
+ *     0.50,
+ *     0.10,
+ *     OklabHue!double.fromDegrees(210.0)
+ * );
+ * const double[3] lightnesses = [0.20, 0.50, 0.80];
+ * const double[3] chromas = [0.04, 0.10, 0.06];
+ * Oklch!double[3] tones;
+ *
+ * tonesAtLightnessAndChromaInto(
+ *     seed,
+ *     lightnesses,
+ *     chromas,
+ *     tones
+ * );
+ *
+ * assert(tones[0].l == 0.20);
+ * assert(tones[1].c == 0.10);
+ * assert(tones[2].h.rawDegrees == seed.h.rawDegrees);
+ * ---
+ */
+void tonesAtLightnessAndChromaInto(T, size_t N)(
+    Oklch!T seed,
+    ref const T[N] lightnesses,
+    ref const T[N] chromas,
+    ref Oklch!T[N] output
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    /*
+     * Do not casually convert this API to return Oklch!T[N] by value.
+     *
+     * .workspace/TOOLCHAIN_ISSUES.md TC-0001 records silent DMD wrong-code
+     * for by-value static arrays of three-float structs through DMD 2.113.0.
+     * The validated transport shape is ref const static-array inputs plus a
+     * ref output.
+     */
+    foreach (i; 0 .. N)
+    {
+        output[i] =
+            seed
+            .withLightness(lightnesses[i])
+            .withChroma(chromas[i]);
+    }
+}
+
+
+private void tonesAtLightnessAndChromaIntoExact(T)(
+    Oklch!T seed,
+    const(T)[] lightnesses,
+    const(T)[] chromas,
+    Oklch!T[] output
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    foreach (i; 0 .. output.length)
+    {
+        output[i] =
+            seed
+            .withLightness(lightnesses[i])
+            .withChroma(chromas[i]);
+    }
+}
+
+
+/**
+ * Write a runtime-sized raw OKLCH tone family into caller-owned storage.
+ *
+ * This is the slice counterpart of `tonesAtLightnessAndChromaInto`. The
+ * operation succeeds only when:
+ *
+ * ---
+ * lightnesses.length == chromas.length == output.length
+ * ---
+ *
+ * On success it writes every output element and returns `true`.
+ *
+ * On any length mismatch it returns `false` and performs no output writes.
+ * This all-or-nothing rule distinguishes a valid successful empty operation
+ * from an invalid mismatch:
+ *
+ * ---
+ * empty inputs + empty output -> true
+ * any length mismatch         -> false
+ * ---
+ *
+ * Element semantics are identical to the static-array form. The function does
+ * not allocate and applies no clamping, canonicalization, anchoring, gamut
+ * policy, or semantic palette policy.
+ */
+bool tryTonesAtLightnessAndChromaInto(T)(
+    Oklch!T seed,
+    const(T)[] lightnesses,
+    const(T)[] chromas,
+    Oklch!T[] output
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    if (
+        lightnesses.length != chromas.length ||
+        lightnesses.length != output.length
+    )
+    {
+        return false;
+    }
+
+    tonesAtLightnessAndChromaIntoExact(
+        seed,
+        lightnesses,
+        chromas,
+        output
+    );
+
+    return true;
+}
+
+
+private bool staticToneBatchProbe(T, size_t N)(
+    Oklch!T seed,
+    ref const T[N] lightnesses,
+    ref const T[N] chromas
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    Oklch!T[N] output;
+
+    tonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses,
+        chromas,
+        output
+    );
+
+    foreach (i; 0 .. N)
+    {
+        const scalar =
+            seed
+            .withLightness(lightnesses[i])
+            .withChroma(chromas[i]);
+
+        if (output[i] != scalar)
+            return false;
+    }
+
+    return true;
+}
+
+
+private bool ctfeLargeToneBatchProbe(T)()
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    enum size_t N = 32;
+
+    T[N] lightnesses;
+    T[N] chromas;
+
+    foreach (i; 0 .. N)
+    {
+        lightnesses[i] =
+            cast(T)i /
+            cast(T)(N - 1);
+
+        chromas[i] =
+            cast(T)0.02 +
+            cast(T)i * cast(T)0.003;
+    }
+
+    const seed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0.10,
+            OklabHue!T.fromDegrees(
+                cast(T)42.5
+            )
+        );
+
+    Oklch!T[N] fixed;
+
+    tonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses,
+        chromas,
+        fixed
+    );
+
+    Oklch!T[N] output;
+
+    if (!tryTonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses[],
+        chromas[],
+        output[]
+    ))
+    {
+        return false;
+    }
+
+    if (output != fixed)
+        return false;
+
+    foreach (i; 0 .. N)
+    {
+        const scalar =
+            seed
+            .withLightness(lightnesses[i])
+            .withChroma(chromas[i]);
+
+        if (fixed[i] != scalar)
+            return false;
+    }
+
+    return true;
+}
+
+
+private bool ctfeToneBatchMismatchProbe(T)()
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    const seed =
+        Oklch!T(
+            cast(T)0.50,
+            cast(T)0.10,
+            OklabHue!T.fromDegrees(
+                cast(T)30
+            )
+        );
+
+    const sentinel =
+        Oklch!T(
+            cast(T)0.11,
+            cast(T)0.22,
+            OklabHue!T.fromDegrees(
+                cast(T)333
+            )
+        );
+
+    T[2] lightnesses =
+    [
+        cast(T)0.25,
+        cast(T)0.75
+    ];
+
+    T[1] shortChromas =
+    [
+        cast(T)0.10
+    ];
+
+    Oklch!T[2] output =
+    [
+        sentinel,
+        sentinel
+    ];
+
+    if (tryTonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses[],
+        shortChromas[],
+        output[]
+    ))
+    {
+        return false;
+    }
+
+    if (
+        output[0] != sentinel ||
+        output[1] != sentinel
+    )
+    {
+        return false;
+    }
+
+    T[2] chromas =
+    [
+        cast(T)0.05,
+        cast(T)0.15
+    ];
+
+    Oklch!T[1] shortOutput =
+    [
+        sentinel
+    ];
+
+    if (tryTonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses[],
+        chromas[],
+        shortOutput[]
+    ))
+    {
+        return false;
+    }
+
+    return shortOutput[0] == sentinel;
+}
+
+
+@safe pure nothrow @nogc unittest
+{
+    const seedD =
+        Oklch!double(
+            0.50,
+            0.10,
+            OklabHue!double.fromDegrees(
+                725.0
+            )
+        );
+
+    const double[0] emptyD = [];
+    Oklch!double[0] emptyTonesD;
+
+    tonesAtLightnessAndChromaInto(
+        seedD,
+        emptyD,
+        emptyD,
+        emptyTonesD
+    );
+
+    assert(emptyTonesD.length == 0);
+
+    const double[1] oneLightnessD = [0.42];
+    const double[1] oneChromaD = [-0.25];
+    Oklch!double[1] oneToneD;
+
+    tonesAtLightnessAndChromaInto(
+        seedD,
+        oneLightnessD,
+        oneChromaD,
+        oneToneD
+    );
+
+    assert(oneToneD.length == 1);
+    assert(oneToneD[0].l == 0.42);
+    assert(oneToneD[0].c == -0.25);
+    assert(
+        oneToneD[0].h.rawDegrees ==
+        seedD.h.rawDegrees
+    );
+
+    const lightnessesD =
+        linearSchedule!5(
+            -0.25,
+            1.25
+        );
+
+    const double[5] chromasD =
+    [
+        -0.10,
+        0.0,
+        0.05,
+        0.20,
+        0.40
+    ];
+
+    Oklch!double[5] fixedD;
+
+    tonesAtLightnessAndChromaInto(
+        seedD,
+        lightnessesD,
+        chromasD,
+        fixedD
+    );
+
+    foreach (i; 0 .. fixedD.length)
+    {
+        assert(
+            fixedD[i].l ==
+            lightnessesD[i]
+        );
+        assert(
+            fixedD[i].c ==
+            chromasD[i]
+        );
+        assert(
+            fixedD[i].h.rawDegrees ==
+            seedD.h.rawDegrees
+        );
+    }
+
+    assert(
+        staticToneBatchProbe(
+            seedD,
+            lightnessesD,
+            chromasD
+        )
+    );
+
+    static assert(ctfeLargeToneBatchProbe!float());
+    static assert(ctfeLargeToneBatchProbe!double());
+    static assert(ctfeToneBatchMismatchProbe!float());
+    static assert(ctfeToneBatchMismatchProbe!double());
+
+    Oklch!double[5] runtimeOutputD;
+
+    assert(
+        tryTonesAtLightnessAndChromaInto(
+            seedD,
+            lightnessesD[],
+            chromasD[],
+            runtimeOutputD[]
+        )
+    );
+
+    assert(runtimeOutputD == fixedD);
+
+    Oklch!double[0] emptyOutputD;
+
+    assert(
+        tryTonesAtLightnessAndChromaInto(
+            seedD,
+            emptyD[],
+            emptyD[],
+            emptyOutputD[]
+        )
+    );
+}
+
+
+@safe pure nothrow @nogc unittest
+{
+    const seed =
+        Oklch!double(
+            0.50,
+            0.10,
+            OklabHue!double.fromDegrees(
+                -390.0
+            )
+        );
+
+    const sentinel =
+        Oklch!double(
+            0.11,
+            0.22,
+            OklabHue!double.fromDegrees(
+                333.0
+            )
+        );
+
+    const double[2] lightnesses =
+    [
+        0.25,
+        0.75
+    ];
+
+    const double[1] shortChromas =
+    [
+        0.10
+    ];
+
+    Oklch!double[2] output =
+    [
+        sentinel,
+        sentinel
+    ];
+
+    assert(
+        !tryTonesAtLightnessAndChromaInto(
+            seed,
+            lightnesses[],
+            shortChromas[],
+            output[]
+        )
+    );
+
+    assert(output[0] == sentinel);
+    assert(output[1] == sentinel);
+
+    const double[2] chromas =
+    [
+        0.05,
+        0.15
+    ];
+
+    Oklch!double[1] shortOutput =
+    [
+        sentinel
+    ];
+
+    assert(
+        !tryTonesAtLightnessAndChromaInto(
+            seed,
+            lightnesses[],
+            chromas[],
+            shortOutput[]
+        )
+    );
+
+    assert(shortOutput[0] == sentinel);
+}
+
+
+@safe pure nothrow @nogc unittest
+{
+    const seed =
+        Oklch!double(
+            0.50,
+            0.10,
+            OklabHue!double.fromDegrees(
+                double.infinity
+            )
+        );
+
+    const double[3] lightnesses =
+    [
+        double.nan,
+        -double.infinity,
+        double.infinity
+    ];
+
+    const double[3] chromas =
+    [
+        double.nan,
+        -double.infinity,
+        double.infinity
+    ];
+
+    Oklch!double[3] tones;
+
+    tonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses,
+        chromas,
+        tones
+    );
+
+    assert(tones[0].l != tones[0].l);
+    assert(tones[0].c != tones[0].c);
+    assert(
+        tones[0].h.rawDegrees ==
+        double.infinity
+    );
+
+    assert(
+        tones[1].l ==
+        -double.infinity
+    );
+    assert(
+        tones[1].c ==
+        -double.infinity
+    );
+    assert(
+        tones[1].h.rawDegrees ==
+        double.infinity
+    );
+
+    assert(
+        tones[2].l ==
+        double.infinity
+    );
+    assert(
+        tones[2].c ==
+        double.infinity
+    );
+    assert(
+        tones[2].h.rawDegrees ==
+        double.infinity
+    );
 }
 
 
