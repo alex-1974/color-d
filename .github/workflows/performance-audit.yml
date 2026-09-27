@@ -6,6 +6,7 @@ on:
       - develop
     paths:
       - "source/color/rgb.d"
+      - "source/color/oklab.d"
       - "experiments/performance_release_gate/**"
       - ".github/workflows/performance-audit.yml"
   workflow_dispatch:
@@ -83,3 +84,40 @@ jobs:
 
       - name: Run focused release probe
         run: ./gamut-inline-probe
+
+
+  oklab-extreme-fallback:
+    name: Audit / Oklab extreme fallback
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install LDC
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-1.43.0
+
+      - name: Environment
+        shell: bash
+        run: |
+          "$DC" --version
+          lscpu
+          uname -a
+
+      - name: Build focused release probe
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -Isource \
+              -i \
+              -of=oklab-extreme-fallback-probe \
+              experiments/performance_release_gate/oklab_extreme_fallback_probe.d
+
+      - name: Run focused release probe
+        run: ./oklab-extreme-fallback-probe

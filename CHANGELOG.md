@@ -25,6 +25,8 @@ under **Unreleased**.
 
 ### Changed
 
+- XYZ D65 → Oklab now preserves representable finite results for extreme finite
+  XYZ inputs that would otherwise overflow the direct LMS intermediate;
 - current public feature scope is closed for v0.1 and is in R4 real-consumer
   validation;
 - the tested pre-1.0 toolchain matrix is DMD 2.113.0 and LDC 1.43.0 on
