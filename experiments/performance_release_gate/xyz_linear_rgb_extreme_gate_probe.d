@@ -17,6 +17,7 @@ import color :
 import core.builtins : likely;
 import std.conv : bitCast;
 import std.datetime.stopwatch : StopWatch;
+import std.math : fma;
 import std.stdio : writefln, writeln;
 
 template ReferenceScalar(T)
@@ -724,6 +725,106 @@ private LinearSRgb!T rowScaled(T)(XyzD65!T xyz)
     );
 }
 
+private pragma(inline, true)
+LinearSRgb!T resultGateInline(T)(XyzD65!T xyz)
+{
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    if (outputFinite(ordinary))
+        return ordinary;
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
+private pragma(inline, true)
+LinearSRgb!T bitGateInline(T)(XyzD65!T xyz)
+{
+    if (directSafeBitRuntimeFpCtfe(xyz))
+        return xyz.toLinearSRgb;
+
+    if (!inputFinite(xyz))
+        return xyz.toLinearSRgb;
+
+    return scaledShared(xyz);
+}
+
+private LinearSRgb!T widerWorking(T)(XyzD65!T xyz)
+{
+    alias R = ReferenceScalar!T;
+
+    const R x = cast(R)xyz.x;
+    const R y = cast(R)xyz.y;
+    const R z = cast(R)xyz.z;
+
+    return LinearSRgb!T(
+        cast(T)(
+            ratio!R(12831,    3959)   * x +
+            ratio!R(-329,      214)   * y +
+            ratio!R(-1974,    3959)   * z
+        ),
+        cast(T)(
+            ratio!R(-851781, 878810)  * x +
+            ratio!R(1648619, 878810)  * y +
+            ratio!R(36519,   878810)  * z
+        ),
+        cast(T)(
+            ratio!R(705,      12673)  * x +
+            ratio!R(-2585,    12673)  * y +
+            ratio!R(705,        667)  * z
+        )
+    );
+}
+
+// FMA candidate: keep one coefficient with |c| < 1 as an explicitly safe
+// product, then combine the remaining products with fused multiply-add.
+// This changes rounding and therefore is evidence-only unless validation shows
+// a compelling numerical/performance case.
+private LinearSRgb!T fmaCandidate(T)(XyzD65!T xyz)
+{
+    const T rSafe =
+        ratio!T(-1974, 3959) * xyz.z;
+
+    const T gSafe =
+        ratio!T(36519, 878810) * xyz.z;
+
+    const T bSafe =
+        ratio!T(705, 12673) * xyz.x;
+
+    return LinearSRgb!T(
+        fma(
+            ratio!T(12831, 3959),
+            xyz.x,
+            fma(
+                ratio!T(-329, 214),
+                xyz.y,
+                rSafe
+            )
+        ),
+        fma(
+            ratio!T(1648619, 878810),
+            xyz.y,
+            fma(
+                ratio!T(-851781, 878810),
+                xyz.x,
+                gSafe
+            )
+        ),
+        fma(
+            ratio!T(705, 667),
+            xyz.z,
+            fma(
+                ratio!T(-2585, 12673),
+                xyz.y,
+                bSafe
+            )
+        )
+    );
+}
+
 private LinearSRgb!T path(T, int kind)(XyzD65!T xyz)
 {
     static if (kind == 0)
@@ -740,6 +841,14 @@ private LinearSRgb!T path(T, int kind)(XyzD65!T xyz)
         return bitGateColdLikely(xyz);
     else static if (kind == 6)
         return rowScaled(xyz);
+    else static if (kind == 7)
+        return resultGateInline(xyz);
+    else static if (kind == 8)
+        return bitGateInline(xyz);
+    else static if (kind == 9)
+        return widerWorking(xyz);
+    else static if (kind == 10)
+        return fmaCandidate(xyz);
     else static if (kind == 7)
         return aggregateResultGate(xyz);
     else static if (kind == 8)
@@ -790,6 +899,14 @@ private const(char)[] pathName(int kind)()
         return "bit-pre-gate-cold-likely";
     else static if (kind == 6)
         return "row-scaled";
+    else static if (kind == 7)
+        return "result-gate-inline";
+    else static if (kind == 8)
+        return "bit-pre-gate-inline";
+    else static if (kind == 9)
+        return "wider-working";
+    else static if (kind == 10)
+        return "fma";
     else static if (kind == 7)
         return "aggregate-result-gate";
     else static if (kind == 8)
