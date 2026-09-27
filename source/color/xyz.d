@@ -86,7 +86,15 @@ if (is(T == float) || is(T == double))
         finiteInfinityBounds(xyz.z);
 }
 
-private LinearSRgb!T toLinearSRgbDirect(T)(XyzD65!T xyz)
+/*
+ * Package-internal direct inverse-matrix evaluator.
+ *
+ * This is intentionally not part of the public robust XYZ conversion contract.
+ * color.gamut uses it for its R0.8-validated float mapping hot path, where the
+ * mapper owns its own overflow handling. External callers must use
+ * toLinearSRgb(), which retains the extreme-finite fallback.
+ */
+package(color) LinearSRgb!T toLinearSRgbDirect(T)(XyzD65!T xyz)
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {

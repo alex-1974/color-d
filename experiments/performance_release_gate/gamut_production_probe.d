@@ -20,6 +20,7 @@ import color :
     toOklab,
     toXyzD65;
 
+import std.conv : bitCast;
 import std.datetime.stopwatch : StopWatch;
 import std.stdio : writefln, writeln;
 
@@ -224,13 +225,50 @@ private bool finite(T)(T value)
         value < T.infinity;
 }
 
-private void validateMapped(T)(
+private ulong componentBits(T)(T value)
+{
+    static if (is(T == float))
+        return cast(ulong)bitCast!uint(value);
+    else
+        return bitCast!ulong(value);
+}
+
+private void hashComponent(T)(
+    ref ulong hash,
+    T value
+)
+{
+    hash ^=
+        componentBits(value);
+
+    hash *=
+        1099511628211UL;
+}
+
+private void hashColor(T)(
+    ref ulong hash,
+    LinearSRgb!T value
+)
+{
+    hashComponent(hash, value.r);
+    hashComponent(hash, value.g);
+    hashComponent(hash, value.b);
+}
+
+
+private bool validateMapped(T)(
     string label,
     const(Oklch!T)[] values
 )
 {
     size_t localFailures = 0;
     size_t rayFailures = 0;
+
+    ulong localHash =
+        1469598103934665603UL;
+
+    ulong rayHash =
+        1469598103934665603UL;
 
     foreach (value; values)
     {
@@ -239,6 +277,9 @@ private void validateMapped(T)(
 
         const ray =
             gamutMapRayTraceToLinearSRgb(value);
+
+        hashColor(localHash, local);
+        hashColor(rayHash, ray);
 
         if (
             !local.inGamut &&
@@ -266,13 +307,19 @@ private void validateMapped(T)(
     }
 
     writefln(
-        "%s %s validation: samples=%s local_failures=%s ray_failures=%s",
+        "%s %s validation: samples=%s local_failures=%s ray_failures=%s local_hash=%016x ray_hash=%016x",
         is(T == double) ? "double" : "float",
         label,
         values.length,
         localFailures,
-        rayFailures
+        rayFailures,
+        localHash,
+        rayHash
     );
+
+    return
+        localFailures == 0 &&
+        rayFailures == 0;
 }
 
 private double timeLocal(T)(
@@ -435,12 +482,31 @@ int main()
 
     writeln("=== color-d current gamut production audit ===");
 
-    validateMapped("out-of-gamut", outD[]);
-    validateMapped("out-of-gamut", outF[]);
-    validateMapped("in-gamut", inD[]);
-    validateMapped("in-gamut", inF[]);
-    validateMapped("huge-chroma", hugeD[]);
-    validateMapped("huge-chroma", hugeF[]);
+    bool ok = true;
+
+    ok =
+        validateMapped("out-of-gamut", outD[]) &&
+        ok;
+
+    ok =
+        validateMapped("out-of-gamut", outF[]) &&
+        ok;
+
+    ok =
+        validateMapped("in-gamut", inD[]) &&
+        ok;
+
+    ok =
+        validateMapped("in-gamut", inF[]) &&
+        ok;
+
+    ok =
+        validateMapped("huge-chroma", hugeD[]) &&
+        ok;
+
+    ok =
+        validateMapped("huge-chroma", hugeF[]) &&
+        ok;
 
     benchmarkDataset(
         "out-of-gamut",
@@ -484,5 +550,5 @@ int main()
         20
     );
 
-    return 0;
+    return ok ? 0 : 1;
 }

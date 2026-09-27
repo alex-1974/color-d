@@ -167,14 +167,8 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout current
+      - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Checkout pre-XYZ-hardening baseline
-        uses: actions/checkout@v7
-        with:
-          ref: 6a4d5c95327fa2c25341865b62d2dad1ed3dd5f2
-          path: baseline
 
       - name: Install LDC
         uses: dlang-community/setup-dlang@v2
@@ -188,7 +182,7 @@ jobs:
           lscpu
           uname -a
 
-      - name: Build current production probe
+      - name: Build focused release probe
         shell: bash
         run: |
           "$DC" \
@@ -198,24 +192,8 @@ jobs:
               -mcpu=native \
               -Isource \
               -i \
-              -of=gamut-production-current \
+              -of=gamut-production-probe \
               experiments/performance_release_gate/gamut_production_probe.d
 
-      - name: Build pre-XYZ-hardening baseline probe
-        shell: bash
-        run: |
-          "$DC" \
-              -O3 \
-              -release \
-              -boundscheck=off \
-              -mcpu=native \
-              -Ibaseline/source \
-              -i \
-              -of=gamut-production-baseline \
-              experiments/performance_release_gate/gamut_production_probe.d
-
-      - name: Run baseline
-        run: ./gamut-production-baseline
-
-      - name: Run current
-        run: ./gamut-production-current
+      - name: Run focused release probe
+        run: ./gamut-production-probe
