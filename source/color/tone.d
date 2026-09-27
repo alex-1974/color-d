@@ -82,8 +82,8 @@ if (
 )
 {
     assert(
-        isFiniteScheduleScalar(start) &&
-        isFiniteScheduleScalar(end)
+        isFiniteScheduleScalar!T(start) &&
+        isFiniteScheduleScalar!T(end)
     );
 
     T[N] result;
@@ -98,7 +98,7 @@ if (
             cast(T)(N - 1);
 
         result[i] =
-            interpolateFiniteSchedule(
+            interpolateFiniteSchedule!T(
                 start,
                 end,
                 t
