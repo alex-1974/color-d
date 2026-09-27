@@ -1,0 +1,48 @@
+name: Performance audit
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - "experiments/performance_release_gate/**"
+      - ".github/workflows/performance-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  srgb-encode-pow:
+    name: Audit / sRGB encode pow
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install LDC
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-1.43.0
+
+      - name: Environment
+        shell: bash
+        run: |
+          "$DC" --version
+          lscpu
+          uname -a
+
+      - name: Build focused release probe
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -of=rgb-encode-pow-probe \
+              experiments/performance_release_gate/rgb_encode_pow_probe.d
+
+      - name: Run focused release probe
+        run: ./rgb-encode-pow-probe
