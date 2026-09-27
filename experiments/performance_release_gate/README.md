@@ -132,3 +132,42 @@ consistent with the already established TC-0006 Phobos floating/floating
 separate production implementation trial. Adoption still requires the normal
 DMD/LDC unit, CTFE, reference, special-value and external-consumer gates. The
 experiment itself does not change production semantics.
+
+
+### Production integration verification
+
+The follow-up production trial routed only the LDC runtime implementation of
+`LinearSRgb!T.toSRgb` through the validated reciprocal-power intrinsic while
+leaving DMD runtime and CTFE on Phobos.
+
+The same focused harness was then compiled together with the real
+`source/color/rgb.d` and compared the public `toSRgb` call against an
+otherwise identical local Phobos implementation.
+
+On the same class of AMD EPYC 7763 hosted runner:
+
+```text
+100,000 deterministic RGB colors
+
+double:
+    public-production vs local-Phobos max difference: 2 ULP
+    components above 1 ULP:                           18
+    local Phobos median:                              ~377.8 ns/color
+    public toSRgb median:                             ~45.5 ns/color
+    relative ratio:                                  ~8.3x
+
+float:
+    public-production vs local-Phobos max difference: 2 ULP
+    components above 1 ULP:                           11
+    local Phobos median:                              ~465.1 ns/color
+    public toSRgb median:                             ~23.5 ns/color
+    relative ratio:                                  ~19.8x
+```
+
+This verifies that the optimization survives integration through the supported
+public API rather than existing only in an isolated helper benchmark.
+
+**Production decision:** retain the narrow LDC runtime
+`srgbEncodePowInv24` path, with Phobos preserved for CTFE and non-LDC
+compilers. The optimization remains internal and does not change the public
+transfer equation, API, or numerical tolerance contract.
