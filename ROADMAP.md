@@ -227,7 +227,7 @@ Accepted v0.1 scope:
 
 Tracked by GitHub issue #12.
 
-**Status: ACTIVE — R3.1–R3.5 complete; R3.6 remains.**
+**Status: COMPLETE — 2026-09-27.**
 
 Completed production slices:
 
@@ -237,16 +237,23 @@ Completed production slices:
 - R3.4 — raw OKLCH `withLightness`, `withChroma`, and `withHue`
   component operations;
 - R3.5 — inclusive finite scalar `linearSchedule!N(start, end)`
-  generation in `color.tone`.
+  generation in `color.tone`;
+- R3.6 — static-cardinality and runtime caller-owned raw tone-family batch
+  forms.
 
-Remaining accepted v0.1 scope:
-
-- R3.6 — tone-family batch forms.
+The integrated closeout is recorded in
+[`docs/research/R3_CLOSEOUT.md`](docs/research/R3_CLOSEOUT.md).
 
 The gamut-mapping API has no default mapper; algorithm selection remains
 explicit.
 
+The accepted R1–R3 v0.1 production feature scope is now closed. API freeze is
+later: R4 consumer validation may still justify pre-1.0 corrections to the
+promoted surface.
+
 ## R4 — First consumer integration
+
+**Status: ACTIVE.**
 
 Consumer validation is tracked separately for the two initial real consumers:
 
