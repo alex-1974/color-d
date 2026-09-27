@@ -356,6 +356,54 @@ jobs:
               fi
           done
 
+      - name: Named-argument compatibility probe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -c \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of="$tmp/named-arguments.o" \
+              "$GITHUB_WORKSPACE/tests/compat/named_arguments.d"
+
+      - name: TC-0001 DMD wrong-code canary
+        if: matrix.compiler == 'dmd-2.113.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -of="$tmp/tc0001" \
+              "$GITHUB_WORKSPACE/experiments/r0_12_palette_ctfe/compiler_bug/repro_min_return.d"
+
+          set +e
+          "$tmp/tc0001" > "$tmp/output.txt" 2>&1
+          status=$?
+          set -e
+
+          cat "$tmp/output.txt"
+
+          case "$status" in
+              0)
+                  echo "::notice::TC-0001 canary now passes; re-evaluate and remove the workaround if the supported compiler has fixed the defect."
+                  ;;
+              1)
+                  echo "::warning::TC-0001 still reproduces on the supported DMD; retain the ref-output/ref-const-input workaround."
+                  ;;
+              *)
+                  echo "TC-0001 canary exited unexpectedly with status $status" >&2
+                  exit "$status"
+                  ;;
+          esac
+
       - name: External import compile smoke
         shell: bash
         run: |
