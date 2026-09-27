@@ -556,10 +556,75 @@ private T ordinaryValue(T)(ref uint state)
 
 enum validationSamples = 2_000_000;
 
-private bool validateOrdinary(T)()
+private real referenceError(T, R)(T actual, R expected)
 {
+    const real diff =
+        cast(real)actual -
+        cast(real)expected;
+
+    return diff < 0 ? -diff : diff;
+}
+
+private void updateAccuracy(
+    T,
+    R
+)(
+    T production,
+    T candidateValue,
+    R referenceValue,
+    ref size_t candidateBetter,
+    ref size_t equalError,
+    ref size_t candidateWorse,
+    ref real productionErrorSum,
+    ref real candidateErrorSum,
+    ref real productionMaxError,
+    ref real candidateMaxError
+)
+{
+    const real productionError =
+        referenceError!(T, R)(
+            production,
+            referenceValue
+        );
+
+    const real candidateError =
+        referenceError!(T, R)(
+            candidateValue,
+            referenceValue
+        );
+
+    productionErrorSum += productionError;
+    candidateErrorSum += candidateError;
+
+    if (productionError > productionMaxError)
+        productionMaxError = productionError;
+
+    if (candidateError > candidateMaxError)
+        candidateMaxError = candidateError;
+
+    if (candidateError < productionError)
+        ++candidateBetter;
+    else if (candidateError > productionError)
+        ++candidateWorse;
+    else
+        ++equalError;
+}
+
+private void validateOrdinary(T)()
+{
+    alias R = ReferenceScalar!T;
+
     uint state = 0xC01D_0086U;
     size_t mismatches = 0;
+
+    size_t candidateBetter = 0;
+    size_t equalError = 0;
+    size_t candidateWorse = 0;
+
+    real productionErrorSum = 0;
+    real candidateErrorSum = 0;
+    real productionMaxError = 0;
+    real candidateMaxError = 0;
 
     foreach (_; 0 .. validationSamples)
     {
@@ -569,31 +634,95 @@ private bool validateOrdinary(T)()
             ordinaryValue!T(state)
         );
 
-        const auto expected = xyz.toLinearSRgb;
+        const auto production = xyz.toLinearSRgb;
         const auto actual = candidate(xyz);
+        const auto refValue = reference!(T, R)(xyz);
 
         if (
-            actual.r != expected.r ||
-            actual.g != expected.g ||
-            actual.b != expected.b
+            actual.r != production.r ||
+            actual.g != production.g ||
+            actual.b != production.b
         )
         {
             ++mismatches;
         }
+
+        updateAccuracy!(
+            T,
+            R
+        )(
+            production.r,
+            actual.r,
+            refValue.r,
+            candidateBetter,
+            equalError,
+            candidateWorse,
+            productionErrorSum,
+            candidateErrorSum,
+            productionMaxError,
+            candidateMaxError
+        );
+
+        updateAccuracy!(
+            T,
+            R
+        )(
+            production.g,
+            actual.g,
+            refValue.g,
+            candidateBetter,
+            equalError,
+            candidateWorse,
+            productionErrorSum,
+            candidateErrorSum,
+            productionMaxError,
+            candidateMaxError
+        );
+
+        updateAccuracy!(
+            T,
+            R
+        )(
+            production.b,
+            actual.b,
+            refValue.b,
+            candidateBetter,
+            equalError,
+            candidateWorse,
+            productionErrorSum,
+            candidateErrorSum,
+            productionMaxError,
+            candidateMaxError
+        );
     }
 
+    const real componentCount =
+        cast(real)validationSamples * 3;
+
     writefln(
-        "%s ordinary: samples=%s exact_mismatches=%s",
+        "%s ordinary: samples=%s value_mismatches=%s",
         is(T == double) ? "double" : "float",
         validationSamples,
         mismatches
     );
 
-    return mismatches == 0;
+    writefln(
+        "%s reference-accuracy: better=%s equal=%s worse=%s prod_mean_abs=%s cand_mean_abs=%s prod_max_abs=%s cand_max_abs=%s",
+        is(T == double) ? "double" : "float",
+        candidateBetter,
+        equalError,
+        candidateWorse,
+        productionErrorSum / componentCount,
+        candidateErrorSum / componentCount,
+        productionMaxError,
+        candidateMaxError
+    );
 }
 
 private void characterizeSubnormal(T)()
 {
+    alias R = ReferenceScalar!T;
+
     const T tiny = T.min_normal / cast(T)2;
 
     const XyzD65!T[8] values = [
@@ -608,27 +737,115 @@ private void characterizeSubnormal(T)()
     ];
 
     size_t mismatches = 0;
+    size_t candidateBetter = 0;
+    size_t equalError = 0;
+    size_t candidateWorse = 0;
+
+    real productionErrorSum = 0;
+    real candidateErrorSum = 0;
+    real productionMaxError = 0;
+    real candidateMaxError = 0;
 
     foreach (xyz; values)
     {
-        const auto expected = xyz.toLinearSRgb;
+        const auto production = xyz.toLinearSRgb;
         const auto actual = candidate(xyz);
+        const auto refValue = reference!(T, R)(xyz);
 
         if (
-            actual.r != expected.r ||
-            actual.g != expected.g ||
-            actual.b != expected.b
+            actual.r != production.r ||
+            actual.g != production.g ||
+            actual.b != production.b
         )
         {
             ++mismatches;
         }
+
+        updateAccuracy!(T, R)(
+            production.r, actual.r, refValue.r,
+            candidateBetter, equalError, candidateWorse,
+            productionErrorSum, candidateErrorSum,
+            productionMaxError, candidateMaxError
+        );
+
+        updateAccuracy!(T, R)(
+            production.g, actual.g, refValue.g,
+            candidateBetter, equalError, candidateWorse,
+            productionErrorSum, candidateErrorSum,
+            productionMaxError, candidateMaxError
+        );
+
+        updateAccuracy!(T, R)(
+            production.b, actual.b, refValue.b,
+            candidateBetter, equalError, candidateWorse,
+            productionErrorSum, candidateErrorSum,
+            productionMaxError, candidateMaxError
+        );
     }
 
     writefln(
-        "%s subnormal: samples=%s exact_mismatches=%s",
+        "%s subnormal: samples=%s value_mismatches=%s better=%s equal=%s worse=%s prod_error_sum=%s cand_error_sum=%s prod_max_abs=%s cand_max_abs=%s",
         is(T == double) ? "double" : "float",
         values.length,
-        mismatches
+        mismatches,
+        candidateBetter,
+        equalError,
+        candidateWorse,
+        productionErrorSum,
+        candidateErrorSum,
+        productionMaxError,
+        candidateMaxError
+    );
+}
+
+private bool isNegativeZero(T)(T value)
+{
+    return
+        value == cast(T)0 &&
+        cast(T)1 / value == -T.infinity;
+}
+
+private void characterizeSignedZero(T)()
+{
+    const T positiveZero = cast(T)0;
+    const T negativeZero = -cast(T)0;
+
+    const XyzD65!T[8] values = [
+        XyzD65!T(positiveZero, positiveZero, positiveZero),
+        XyzD65!T(negativeZero, positiveZero, positiveZero),
+        XyzD65!T(positiveZero, negativeZero, positiveZero),
+        XyzD65!T(positiveZero, positiveZero, negativeZero),
+        XyzD65!T(negativeZero, negativeZero, positiveZero),
+        XyzD65!T(negativeZero, positiveZero, negativeZero),
+        XyzD65!T(positiveZero, negativeZero, negativeZero),
+        XyzD65!T(negativeZero, negativeZero, negativeZero)
+    ];
+
+    size_t signMismatches = 0;
+
+    foreach (xyz; values)
+    {
+        const auto production = xyz.toLinearSRgb;
+        const auto actual = candidate(xyz);
+
+        signMismatches +=
+            isNegativeZero(production.r) !=
+            isNegativeZero(actual.r);
+
+        signMismatches +=
+            isNegativeZero(production.g) !=
+            isNegativeZero(actual.g);
+
+        signMismatches +=
+            isNegativeZero(production.b) !=
+            isNegativeZero(actual.b);
+    }
+
+    writefln(
+        "%s signed-zero: components=%s sign_mismatches=%s",
+        is(T == double) ? "double" : "float",
+        values.length * 3,
+        signMismatches
     );
 }
 
@@ -824,10 +1041,12 @@ int main()
     writeln("candidate=", candidateName());
 
     bool ok = true;
-    ok = validateOrdinary!double() && ok;
-    ok = validateOrdinary!float() && ok;
+    validateOrdinary!double();
+    validateOrdinary!float();
     characterizeSubnormal!double();
     characterizeSubnormal!float();
+    characterizeSignedZero!double();
+    characterizeSignedZero!float();
     characterizeNonFinite!double();
     characterizeNonFinite!float();
     characterizeExtremeChannels!double();
