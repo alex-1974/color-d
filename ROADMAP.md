@@ -227,17 +227,18 @@ Accepted v0.1 scope:
 
 Tracked by GitHub issue #12.
 
-**Status: ACTIVE — R3.1–R3.3 complete; R3.4–R3.6 remain.**
+**Status: ACTIVE — R3.1–R3.4 complete; R3.5–R3.6 remain.**
 
 Completed production slices:
 
 - R3.1 — Oklab `deltaEOK`;
 - R3.2 — WCAG-2 relative luminance and contrast measurement;
-- R3.3 — explicit Local MINDE and Ray Trace perceptual sRGB gamut mapping.
+- R3.3 — explicit Local MINDE and Ray Trace perceptual sRGB gamut mapping;
+- R3.4 — raw OKLCH `withLightness`, `withChroma`, and `withHue`
+  component operations.
 
 Remaining accepted v0.1 scope:
 
-- R3.4 — raw OKLCH component operations;
 - R3.5 — finite scalar schedule generation;
 - R3.6 — tone-family batch forms.
 
