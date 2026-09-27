@@ -265,30 +265,54 @@ private LinearSRgb!T xyzToRgbCandidate(T)(XyzD65!T xyz)
 
 private Oklab!T xyzToOklabCandidate(T)(XyzD65!T xyz)
 {
-    const T l =
-        dot3Candidate(
-            cast(T)0.8190224379967030, xyz.x,
-            cast(T)0.3619062600528904, xyz.y,
-            cast(T)-0.1288737815209879, xyz.z
+    const auto ordinary = xyz.toOklab;
+
+    if (
+        productionFinite(ordinary) ||
+        !finite(xyz.x) ||
+        !finite(xyz.y) ||
+        !finite(xyz.z)
+    )
+    {
+        return ordinary;
+    }
+
+    const T scale =
+        maximum(
+            magnitude(xyz.x),
+            maximum(
+                magnitude(xyz.y),
+                magnitude(xyz.z)
+            )
         );
+
+    if (scale == cast(T)0)
+        return ordinary;
+
+    const T x = xyz.x / scale;
+    const T y = xyz.y / scale;
+    const T z = xyz.z / scale;
+
+    const T l =
+        cast(T)0.8190224379967030 * x +
+        cast(T)0.3619062600528904 * y -
+        cast(T)0.1288737815209879 * z;
 
     const T m =
-        dot3Candidate(
-            cast(T)0.0329836539323885, xyz.x,
-            cast(T)0.9292868615863434, xyz.y,
-            cast(T)0.0361446663506424, xyz.z
-        );
+        cast(T)0.0329836539323885 * x +
+        cast(T)0.9292868615863434 * y +
+        cast(T)0.0361446663506424 * z;
 
     const T s =
-        dot3Candidate(
-            cast(T)0.0481771893596242, xyz.x,
-            cast(T)0.2642395317527308, xyz.y,
-            cast(T)0.6335478284694309, xyz.z
-        );
+        cast(T)0.0481771893596242 * x +
+        cast(T)0.2642395317527308 * y +
+        cast(T)0.6335478284694309 * z;
 
-    const T lp = cbrt(l);
-    const T mp = cbrt(m);
-    const T sp = cbrt(s);
+    const T rootScale = cbrt(scale);
+
+    const T lp = rootScale * cbrt(l);
+    const T mp = rootScale * cbrt(m);
+    const T sp = rootScale * cbrt(s);
 
     return Oklab!T(
         cast(T)0.2104542683093140 * lp +
