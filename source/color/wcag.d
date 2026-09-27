@@ -1,3 +1,8 @@
+/++
+ WCAG 2 relative-luminance and contrast measurements for sRGB.
+
+ Standards-facing measurements validate the finite normalized sRGB domain and return an explicit validity-bearing scalar result. Alpha must be resolved before measurement.
++/
 module color.wcag;
 
 private import color.rgb :
@@ -138,19 +143,23 @@ private T contrastFromLuminance(T)(T first, T second)
 
 
 /**
- * Measure WCAG 2 relative luminance from encoded sRGB.
+ * Measures WCAG 2 relative luminance from encoded sRGB.
  *
- * The input must contain finite normalized sRGB components in `[0, 1]`.
- * Invalid input produces an invalid `Wcag2Measurement` whose value is NaN.
+ * Input components must be finite and in `[0, 1]`. Invalid input produces an
+ * invalid `Wcag2Measurement` whose value is NaN. Alpha-bearing input is not
+ * accepted and no clipping or gamut mapping is performed.
  *
- * No clipping or gamut mapping is performed.
+ * Params:
+ *     color = Normalized encoded sRGB color.
  *
- * This is the WCAG 2 standards-specific relative-luminance measurement. It is
- * deliberately distinct from the CIE XYZ-D65 Y coordinate.
+ * Returns:
+ *     A valid relative-luminance measurement, or an invalid measurement for
+ *     input outside the WCAG 2 sRGB domain.
  *
- * Alpha-bearing input is not accepted. Rendering/compositing must be resolved
- * explicitly before measurement.
+ * Standards:
+ *     WCAG 2 relative luminance for sRGB.
  */
+
 Wcag2Measurement!T wcag2RelativeLuminance(T)(SRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -164,16 +173,23 @@ Wcag2Measurement!T wcag2RelativeLuminance(T)(SRgb!T color)
 
 
 /**
- * Measure WCAG 2 relative luminance from already-decoded linear-light sRGB.
+ * Measures WCAG 2 relative luminance from linear-light sRGB.
  *
- * Components must be finite and in `[0, 1]`. This overload represents the
- * same WCAG sRGB measurement after the transfer-function decoding step has
- * already been performed explicitly.
+ * Input components must be finite and in `[0, 1]`. This overload represents
+ * the same WCAG sRGB measurement after transfer-function decoding has already
+ * been performed explicitly.
  *
- * Invalid input produces an invalid `Wcag2Measurement`.
+ * Params:
+ *     color = Normalized linear-light sRGB color.
  *
- * No clipping, gamut mapping or alpha resolution is performed.
+ * Returns:
+ *     A valid relative-luminance measurement, or an invalid measurement for
+ *     input outside the WCAG 2 domain.
+ *
+ * Standards:
+ *     WCAG 2 relative luminance for sRGB.
  */
+
 Wcag2Measurement!T wcag2RelativeLuminance(T)(LinearSRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -187,14 +203,23 @@ Wcag2Measurement!T wcag2RelativeLuminance(T)(LinearSRgb!T color)
 
 
 /**
- * Measure the WCAG 2 contrast ratio between two encoded-sRGB colors.
+ * Measures the WCAG 2 contrast ratio between two encoded-sRGB colors.
  *
- * Both operands must contain finite normalized components in `[0, 1]`.
- * Invalid input produces an invalid `Wcag2Measurement`.
+ * Both colors must contain finite normalized components in `[0, 1]`. Invalid
+ * input produces an invalid measurement. No clipping, gamut mapping, alpha
+ * compositing, or accessibility-threshold classification is applied.
  *
- * The operation performs no clipping, gamut mapping, alpha compositing or
- * accessibility-threshold classification.
+ * Params:
+ *     first = First normalized encoded-sRGB color.
+ *     second = Second normalized encoded-sRGB color.
+ *
+ * Returns:
+ *     A valid WCAG 2 contrast ratio, or an invalid measurement.
+ *
+ * Standards:
+ *     WCAG 2 contrast ratio.
  */
+
 Wcag2Measurement!T wcag2ContrastRatio(T)(
     SRgb!T first,
     SRgb!T second
@@ -219,14 +244,23 @@ Wcag2Measurement!T wcag2ContrastRatio(T)(
 
 
 /**
- * Measure the WCAG 2 contrast ratio between two already-decoded linear-light
- * sRGB colors.
+ * Measures the WCAG 2 contrast ratio between two linear-light sRGB colors.
  *
- * Both operands must contain finite components in `[0, 1]`.
+ * Both colors must contain finite components in `[0, 1]`. Invalid input
+ * produces an invalid measurement. No hidden conversion, clipping, gamut
+ * mapping, alpha compositing, or threshold policy is applied.
  *
- * Invalid input produces an invalid `Wcag2Measurement`. No hidden conversion,
- * clipping, gamut mapping, alpha compositing or threshold policy is applied.
+ * Params:
+ *     first = First normalized linear-light sRGB color.
+ *     second = Second normalized linear-light sRGB color.
+ *
+ * Returns:
+ *     A valid WCAG 2 contrast ratio, or an invalid measurement.
+ *
+ * Standards:
+ *     WCAG 2 contrast ratio.
  */
+
 Wcag2Measurement!T wcag2ContrastRatio(T)(
     LinearSRgb!T first,
     LinearSRgb!T second

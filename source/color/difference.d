@@ -1,3 +1,8 @@
+/++
+ Perceptual color-difference measurements.
+
+ The public deltaEOK operation measures Euclidean distance directly in Oklab and does not perform hidden conversion, clipping, gamut mapping, or perceptual classification.
++/
 module color.difference;
 
 private import color.oklab :
@@ -12,28 +17,23 @@ private import std.math :
 
 
 /**
- * Measure Euclidean color difference directly in Oklab.
+ * Measures Euclidean color difference directly in Oklab.
  *
- * `deltaEOK` is the three-dimensional Euclidean distance between two Oklab
- * triples with the same scalar type.
+ * Finite extended coordinates are accepted. The operation performs no hidden
+ * conversion, clipping, gamut mapping, alpha resolution, or just-noticeable
+ * difference classification.
  *
- * Finite extended Oklab coordinates are accepted. The operation does not
- * clamp, convert, gamut-map, or otherwise modify either operand.
+ * NaN component differences produce NaN; otherwise any infinite component
+ * difference produces positive infinity.
  *
- * Special-value behavior is explicit:
+ * Params:
+ *     lhs = First Oklab color.
+ *     rhs = Second Oklab color.
  *
- * - if any component difference is NaN, the result is NaN;
- * - otherwise, if any component difference is infinite, the result is
- *   positive infinity;
- * - otherwise the finite Euclidean norm is evaluated with the three-argument
- *   `hypot` implementation.
- *
- * This operation is a measurement only. It does not assign a just-noticeable
- * difference threshold or another perceptual classification.
- *
- * Alpha-bearing colors are deliberately not accepted. Alpha must first be
- * resolved according to explicit caller rendering/compositing policy.
+ * Returns:
+ *     The three-dimensional Euclidean distance in Oklab.
  */
+
 T deltaEOK(T)(
     Oklab!T lhs,
     Oklab!T rhs

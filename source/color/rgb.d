@@ -1,3 +1,8 @@
+/++
+ Encoded and linear-light sRGB value types and transfer conversions.
+
+ The two RGB representations are distinct types. Conversions are explicit, preserve extended mathematical values, and do not clip or gamut-map implicitly.
++/
 module color.rgb;
 
 private import std.traits : Unqual;
@@ -5,12 +10,13 @@ private import std.traits : Unqual;
 /**
  * Encoded nonlinear sRGB color value.
  *
- * `T` is restricted to the v0.1 computational scalar set: `float` or
- * `double`.
+ * `T` must be `float` or `double`. Components are mathematical values;
+ * construction does not clamp them to the nominal display gamut.
  *
- * The components are mathematical values. Construction does not clamp them to
- * the nominal display gamut.
+ * The natural floating-point `.init` state contains NaNs and is therefore a
+ * detectably invalid/uninitialized semantic color, not implicit black.
  */
+
 struct SRgb(T)
 if (is(T == float) || is(T == double))
 {
@@ -30,12 +36,13 @@ if (is(T == float) || is(T == double))
 /**
  * Linear-light sRGB color value.
  *
- * `T` is restricted to the v0.1 computational scalar set: `float` or
- * `double`.
+ * `T` must be `float` or `double`. Encoded and linear-light sRGB are
+ * deliberately distinct types even though they have the same component layout.
  *
- * Encoded and linear-light sRGB are deliberately distinct types even though
- * they have the same component layout.
+ * The natural floating-point `.init` state contains NaNs and is therefore a
+ * detectably invalid/uninitialized semantic color.
  */
+
 struct LinearSRgb(T)
 if (is(T == float) || is(T == double))
 {
@@ -144,12 +151,25 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * Decode nonlinear sRGB into linear-light sRGB.
+ * Decodes nonlinear sRGB into linear-light sRGB.
  *
- * The conversion is explicit, allocation-free and does not clamp extended
- * component values. Negative extended values use the sign-preserving extension
- * validated during R0.
+ * The conversion does not clamp extended component values. Negative extended
+ * values use the same sign-preserving transfer extension as positive values.
+ *
+ * Params:
+ *     color = Encoded sRGB value to decode.
+ *
+ * Returns:
+ *     The corresponding linear-light sRGB value.
+ *
+ * Standards:
+ *     The nominal transfer follows the sRGB transfer function; color-d extends
+ *     it sign-preservingly outside the nominal display range.
+ *
+ * See_Also:
+ *     toSRgb
  */
+
 LinearSRgb!T toLinear(T)(SRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -160,13 +180,35 @@ LinearSRgb!T toLinear(T)(SRgb!T color)
     );
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const encoded = SRgbd(1.0, 0.0, -1.0);
+    const linear = encoded.toLinear;
+
+    assert(linear == LinearSRgbd(1.0, 0.0, -1.0));
+}
+
 /**
- * Encode linear-light sRGB into nonlinear sRGB.
+ * Encodes linear-light sRGB into nonlinear sRGB.
  *
- * The conversion is explicit, allocation-free and does not clamp extended
- * component values. Negative extended values use the sign-preserving extension
- * validated during R0.
+ * The conversion does not clamp extended component values. Negative extended
+ * values use the same sign-preserving transfer extension as positive values.
+ *
+ * Params:
+ *     color = Linear-light sRGB value to encode.
+ *
+ * Returns:
+ *     The corresponding encoded sRGB value.
+ *
+ * Standards:
+ *     The nominal transfer follows the sRGB transfer function; color-d extends
+ *     it sign-preservingly outside the nominal display range.
+ *
+ * See_Also:
+ *     toLinear
  */
+
 SRgb!T toSRgb(T)(LinearSRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -175,6 +217,15 @@ SRgb!T toSRgb(T)(LinearSRgb!T color)
         linearToSrgbComponent(color.g),
         linearToSrgbComponent(color.b)
     );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const linear = LinearSRgbd(1.0, 0.0, -1.0);
+    const encoded = linear.toSRgb;
+
+    assert(encoded == SRgbd(1.0, 0.0, -1.0));
 }
 
 @safe pure nothrow @nogc unittest

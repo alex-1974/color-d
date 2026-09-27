@@ -1,3 +1,8 @@
+/++
+ Straight-alpha and premultiplied color value types.
+
+ Alpha is orthogonal to the wrapped color space. Premultiplication is restricted to linear-light sRGB and never happens implicitly.
++/
 module color.alpha;
 
 private import color.rgb :
@@ -37,11 +42,14 @@ private enum bool isSupportedPremultipliedColor(Color) =
  * Straight-alpha color value.
  *
  * Alpha is orthogonal to the wrapped computational color space. Construction
- * stores the supplied values unchanged: alpha is not clamped and the color is
- * not converted, clipped or gamut-mapped.
+ * stores supplied values unchanged: alpha is not clamped and the color is not
+ * converted, clipped, or gamut-mapped.
  *
- * `Color` must be one of the public v0.1 computational color value types.
+ * `Color` must be one of the supported computational color value types. The
+ * natural `.init` state is detectably invalid because its floating components
+ * and alpha are NaN.
  */
+
 struct Alpha(Color)
 if (isSupportedAlphaColor!Color)
 {
@@ -85,15 +93,14 @@ if (isSupportedAlphaColor!Color)
 /**
  * Premultiplied-alpha color representation.
  *
- * This type is deliberately distinct from `Alpha!Color`. Encoded and
- * perceptual color spaces do not automatically gain premultiplication or
- * compositing semantics. The initial production representation is therefore
- * restricted to linear-light sRGB.
+ * This type is deliberately distinct from `Alpha!Color`. The public
+ * premultiplied representation is restricted to linear-light sRGB.
  *
- * Construction stores the supplied values unchanged. Direct construction is
- * an unchecked representation claim: the caller is responsible for supplying
- * coordinates that are already premultiplied by the associated alpha.
+ * Direct construction is an unchecked representation claim: callers must
+ * supply coordinates already multiplied by the associated alpha. The natural
+ * `.init` state is detectably invalid because its floating components are NaN.
  */
+
 struct Premultiplied(Color)
 if (isSupportedPremultipliedColor!Color)
 {
@@ -136,16 +143,20 @@ if (isSupportedPremultipliedColor!Color)
 /**
  * Converts straight linear-light sRGB to premultiplied alpha.
  *
- * Each RGB coordinate is multiplied by the associated alpha. Alpha itself is
- * preserved unchanged.
+ * Each RGB coordinate is multiplied by alpha; alpha itself is preserved.
+ * No validation, clipping, gamut mapping, or color-space conversion occurs.
+ * At zero alpha, finite hidden straight RGB collapses to zero.
  *
- * The operation does not validate or clamp alpha, clip RGB, perform gamut
- * mapping, or convert color spaces. Extended-range linear RGB is therefore
- * preserved by the arithmetic.
+ * Params:
+ *     value = Straight-alpha linear-light sRGB value.
  *
- * At zero alpha, finite hidden straight RGB collapses to zero and cannot later
- * be recovered by unpremultiplication.
+ * Returns:
+ *     The corresponding premultiplied representation.
+ *
+ * See_Also:
+ *     unpremultiply
  */
+
 Premultiplied!(LinearSRgb!T) premultiply(T)(
     Alpha!(LinearSRgb!T) value
 )
@@ -178,17 +189,20 @@ Premultiplied!(LinearSRgb!T) premultiply(T)(
 /**
  * Converts premultiplied linear-light sRGB back to straight alpha.
  *
- * For nonzero alpha, each RGB coordinate is divided by alpha and alpha itself
- * is preserved unchanged.
+ * For nonzero alpha, RGB coordinates are divided by alpha. For zero alpha,
+ * straight RGB cannot be reconstructed and canonical transparent black is
+ * returned without division by zero.
  *
- * For zero alpha, straight RGB cannot be reconstructed from the canonical
- * premultiplied representation. The operation therefore returns canonical
- * transparent black without dividing by zero, including for non-canonical raw
- * zero-alpha premultiplied values.
+ * Params:
+ *     value = Premultiplied linear-light sRGB value.
  *
- * The operation does not validate or clamp alpha, clip RGB, perform gamut
- * mapping, or convert color spaces.
+ * Returns:
+ *     The corresponding straight-alpha representation.
+ *
+ * See_Also:
+ *     premultiply
  */
+
 Alpha!(LinearSRgb!T) unpremultiply(T)(
     Premultiplied!(LinearSRgb!T) value
 )

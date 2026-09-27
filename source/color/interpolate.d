@@ -1,3 +1,8 @@
+/++
+ Explicit same-space and alpha-aware color interpolation.
+
+ Rectangular interpolation preserves the supplied color space. OKLCH interpolation additionally requires an explicit hue path; no operation chooses a different space or gamut policy implicitly.
++/
 module color.interpolate;
 
 private import color.alpha :
@@ -176,16 +181,25 @@ private OklabHue!T interpolateHue(T)(
 
 /**
  * Interpolate encoded sRGB component-wise in encoded-sRGB coordinates.
+
+Both endpoints remain in encoded nonlinear sRGB. No conversion to
+linear-light RGB is performed.
+
+The interpolation factor is not clamped. Values outside `[0, 1]` therefore
+perform mathematical extrapolation.
+
+The operation does not clip components, gamut-map the result, or otherwise
+impose display policy.
  *
- * Both endpoints remain in encoded nonlinear sRGB. No conversion to
- * linear-light RGB is performed.
+ * Params:
+ *     first = First encoded sRGB endpoint.
+ *     second = Second encoded sRGB endpoint.
+ *     t = Interpolation factor; values outside `[0, 1]` extrapolate.
  *
- * The interpolation factor is not clamped. Values outside `[0, 1]` therefore
- * perform mathematical extrapolation.
- *
- * The operation does not clip components, gamut-map the result, or otherwise
- * impose display policy.
+ * Returns:
+ *     The component-wise interpolated encoded sRGB value.
  */
+
 SRgb!T interpolate(T)(
     SRgb!T first,
     SRgb!T second,
@@ -215,16 +229,25 @@ SRgb!T interpolate(T)(
 
 /**
  * Interpolate linear-light sRGB component-wise.
+
+Both endpoints remain in linear-light sRGB. The operation does not encode
+or otherwise convert the supplied colors.
+
+The interpolation factor is not clamped. Values outside `[0, 1]` therefore
+perform mathematical extrapolation.
+
+Extended-range linear RGB is preserved. No clipping or gamut mapping is
+performed.
  *
- * Both endpoints remain in linear-light sRGB. The operation does not encode
- * or otherwise convert the supplied colors.
+ * Params:
+ *     first = First linear-light sRGB endpoint.
+ *     second = Second linear-light sRGB endpoint.
+ *     t = Interpolation factor; values outside `[0, 1]` extrapolate.
  *
- * The interpolation factor is not clamped. Values outside `[0, 1]` therefore
- * perform mathematical extrapolation.
- *
- * Extended-range linear RGB is preserved. No clipping or gamut mapping is
- * performed.
+ * Returns:
+ *     The component-wise interpolated linear-light sRGB value.
  */
+
 LinearSRgb!T interpolate(T)(
     LinearSRgb!T first,
     LinearSRgb!T second,
@@ -257,16 +280,25 @@ LinearSRgb!T interpolate(T)(
 
 /**
  * Interpolate Oklab component-wise in its rectangular coordinates.
+
+Lightness and both opponent coordinates are interpolated directly. No
+conversion to or from OKLCH is performed and no hue-path policy is involved.
+
+The interpolation factor is not clamped. Values outside `[0, 1]` therefore
+perform mathematical extrapolation.
+
+Components remain mathematical values; no clipping or gamut mapping is
+performed.
  *
- * Lightness and both opponent coordinates are interpolated directly. No
- * conversion to or from OKLCH is performed and no hue-path policy is involved.
+ * Params:
+ *     first = First Oklab endpoint.
+ *     second = Second Oklab endpoint.
+ *     t = Interpolation factor; values outside `[0, 1]` extrapolate.
  *
- * The interpolation factor is not clamped. Values outside `[0, 1]` therefore
- * perform mathematical extrapolation.
- *
- * Components remain mathematical values; no clipping or gamut mapping is
- * performed.
+ * Returns:
+ *     The component-wise interpolated Oklab value.
  */
+
 Oklab!T interpolate(T)(
     Oklab!T first,
     Oklab!T second,
@@ -298,33 +330,26 @@ Oklab!T interpolate(T)(
 }
 
 /**
- * Interpolate two OKLCH colors using an explicit polar hue path.
+ * Interpolates two OKLCH colors using an explicit polar hue path.
  *
- * Lightness and chroma are interpolated linearly. Hue follows the supplied
- * `HuePath`; no default hue policy is selected implicitly.
+ * Lightness and chroma are interpolated linearly; hue follows `path`.
+ * Negative chroma is canonicalized before interpolation. When exactly one
+ * canonicalized endpoint is achromatic, its interpolation hue is borrowed
+ * from the chromatic endpoint. No hidden near-achromatic epsilon is used.
  *
- * Negative-chroma endpoints are first converted to their equivalent
- * non-negative-chroma representation for interpolation. Consequently,
- * `t == 0` or `t == 1` preserves the represented endpoint color but may
- * return its canonical equivalent rather than its raw negative-chroma
- * representation.
+ * Params:
+ *     first = First OKLCH endpoint.
+ *     second = Second OKLCH endpoint.
+ *     t = Interpolation factor; values outside `[0, 1]` extrapolate.
+ *     path = Explicit angular hue path.
  *
- * Exact achromatic endpoints (`C == 0`) borrow the hue of the chromatic
- * endpoint when exactly one endpoint is achromatic. If both endpoints are
- * exactly achromatic, neither hue is borrowed: their stored numeric hues are
- * interpolated according to the explicitly selected `HuePath`. Hue remains
- * powerless to the represented color in that case, but its numeric value is
- * retained deterministically. No near-achromatic epsilon is applied.
+ * Returns:
+ *     The interpolated OKLCH value.
  *
- * Hue-path selection operates on normalized hue directions, while the
- * interpolated result retains its raw angular trajectory. The result is not
- * automatically wrapped to `[0, 360)`.
- *
- * The interpolation factor is not clamped, so values outside `[0, 1]`
- * perform mathematical extrapolation.
- *
- * No color-space conversion, clipping, or gamut mapping is performed.
+ * See_Also:
+ *     HuePath
  */
+
 Oklch!T interpolate(T)(
     Oklch!T first,
     Oklch!T second,
@@ -395,25 +420,34 @@ Oklch!T interpolate(T)(
 
 /**
  * Alpha-aware interpolation in encoded sRGB.
+
+RGB coordinates are multiplied by their endpoint alpha values before
+interpolation. The interpolated coordinates are divided by interpolated
+alpha when that alpha is nonzero.
+
+This weighting occurs in encoded-sRGB coordinates. It is interpolation
+mathematics, not linear-light Porter-Duff compositing, and it does not use
+the persistent `Premultiplied!Color` representation.
+
+A fully transparent endpoint therefore cannot leak hidden encoded RGB into
+a visible intermediate result. At interpolated alpha zero, division is
+skipped and the interpolated weighted coordinates are retained
+deterministically. Consequently hidden straight color is not generally
+preserved at transparent endpoints, and raw endpoint identity is not
+guaranteed for a fully transparent endpoint even at `t == 0` or `t == 1`.
+
+Neither `t` nor alpha is clamped or validated. No color-space conversion,
+clipping, or gamut mapping is performed.
  *
- * RGB coordinates are multiplied by their endpoint alpha values before
- * interpolation. The interpolated coordinates are divided by interpolated
- * alpha when that alpha is nonzero.
+ * Params:
+ *     first = First straight-alpha encoded sRGB endpoint.
+ *     second = Second straight-alpha encoded sRGB endpoint.
+ *     t = Interpolation factor.
  *
- * This weighting occurs in encoded-sRGB coordinates. It is interpolation
- * mathematics, not linear-light Porter-Duff compositing, and it does not use
- * the persistent `Premultiplied!Color` representation.
- *
- * A fully transparent endpoint therefore cannot leak hidden encoded RGB into
- * a visible intermediate result. At interpolated alpha zero, division is
- * skipped and the interpolated weighted coordinates are retained
- * deterministically. Consequently hidden straight color is not generally
- * preserved at transparent endpoints, and raw endpoint identity is not
- * guaranteed for a fully transparent endpoint even at `t == 0` or `t == 1`.
- *
- * Neither `t` nor alpha is clamped or validated. No color-space conversion,
- * clipping, or gamut mapping is performed.
+ * Returns:
+ *     The alpha-aware interpolated encoded sRGB value.
  */
+
 Alpha!(SRgb!T) interpolate(T)(
     Alpha!(SRgb!T) first,
     Alpha!(SRgb!T) second,
@@ -479,23 +513,32 @@ Alpha!(SRgb!T) interpolate(T)(
 
 /**
  * Alpha-aware interpolation in linear-light sRGB.
+
+Linear RGB coordinates participate in interpolation-specific alpha
+weighting. A transparent endpoint therefore cannot contribute hidden RGB to
+a visible intermediate result.
+
+This operation returns straight `Alpha!(LinearSRgb!T)` and remains distinct
+from the persistent `Premultiplied!(LinearSRgb!T)` representation used by
+compositing.
+
+At interpolated alpha zero, division is skipped and the interpolated
+alpha-weighted coordinates are retained. They are not reconstructed hidden
+straight color. Consequently raw endpoint identity is not guaranteed for a
+fully transparent endpoint even at `t == 0` or `t == 1`.
+
+Neither `t` nor alpha is clamped or validated. Extended-range coordinates
+remain representable and no clipping or gamut mapping is performed.
  *
- * Linear RGB coordinates participate in interpolation-specific alpha
- * weighting. A transparent endpoint therefore cannot contribute hidden RGB to
- * a visible intermediate result.
+ * Params:
+ *     first = First straight-alpha linear-light sRGB endpoint.
+ *     second = Second straight-alpha linear-light sRGB endpoint.
+ *     t = Interpolation factor.
  *
- * This operation returns straight `Alpha!(LinearSRgb!T)` and remains distinct
- * from the persistent `Premultiplied!(LinearSRgb!T)` representation used by
- * compositing.
- *
- * At interpolated alpha zero, division is skipped and the interpolated
- * alpha-weighted coordinates are retained. They are not reconstructed hidden
- * straight color. Consequently raw endpoint identity is not guaranteed for a
- * fully transparent endpoint even at `t == 0` or `t == 1`.
- *
- * Neither `t` nor alpha is clamped or validated. Extended-range coordinates
- * remain representable and no clipping or gamut mapping is performed.
+ * Returns:
+ *     The alpha-aware interpolated linear-light sRGB value.
  */
+
 Alpha!(LinearSRgb!T) interpolate(T)(
     Alpha!(LinearSRgb!T) first,
     Alpha!(LinearSRgb!T) second,
@@ -561,21 +604,30 @@ Alpha!(LinearSRgb!T) interpolate(T)(
 
 /**
  * Alpha-aware rectangular interpolation in Oklab.
+
+`L`, `a`, and `b` are multiplied by endpoint alpha before interpolation and
+divided by interpolated alpha when that alpha is nonzero.
+
+The weighting is an internal interpolation step and does not imply
+compositing semantics or a persistent premultiplied Oklab representation.
+
+At interpolated alpha zero, division is skipped and the alpha-weighted
+coordinates are retained. Hidden straight Oklab coordinates are therefore
+not reconstructed, and raw endpoint identity is not guaranteed for a fully
+transparent endpoint even at `t == 0` or `t == 1`.
+
+Neither `t` nor alpha is clamped or validated, and no conversion, clipping,
+or gamut mapping occurs.
  *
- * `L`, `a`, and `b` are multiplied by endpoint alpha before interpolation and
- * divided by interpolated alpha when that alpha is nonzero.
+ * Params:
+ *     first = First straight-alpha Oklab endpoint.
+ *     second = Second straight-alpha Oklab endpoint.
+ *     t = Interpolation factor.
  *
- * The weighting is an internal interpolation step and does not imply
- * compositing semantics or a persistent premultiplied Oklab representation.
- *
- * At interpolated alpha zero, division is skipped and the alpha-weighted
- * coordinates are retained. Hidden straight Oklab coordinates are therefore
- * not reconstructed, and raw endpoint identity is not guaranteed for a fully
- * transparent endpoint even at `t == 0` or `t == 1`.
- *
- * Neither `t` nor alpha is clamped or validated, and no conversion, clipping,
- * or gamut mapping occurs.
+ * Returns:
+ *     The alpha-aware interpolated Oklab value.
  */
+
 Alpha!(Oklab!T) interpolate(T)(
     Alpha!(Oklab!T) first,
     Alpha!(Oklab!T) second,
@@ -640,33 +692,27 @@ Alpha!(Oklab!T) interpolate(T)(
 }
 
 /**
- * Alpha-aware polar interpolation in OKLCH.
+ * Interpolates straight-alpha OKLCH using explicit polar hue semantics.
  *
- * Endpoint colors are first canonicalized to non-negative chroma, matching the
- * non-alpha polar interpolation contract.
+ * Lightness and chroma are alpha-weighted for interpolation; hue is not.
+ * Endpoint colors are canonicalized to non-negative chroma and exact
+ * achromatic hue borrowing follows the ordinary OKLCH interpolation rules.
+ * At interpolated alpha zero, hidden straight lightness/chroma cannot be
+ * reconstructed. No clipping, gamut mapping, or color-space conversion occurs.
  *
- * `L` and `C` participate in interpolation-specific alpha weighting. Hue does
- * not: it remains an angular coordinate governed only by the explicit
- * `HuePath`.
+ * Params:
+ *     first = First straight-alpha OKLCH endpoint.
+ *     second = Second straight-alpha OKLCH endpoint.
+ *     t = Interpolation factor.
+ *     path = Explicit angular hue path.
  *
- * Therefore a transparent endpoint cannot leak hidden lightness or chroma into
- * a visible result, while its hue may still participate in the selected hue
- * trajectory. Hue is never numerically multiplied by alpha.
+ * Returns:
+ *     The alpha-aware interpolated OKLCH value.
  *
- * Exact achromatic hue borrowing follows the ordinary OKLCH interpolation
- * semantics: when exactly one canonicalized endpoint has `C == 0`, its
- * interpolation hue is borrowed from the chromatic endpoint. No hidden
- * near-achromatic epsilon is applied.
- *
- * At interpolated alpha zero, `L` and `C` remain in their interpolated weighted
- * form rather than being divided by zero. Hidden straight `L` and `C` are not
- * reconstructed, so raw endpoint identity is not guaranteed for a fully
- * transparent endpoint even at `t == 0` or `t == 1`. Hue remains independently
- * interpolated.
- *
- * Neither `t` nor alpha is clamped or validated. No color-space conversion,
- * clipping, or gamut mapping is performed.
+ * See_Also:
+ *     HuePath
  */
+
 Alpha!(Oklch!T) interpolate(T)(
     Alpha!(Oklch!T) first,
     Alpha!(Oklch!T) second,

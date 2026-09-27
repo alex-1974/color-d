@@ -1,3 +1,8 @@
+/++
+ sRGB gamut diagnostics, hard clipping, and explicit perceptual gamut mapping.
+
+ Clipping and perceptual mapping are distinct operations. Perceptual mapping requires an explicit algorithm choice; the module defines no default mapper.
++/
 module color.gamut;
 
 private import color.rgb :
@@ -71,11 +76,17 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * Test strict membership in the sRGB target gamut.
+ * Tests strict membership in the encoded-sRGB target gamut.
  *
- * Encoded sRGB uses the geometric component domain [0, 1] for each channel.
- * Non-finite values are outside the gamut. No tolerance is implied.
+ * All three components must be finite and in `[0, 1]`; no tolerance is implied.
+ *
+ * Params:
+ *     color = Encoded sRGB value to test.
+ *
+ * Returns:
+ *     `true` exactly when all components are finite and in `[0, 1]`.
  */
+
 bool inGamut(T)(SRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -85,12 +96,25 @@ bool inGamut(T)(SRgb!T color)
         inUnitInterval(color.b);
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    assert(SRgbd(0.1, 0.5, 1.0).inGamut);
+    assert(!SRgbd(-0.1, 0.5, 1.0).inGamut);
+}
+
 /**
- * Test strict membership in the sRGB target gamut.
+ * Tests strict membership in the linear-sRGB target gamut.
  *
- * Linear-light sRGB uses the same geometric component domain [0, 1] for each
- * channel. Non-finite values are outside the gamut. No tolerance is implied.
+ * All three components must be finite and in `[0, 1]`; no tolerance is implied.
+ *
+ * Params:
+ *     color = Linear-light sRGB value to test.
+ *
+ * Returns:
+ *     `true` exactly when all components are finite and in `[0, 1]`.
  */
+
 bool inGamut(T)(LinearSRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -101,12 +125,18 @@ bool inGamut(T)(LinearSRgb!T color)
 }
 
 /**
- * Explicitly hard-clip encoded sRGB components to [0, 1].
+ * Hard-clips encoded sRGB components to `[0, 1]`.
  *
- * Finite components below zero become zero and components above one become
- * one. Finite in-range components are preserved. NaN and infinities remain
- * visible rather than being silently repaired.
+ * Finite values below zero become zero and finite values above one become one.
+ * NaN and infinities remain visible rather than being silently repaired.
+ *
+ * Params:
+ *     color = Encoded sRGB value to clip.
+ *
+ * Returns:
+ *     The component-wise hard-clipped encoded sRGB value.
  */
+
 SRgb!T clip(T)(SRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -117,13 +147,27 @@ SRgb!T clip(T)(SRgb!T color)
     );
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const clipped = SRgbd(-0.25, 0.50, 1.25).clip;
+
+    assert(clipped == SRgbd(0.0, 0.50, 1.0));
+}
+
 /**
- * Explicitly hard-clip linear-light sRGB components to [0, 1].
+ * Hard-clips linear-light sRGB components to `[0, 1]`.
  *
- * Finite components below zero become zero and components above one become
- * one. Finite in-range components are preserved. NaN and infinities remain
- * visible rather than being silently repaired.
+ * Finite values below zero become zero and finite values above one become one.
+ * NaN and infinities remain visible rather than being silently repaired.
+ *
+ * Params:
+ *     color = Linear-light sRGB value to clip.
+ *
+ * Returns:
+ *     The component-wise hard-clipped linear-light sRGB value.
  */
+
 LinearSRgb!T clip(T)(LinearSRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -996,27 +1040,26 @@ private LinearSRgb!T gamutMapRayTraceImpl(T)(
 
 
 /**
- * Perceptually map an OKLCH color into the linear-sRGB target gamut using
- * Local MINDE.
+ * Perceptually maps an OKLCH color into linear sRGB using Local MINDE.
  *
- * Local MINDE is the perceptual/reference-oriented mapper promoted from R0.8.
- * The algorithm choice is explicit in the function name; `color-d` defines no
- * default perceptual gamut mapper.
+ * Local MINDE is the perceptual/reference-oriented mapping strategy. Negative
+ * finite chroma is canonicalized before mapping. Lightness at or above 1 maps
+ * to white and lightness at or below 0 maps to black. Already-in-gamut colors
+ * take the identity path after explicit conversion.
  *
- * Finite negative chroma is canonicalized to its mathematically equivalent
- * positive-chroma representation before mapping. Lightness at or above 1 maps
- * to linear-sRGB white and lightness at or below 0 maps to black.
+ * Non-finite input is not repaired. This is per-color mathematical mapping and
+ * does not define image-wide rendering intent, encoding, or alpha compositing.
  *
- * Already-in-gamut values take the identity fast path after explicit
- * conversion to linear sRGB.
+ * Params:
+ *     color = OKLCH color to map.
  *
- * Non-finite input is not repaired. It is passed through the ordinary
- * OKLCH-to-linear-sRGB mathematical conversion so invalid numerical state
- * remains visible to the caller.
+ * Returns:
+ *     A linear-sRGB color in gamut for finite mapped input.
  *
- * This is per-color mathematical mapping. It does not define image-wide
- * rendering intent, spatial policy, encoding or alpha compositing.
+ * See_Also:
+ *     gamutMapRayTraceToLinearSRgb, clip
  */
+
 LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
     Oklch!T color
 )
@@ -1054,27 +1097,26 @@ LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
 
 
 /**
- * Perceptually map an OKLCH color into the linear-sRGB target gamut using
- * Ray Trace.
+ * Perceptually maps an OKLCH color into linear sRGB using Ray Trace.
  *
- * Ray Trace is the bounded-cost/performance-oriented mapper promoted from
- * R0.8. The algorithm choice is explicit in the function name; `color-d`
- * defines no default perceptual gamut mapper.
+ * Ray Trace is the bounded-cost/performance-oriented mapping strategy.
+ * Negative finite chroma is canonicalized before mapping. Lightness at or
+ * above 1 maps to white and lightness at or below 0 maps to black.
+ * Already-in-gamut colors take the identity path after explicit conversion.
  *
- * Finite negative chroma is canonicalized to its mathematically equivalent
- * positive-chroma representation before mapping. Lightness at or above 1 maps
- * to linear-sRGB white and lightness at or below 0 maps to black.
+ * Non-finite input is not repaired. This is per-color mathematical mapping and
+ * does not define image-wide rendering intent, encoding, or alpha compositing.
  *
- * Already-in-gamut values take the identity fast path after explicit
- * conversion to linear sRGB.
+ * Params:
+ *     color = OKLCH color to map.
  *
- * Non-finite input is not repaired. It is passed through the ordinary
- * OKLCH-to-linear-sRGB mathematical conversion so invalid numerical state
- * remains visible to the caller.
+ * Returns:
+ *     A linear-sRGB color in gamut for finite mapped input.
  *
- * This is per-color mathematical mapping. It does not define image-wide
- * rendering intent, spatial policy, encoding or alpha compositing.
+ * See_Also:
+ *     gamutMapLocalMindeToLinearSRgb, clip
  */
+
 LinearSRgb!T gamutMapRayTraceToLinearSRgb(T)(
     Oklch!T color
 )
@@ -1112,11 +1154,18 @@ LinearSRgb!T gamutMapRayTraceToLinearSRgb(T)(
 
 
 /**
- * Map a straight-alpha OKLCH color using Local MINDE.
+ * Maps a straight-alpha OKLCH color using Local MINDE.
  *
- * Gamut mapping transforms only the wrapped color. Alpha is copied unchanged;
- * it is not clamped, premultiplied, composited or otherwise interpreted.
+ * Only the wrapped color is mapped. Alpha is copied unchanged and is not
+ * clamped, premultiplied, composited, or otherwise interpreted.
+ *
+ * Params:
+ *     value = Straight-alpha OKLCH value to map.
+ *
+ * Returns:
+ *     Straight-alpha linear sRGB with unchanged alpha.
  */
+
 Alpha!(LinearSRgb!T) gamutMapLocalMindeToLinearSRgb(T)(
     Alpha!(Oklch!T) value
 )
@@ -1132,11 +1181,18 @@ Alpha!(LinearSRgb!T) gamutMapLocalMindeToLinearSRgb(T)(
 
 
 /**
- * Map a straight-alpha OKLCH color using Ray Trace.
+ * Maps a straight-alpha OKLCH color using Ray Trace.
  *
- * Gamut mapping transforms only the wrapped color. Alpha is copied unchanged;
- * it is not clamped, premultiplied, composited or otherwise interpreted.
+ * Only the wrapped color is mapped. Alpha is copied unchanged and is not
+ * clamped, premultiplied, composited, or otherwise interpreted.
+ *
+ * Params:
+ *     value = Straight-alpha OKLCH value to map.
+ *
+ * Returns:
+ *     Straight-alpha linear sRGB with unchanged alpha.
  */
+
 Alpha!(LinearSRgb!T) gamutMapRayTraceToLinearSRgb(T)(
     Alpha!(Oklch!T) value
 )

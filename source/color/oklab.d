@@ -1,3 +1,8 @@
+/++
+ Oklab values and explicit conversion to and from CIE XYZ D65.
+
+ The module preserves extended mathematical values and supports the same semantic conversion API at runtime and during CTFE.
++/
 module color.oklab;
 
 private import color.xyz :
@@ -8,12 +13,13 @@ private import color.xyz :
 /**
  * Oklab color value.
  *
- * `T` is restricted to the v0.1 computational scalar set: `float` or
- * `double`.
+ * `T` must be `float` or `double`. Components are mathematical values;
+ * construction does not clamp or canonicalize them.
  *
- * Components are mathematical values. Construction does not clamp or
- * canonicalize them.
+ * The natural floating-point `.init` state contains NaNs and is therefore a
+ * detectably invalid/uninitialized semantic color.
  */
+
 struct Oklab(T)
 if (is(T == float) || is(T == double))
 {
@@ -85,12 +91,24 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * Convert CIE XYZ D65 to Oklab.
+ * Converts CIE XYZ D65 to Oklab.
  *
- * The conversion uses the high-precision XYZ/LMS/Oklab coefficient route
- * validated during R0. Extended finite values are preserved; negative LMS
- * intermediates use a sign-preserving real cube root.
+ * Extended finite values are preserved. Negative LMS intermediates use a
+ * sign-preserving real cube root.
+ *
+ * Params:
+ *     xyz = CIE XYZ D65 value to convert.
+ *
+ * Returns:
+ *     The corresponding Oklab value.
+ *
+ * Standards:
+ *     Uses the published Oklab XYZ/LMS/Oklab transform.
+ *
+ * See_Also:
+ *     toXyzD65
  */
+
 Oklab!T toOklab(T)(XyzD65!T xyz)
 @safe pure nothrow @nogc
 {
@@ -128,12 +146,37 @@ Oklab!T toOklab(T)(XyzD65!T xyz)
     );
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    import std.math : fabs;
+
+    const xyz = XyzD65d(0.125, 0.25, 0.50);
+    const roundTrip = xyz.toOklab.toXyzD65;
+
+    assert(fabs(roundTrip.x - xyz.x) < 1e-12);
+    assert(fabs(roundTrip.y - xyz.y) < 1e-12);
+    assert(fabs(roundTrip.z - xyz.z) < 1e-12);
+}
+
 /**
- * Convert Oklab to CIE XYZ D65.
+ * Converts Oklab to CIE XYZ D65.
  *
- * The inverse conversion uses the coefficient route validated during R0.
- * It is allocation-free, CTFE-capable and does not clamp extended values.
+ * Extended values are preserved and no clipping or gamut mapping is performed.
+ *
+ * Params:
+ *     lab = Oklab value to convert.
+ *
+ * Returns:
+ *     The corresponding CIE XYZ D65 value.
+ *
+ * Standards:
+ *     Uses the inverse of the published Oklab transform.
+ *
+ * See_Also:
+ *     toOklab
  */
+
 XyzD65!T toXyzD65(T)(Oklab!T lab)
 @safe pure nothrow @nogc
 {
@@ -169,6 +212,17 @@ XyzD65!T toXyzD65(T)(Oklab!T lab)
         cast(T)0.4214933324022432 * m +
         cast(T)1.5869240198367816 * s
     );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const neutral = Oklabd(0.5, 0.0, 0.0);
+    const xyz = neutral.toXyzD65;
+
+    assert(xyz.x == xyz.x);
+    assert(xyz.y == xyz.y);
+    assert(xyz.z == xyz.z);
 }
 
 @safe pure nothrow @nogc unittest
