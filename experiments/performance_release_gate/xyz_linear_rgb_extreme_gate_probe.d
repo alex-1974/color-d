@@ -277,6 +277,52 @@ private bool finiteInfinityBounds(T)(T value)
         value < T.infinity;
 }
 
+private LinearSRgb!T resultGateInfinityBoundsBitwise(T)(XyzD65!T xyz)
+{
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    const bool finiteResult =
+        (ordinary.r > -T.infinity) &
+        (ordinary.r <  T.infinity) &
+        (ordinary.g > -T.infinity) &
+        (ordinary.g <  T.infinity) &
+        (ordinary.b > -T.infinity) &
+        (ordinary.b <  T.infinity);
+
+    if (finiteResult)
+        return ordinary;
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
+private LinearSRgb!T resultGateProductSentinel(T)(XyzD65!T xyz)
+{
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    const T sentinel =
+        ordinary.r *
+        ordinary.g *
+        ordinary.b;
+
+    if (
+        sentinel > -T.infinity &&
+        sentinel <  T.infinity
+    )
+    {
+        return ordinary;
+    }
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
 private LinearSRgb!T resultGateCoreAbs(T)(XyzD65!T xyz)
 {
     const auto ordinary =
@@ -667,6 +713,10 @@ private LinearSRgb!T path(T, int kind)(XyzD65!T xyz)
         return resultGateCoreAbs(xyz);
     else static if (kind == 18)
         return resultGateInfinityBounds(xyz);
+    else static if (kind == 19)
+        return resultGateInfinityBoundsBitwise(xyz);
+    else static if (kind == 20)
+        return resultGateProductSentinel(xyz);
     else
         static assert(false, "unknown path");
 }
@@ -711,6 +761,10 @@ private const(char)[] pathName(int kind)()
         return "result-gate-core-fabs";
     else static if (kind == 18)
         return "result-gate-infinity-bounds";
+    else static if (kind == 19)
+        return "result-gate-infinity-bounds-bitwise";
+    else static if (kind == 20)
+        return "result-gate-product-sentinel";
     else
         static assert(false, "unknown path");
 }
@@ -1105,6 +1159,8 @@ private void benchmarkAll(T)()
     benchmarkPair!(T, 16)(values[]);
     benchmarkPair!(T, 17)(values[]);
     benchmarkPair!(T, 18)(values[]);
+    benchmarkPair!(T, 19)(values[]);
+    benchmarkPair!(T, 20)(values[]);
 }
 
 // CTFE must retain the ordinary public result exactly for pre-gated candidates.
@@ -1160,6 +1216,8 @@ int main()
     ordinaryMismatches!(double, 16)();
     ordinaryMismatches!(double, 17)();
     ordinaryMismatches!(double, 18)();
+    ordinaryMismatches!(double, 19)();
+    ordinaryMismatches!(double, 20)();
 
     ordinaryMismatches!(float, 1)();
     ordinaryMismatches!(float, 2)();
@@ -1179,6 +1237,8 @@ int main()
     ordinaryMismatches!(float, 16)();
     ordinaryMismatches!(float, 17)();
     ordinaryMismatches!(float, 18)();
+    ordinaryMismatches!(float, 19)();
+    ordinaryMismatches!(float, 20)();
 
     subnormalCharacterization!(double, 2)();
     subnormalCharacterization!(double, 3)();
@@ -1195,6 +1255,8 @@ int main()
     subnormalCharacterization!(double, 16)();
     subnormalCharacterization!(double, 17)();
     subnormalCharacterization!(double, 18)();
+    subnormalCharacterization!(double, 19)();
+    subnormalCharacterization!(double, 20)();
 
     subnormalCharacterization!(float, 2)();
     subnormalCharacterization!(float, 3)();
@@ -1211,6 +1273,8 @@ int main()
     subnormalCharacterization!(float, 16)();
     subnormalCharacterization!(float, 17)();
     subnormalCharacterization!(float, 18)();
+    subnormalCharacterization!(float, 19)();
+    subnormalCharacterization!(float, 20)();
 
     extremeAvoidable!(double, 0)();
     extremeAvoidable!(double, 1)();
@@ -1231,6 +1295,8 @@ int main()
     extremeAvoidable!(double, 16)();
     extremeAvoidable!(double, 17)();
     extremeAvoidable!(double, 18)();
+    extremeAvoidable!(double, 19)();
+    extremeAvoidable!(double, 20)();
 
     extremeAvoidable!(float, 0)();
     extremeAvoidable!(float, 1)();
@@ -1251,6 +1317,8 @@ int main()
     extremeAvoidable!(float, 16)();
     extremeAvoidable!(float, 17)();
     extremeAvoidable!(float, 18)();
+    extremeAvoidable!(float, 19)();
+    extremeAvoidable!(float, 20)();
 
     version (LDC)
     {
