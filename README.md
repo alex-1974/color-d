@@ -147,11 +147,14 @@ The integrated R1 exit audit is recorded in
 R2 alpha/interpolation production work is also complete and recorded in
 [`docs/research/R2_CLOSEOUT.md`](docs/research/R2_CLOSEOUT.md).
 
-R3 perceptual utilities remain the active accepted production scope before R4
-consumer validation. R3.1 `deltaEOK`, R3.2 WCAG-2 measurements, R3.3 explicit
-Local MINDE / Ray Trace sRGB gamut mapping, R3.4 raw OKLCH component operations,
-and R3.5 finite scalar schedule generation are complete. The remaining R3 work
-is the accepted tone-family batch production scope.
+R3 perceptual utilities are complete and recorded in
+[`docs/research/R3_CLOSEOUT.md`](docs/research/R3_CLOSEOUT.md). The accepted
+R1–R3 production feature scope for v0.1 is now closed.
+
+R4 real-consumer validation is the active phase. The public API remains
+pre-1.0 and consumer-correctable: feature scope is closed, but API corrections
+remain allowed where imagery-d or the OSM editor theme/style layer exposes
+real integration friction.
 
 The accepted v0.1 production scope is intentionally smaller than the early
 candidate list. In particular, `SRgb8` / `SRgba8` and HSL/HSV are deferred
@@ -176,9 +179,10 @@ R4  real consumer validation
 v0.1.0 release hardening and publication
 ```
 
-R1--R3 promote validated R0 semantics into deliberate production modules.
-R4 consumer validation remains mandatory before release stabilization, and the
-pre-1.0 API may still be corrected when real consumer use reveals friction.
+R1--R3 have promoted the accepted validated R0 semantics into deliberate
+production modules. R4 consumer validation remains mandatory before release
+stabilization, and the pre-1.0 API may still be corrected when real consumer
+use reveals friction.
 
 Initial R4 consumers are:
 
