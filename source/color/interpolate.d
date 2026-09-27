@@ -742,6 +742,63 @@ Alpha!(Oklch!T) interpolate(T)(
     assert(value.alpha == 0.5);
 }
 
+@safe pure nothrow @nogc unittest
+{
+    /*
+     * HARDENING PROBE:
+     *
+     * Both endpoints are finite and the mathematical midpoint is exactly zero.
+     * A direct first + (second - first) * t implementation overflows the
+     * intermediate difference. R0.11 later characterized this arithmetic
+     * failure for finite scalar schedules; interpolation must not regress to
+     * the same avoidable range loss.
+     */
+    const double largeD =
+        0.75 * double.max;
+
+    const midpointD =
+        interpolate(
+            LinearSRgb!double(
+                largeD,
+                -largeD,
+                largeD
+            ),
+            LinearSRgb!double(
+                -largeD,
+                largeD,
+                -largeD
+            ),
+            0.5
+        );
+
+    assert(midpointD.r == 0.0);
+    assert(midpointD.g == 0.0);
+    assert(midpointD.b == 0.0);
+
+    const float largeF =
+        0.75f * float.max;
+
+    const midpointF =
+        interpolate(
+            Oklab!float(
+                largeF,
+                -largeF,
+                largeF
+            ),
+            Oklab!float(
+                -largeF,
+                largeF,
+                -largeF
+            ),
+            0.5f
+        );
+
+    assert(midpointF.l == 0.0f);
+    assert(midpointF.a == 0.0f);
+    assert(midpointF.b == 0.0f);
+}
+
+
 version (unittest)
 {
     private import color.alpha :
