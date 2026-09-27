@@ -1,0 +1,68 @@
+name: Extreme conversion closure audit
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - "source/color/xyz.d"
+      - "source/color/oklab.d"
+      - "experiments/code_audit/extreme_conversion_closure_probe.d"
+      - ".github/workflows/conversion-closure-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dmd:
+    name: Audit / conversion closure / DMD 2.113.0
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install DMD
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: dmd-2.113.0
+
+      - name: Build probe
+        shell: bash
+        run: |
+          "$DC" \
+              -release \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of=extreme-conversion-closure \
+              experiments/code_audit/extreme_conversion_closure_probe.d
+
+      - name: Run probe
+        run: ./extreme-conversion-closure
+
+  ldc:
+    name: Audit / conversion closure / LDC 1.43.0
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install LDC
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-1.43.0
+
+      - name: Build probe
+        shell: bash
+        run: |
+          "$DC" \
+              -release \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of=extreme-conversion-closure \
+              experiments/code_audit/extreme_conversion_closure_probe.d
+
+      - name: Run probe
+        run: ./extreme-conversion-closure
