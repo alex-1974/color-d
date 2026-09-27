@@ -15,6 +15,17 @@ Primary initial consumers are:
 - `imagery-d`;
 - GUI and rendering code in the `d-geospatial-workspace`.
 
+## When to use color-d
+
+Use `color-d` when a D program needs explicit color-space mathematics rather
+than framework-specific styling objects. Typical use cases include typed
+sRGB/XYZ/Oklab/OKLCH conversion, linear-light alpha compositing, perceptual
+interpolation, explicit sRGB gamut handling, WCAG 2 measurements, and
+compile-time construction of fixed color data.
+
+The library deliberately does not own application theme roles, OSM semantics,
+renderer policy, image-wide rendering intent, or GUI-framework tokens.
+
 ## Design direction
 
 Core principles:
@@ -30,6 +41,28 @@ Core principles:
 - core mathematics should be allocation-free;
 - `@safe`, `pure`, `nothrow`, and `@nogc` are preferred where applicable;
 - deterministic core operations should support CTFE where technically possible.
+
+## Support and compatibility
+
+The current pre-1.0 development matrix is:
+
+| Toolchain | Tested configuration |
+|---|---|
+| DMD | 2.113.0 on Ubuntu 24.04 x86-64 |
+| LDC | 1.43.0 on Ubuntu 24.04 x86-64 |
+
+No older minimum D frontend is currently promised. Passing on an older compiler
+does not by itself establish supported compatibility. DMD and LDC are both
+correctness targets; LDC is the current release-performance reference compiler.
+
+The public API is still pre-1.0 and consumer-correctable during R4. Source
+compatibility may therefore change before v0.1.0 when real consumer integration
+demonstrates a materially better contract.
+
+Current public mathematical operations are value-based, `@nogc`, and do not
+perform hidden allocation. Batch tone construction writes into caller-owned
+storage. The library creates no worker threads and owns no scheduler; callers
+remain responsible for parallel execution.
 
 ## Quick start
 
@@ -239,6 +272,5 @@ See:
 
 - `docs/spec/TECHNICAL_SPEC.md`
 - `docs/research/`
-- `docs/adr/`
-- `docs/design/`
 - `ROADMAP.md`
+- the published DDox API documentation linked at the top of this README
