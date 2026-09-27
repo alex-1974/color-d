@@ -538,7 +538,7 @@ Oklch!T withHue(T)(
 }
 
 
-unittest
+@safe pure nothrow @nogc unittest
 {
     /*
      * Negative-chroma canonicalization preserves ordinary raw hue
@@ -864,7 +864,7 @@ static assert(!__traits(compiles, Oklch!real));
 static assert(!__traits(compiles, Oklchf.init.toOklch));
 static assert(!__traits(compiles, Oklabf.init.toOklab));
 
-unittest
+@safe pure nothrow @nogc unittest
 {
     assert(OklabHuef.sizeof == float.sizeof);
     assert(OklabHued.sizeof == double.sizeof);
