@@ -1,0 +1,34 @@
+name: Bug
+description: Report incorrect behavior in color-d.
+title: ""
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe observable behavior and provide the smallest useful reproducer.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproducer
+    attributes:
+      label: Reproducer
+      description: Minimal source, inputs, and exact command if practical.
+    validations:
+      required: true
+  - type: input
+    id: compiler
+    attributes:
+      label: Compiler/toolchain
+      placeholder: "DMD 2.113.0 / LDC 1.43.0, OS, architecture"
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional evidence
+      description: Reference values, logs, screenshots, or related issues.
