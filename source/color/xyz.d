@@ -1,3 +1,8 @@
+/++
+ CIE XYZ D65 values and linear-sRGB/XYZ conversions.
+
+ XYZ values are mathematical tristimulus coordinates. Conversion is explicit and does not clip extended finite values.
++/
 module color.xyz;
 
 private import color.rgb :
@@ -9,12 +14,13 @@ private import color.rgb :
 /**
  * CIE XYZ color value using the D65 reference white.
  *
- * `T` is restricted to the v0.1 computational scalar set: `float` or
- * `double`.
+ * `T` must be `float` or `double`. XYZ components are mathematical values and
+ * are not implicitly clamped to a display-gamut range.
  *
- * XYZ components are mathematical values and are not implicitly clamped to a
- * display-gamut range.
+ * The natural floating-point `.init` state contains NaNs and is therefore a
+ * detectably invalid/uninitialized semantic color.
  */
+
 struct XyzD65(T)
 if (is(T == float) || is(T == double))
 {
@@ -45,12 +51,23 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * Convert linear-light sRGB to CIE XYZ D65.
+ * Converts linear-light sRGB to CIE XYZ D65.
  *
- * The matrix uses the rational sRGB/D65 coefficients validated during R0.
- * The operation is allocation-free, CTFE-capable and does not clip extended
- * finite values.
+ * Extended finite values are preserved and no gamut clipping is performed.
+ *
+ * Params:
+ *     rgb = Linear-light sRGB value to convert.
+ *
+ * Returns:
+ *     The corresponding CIE XYZ D65 value.
+ *
+ * Standards:
+ *     Uses the sRGB/D65 linear transformation to CIE XYZ.
+ *
+ * See_Also:
+ *     toLinearSRgb
  */
+
 XyzD65!T toXyzD65(T)(LinearSRgb!T rgb)
 @safe pure nothrow @nogc
 {
@@ -69,13 +86,37 @@ XyzD65!T toXyzD65(T)(LinearSRgb!T rgb)
     );
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    import std.math : fabs;
+
+    const rgb = LinearSRgbd(0.25, 0.50, 0.75);
+    const roundTrip = rgb.toXyzD65.toLinearSRgb;
+
+    assert(fabs(roundTrip.r - rgb.r) < 1e-12);
+    assert(fabs(roundTrip.g - rgb.g) < 1e-12);
+    assert(fabs(roundTrip.b - rgb.b) < 1e-12);
+}
+
 /**
- * Convert CIE XYZ D65 to linear-light sRGB.
+ * Converts CIE XYZ D65 to linear-light sRGB.
  *
- * The inverse matrix uses the rational coefficients validated during R0.
- * The operation is allocation-free, CTFE-capable and does not clip extended
- * finite values.
+ * Extended finite values are preserved and no gamut clipping is performed.
+ *
+ * Params:
+ *     xyz = CIE XYZ D65 value to convert.
+ *
+ * Returns:
+ *     The corresponding linear-light sRGB value.
+ *
+ * Standards:
+ *     Uses the inverse sRGB/D65 linear transformation from CIE XYZ.
+ *
+ * See_Also:
+ *     toXyzD65
  */
+
 LinearSRgb!T toLinearSRgb(T)(XyzD65!T xyz)
 @safe pure nothrow @nogc
 {
@@ -92,6 +133,14 @@ LinearSRgb!T toLinearSRgb(T)(XyzD65!T xyz)
         ratio!T(-2585,    12673)  * xyz.y +
         ratio!T(705,        667)  * xyz.z
     );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const black = XyzD65d(0.0, 0.0, 0.0).toLinearSRgb;
+
+    assert(black == LinearSRgbd(0.0, 0.0, 0.0));
 }
 
 @safe pure nothrow @nogc unittest

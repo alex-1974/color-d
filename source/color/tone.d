@@ -1,14 +1,11 @@
+/++
+ Low-level schedules and batch operations for OKLCH tone construction.
+
+ The module provides raw mathematical building blocks only. Gamut mapping, seed anchoring, aesthetic curves, and semantic palette roles remain caller policy.
++/
 module color.tone;
 
 import color.oklch : Oklch, OklabHue, withLightness, withChroma;
-
-/**
- * Low-level scalar schedule primitives for OKLCH tone construction.
- *
- * This module generates raw scalar positions only. Applying those positions to
- * colors, shaping chroma, anchoring a seed, gamut mapping, and semantic palette
- * policy are separate operations.
- */
 
 private bool isFiniteScheduleScalar(T)(T value)
 @safe pure nothrow @nogc
@@ -47,40 +44,23 @@ if (is(T == float) || is(T == double))
 
 
 /**
- * Generate an inclusive linear schedule between two finite scalar endpoints.
+ * Generates an inclusive linear schedule between two finite endpoints.
  *
- * The first and last elements are assigned exactly to `start` and `end`.
- * Interior values use arithmetic selected to avoid the finite
- * opposite-sign subtraction overflow found by the R0.11 research while
- * preserving exact constant schedules for equal endpoints.
+ * The first and last elements are exactly `start` and `end`. Ascending,
+ * descending, and constant schedules are supported. Values are not restricted
+ * to a display interval such as `[0, 1]`.
  *
- * One operation supports ascending, descending, and constant schedules.
- * Values are not restricted to a display interval such as `[0, 1]`.
+ * `N` must be at least 2. `start` and `end` must be finite; NaN and infinity
+ * are outside this generated-schedule contract.
  *
- * `N` must be at least 2. A one-element generated inclusive interval has no
- * unique start/midpoint/end interpretation and is deliberately not part of
- * this API.
+ * Params:
+ *     start = First schedule value.
+ *     end = Last schedule value.
  *
- * Preconditions:
- *
- * - `start` is finite;
- * - `end` is finite.
- *
- * NaN and infinity are outside this generated-schedule contract. This function
- * is not a general interpolation primitive and defines no aesthetic curve
- * policy.
- *
- * Example:
- * ---
- * enum values = linearSchedule!5(0.0, 1.0);
- *
- * static assert(values[0] == 0.0);
- * static assert(values[1] == 0.25);
- * static assert(values[2] == 0.50);
- * static assert(values[3] == 0.75);
- * static assert(values[4] == 1.0);
- * ---
+ * Returns:
+ *     A fixed-size inclusive schedule of `N` values.
  */
+
 T[N] linearSchedule(size_t N, T)(
     T start,
     T end
@@ -118,54 +98,39 @@ if (
     return result;
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    enum values = linearSchedule!5(0.0, 1.0);
+
+    static assert(values[0] == 0.0);
+    static assert(values[1] == 0.25);
+    static assert(values[2] == 0.50);
+    static assert(values[3] == 0.75);
+    static assert(values[4] == 1.0);
+}
+
 
 /**
- * Write a raw OKLCH tone family into compile-time-sized caller storage.
+ * Writes a raw OKLCH tone family into compile-time-sized caller storage.
  *
  * The lightness schedule, chroma schedule, and output have the same static
- * cardinality `N`. Their types therefore enforce the length relationship at
- * compile time.
+ * cardinality. Each element applies the supplied raw lightness and chroma to
+ * the seed while preserving its stored hue. No clamping, canonicalization,
+ * anchoring, gamut mapping, or semantic palette policy is applied.
  *
- * Each element is exactly the scalar composition:
+ * `N == 0` and `N == 1` are valid. Output is caller-owned.
  *
- * ---
- * seed.withLightness(lightnesses[i]).withChroma(chromas[i])
- * ---
+ * Params:
+ *     seed = Source OKLCH color whose hue is preserved.
+ *     lightnesses = Raw lightness schedule.
+ *     chromas = Raw chroma schedule.
+ *     output = Caller-owned output array.
  *
- * The seed's stored hue is preserved exactly for every output element.
- * Lightness and chroma remain raw mathematical values: no clamping,
- * canonicalization, hue normalization, anchoring, clipping, gamut mapping, or
- * target-space conversion is performed.
- *
- * `N == 0` and `N == 1` are valid because caller-supplied schedules are
- * unambiguous at those cardinalities.
- *
- * The static-array output is caller-owned rather than returned by value. This
- * is part of the supported toolchain contract for current DMD versions.
- *
- * Example:
- * ---
- * const seed = Oklch!double(
- *     0.50,
- *     0.10,
- *     OklabHue!double.fromDegrees(210.0)
- * );
- * const double[3] lightnesses = [0.20, 0.50, 0.80];
- * const double[3] chromas = [0.04, 0.10, 0.06];
- * Oklch!double[3] tones;
- *
- * tonesAtLightnessAndChromaInto(
- *     seed,
- *     lightnesses,
- *     chromas,
- *     tones
- * );
- *
- * assert(tones[0].l == 0.20);
- * assert(tones[1].c == 0.10);
- * assert(tones[2].h.rawDegrees == seed.h.rawDegrees);
- * ---
+ * See_Also:
+ *     tryTonesAtLightnessAndChromaInto
  */
+
 void tonesAtLightnessAndChromaInto(T, size_t N)(
     Oklch!T seed,
     ref const T[N] lightnesses,
@@ -192,6 +157,30 @@ if (is(T == float) || is(T == double))
     }
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const seed = Oklch!double(
+        0.50,
+        0.10,
+        OklabHue!double.fromDegrees(210.0)
+    );
+    const double[3] lightnesses = [0.20, 0.50, 0.80];
+    const double[3] chromas = [0.04, 0.10, 0.06];
+    Oklch!double[3] tones;
+
+    tonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses,
+        chromas,
+        tones
+    );
+
+    assert(tones[0].l == 0.20);
+    assert(tones[1].c == 0.10);
+    assert(tones[2].h.rawDegrees == seed.h.rawDegrees);
+}
+
 
 private void tonesAtLightnessAndChromaIntoExact(T)(
     Oklch!T seed,
@@ -213,30 +202,28 @@ if (is(T == float) || is(T == double))
 
 
 /**
- * Write a runtime-sized raw OKLCH tone family into caller-owned storage.
+ * Writes a runtime-sized raw OKLCH tone family into caller-owned storage.
  *
- * This is the slice counterpart of `tonesAtLightnessAndChromaInto`. The
- * operation succeeds only when:
+ * The operation succeeds only when the lightness, chroma, and output slices
+ * have equal length. On mismatch it returns `false` and performs no writes.
+ * An empty input/output triple is a successful empty operation.
  *
- * ---
- * lightnesses.length == chromas.length == output.length
- * ---
+ * No allocation, clamping, canonicalization, anchoring, gamut mapping, or
+ * semantic palette policy is applied.
  *
- * On success it writes every output element and returns `true`.
+ * Params:
+ *     seed = Source OKLCH color whose hue is preserved.
+ *     lightnesses = Raw lightness schedule.
+ *     chromas = Raw chroma schedule.
+ *     output = Caller-owned output slice.
  *
- * On any length mismatch it returns `false` and performs no output writes.
- * This all-or-nothing rule distinguishes a valid successful empty operation
- * from an invalid mismatch:
+ * Returns:
+ *     `true` on an exact length match; otherwise `false` with output unchanged.
  *
- * ---
- * empty inputs + empty output -> true
- * any length mismatch         -> false
- * ---
- *
- * Element semantics are identical to the static-array form. The function does
- * not allocate and applies no clamping, canonicalization, anchoring, gamut
- * policy, or semantic palette policy.
+ * See_Also:
+ *     tonesAtLightnessAndChromaInto
  */
+
 bool tryTonesAtLightnessAndChromaInto(T)(
     Oklch!T seed,
     const(T)[] lightnesses,
@@ -262,6 +249,28 @@ if (is(T == float) || is(T == double))
     );
 
     return true;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const seed = Oklch!double(
+        0.50,
+        0.10,
+        OklabHue!double.fromDegrees(210.0)
+    );
+    const double[] lightnesses = [0.25, 0.75];
+    const double[] chromas = [0.05, 0.15];
+    Oklch!double[2] output;
+
+    assert(tryTonesAtLightnessAndChromaInto(
+        seed,
+        lightnesses,
+        chromas,
+        output[]
+    ));
+    assert(output[0].l == 0.25);
+    assert(output[1].c == 0.15);
 }
 
 

@@ -1,3 +1,8 @@
+/++
+ OKLCH values, Oklab-family hue semantics, and raw component operations.
+
+ Hue storage is degree-based and intentionally unbounded. Canonicalization, component replacement, and Oklab/OKLCH conversion remain explicit operations.
++/
 module color.oklch;
 
 private import color.oklab :
@@ -58,9 +63,10 @@ if (is(Unqual!T == float) || is(Unqual!T == double))
  * Public/default units are degrees. The stored angle is raw and unbounded:
  * construction does not normalize complete revolutions.
  *
- * `T` is restricted to the v0.1 computational scalar set: `float` or
- * `double`.
+ * `T` must be `float` or `double`. The natural floating-point `.init` state
+ * contains NaN and is therefore detectably invalid/uninitialized.
  */
+
 struct OklabHue(T)
 if (is(T == float) || is(T == double))
 {
@@ -70,10 +76,17 @@ if (is(T == float) || is(T == double))
     alias Scalar = T;
 
     /**
-     * Construct a hue from a raw degree value.
-     *
-     * No normalization is performed.
-     */
+ * Constructs an Oklab-family hue from a raw degree value.
+ *
+ * No normalization is performed.
+ *
+ * Params:
+ *     value = Raw hue in degrees.
+ *
+ * Returns:
+ *     A hue storing `value` unchanged.
+ */
+
     static OklabHue fromDegrees(T value)
     @safe pure nothrow @nogc
     {
@@ -87,14 +100,14 @@ if (is(T == float) || is(T == double))
         return degrees_;
     }
 
-    /// Return the equivalent hue in the canonical interval [0, 360).
+    /// Return the equivalent hue from 0 degrees inclusive to 360 degrees exclusive.
     @property T positiveDegrees() const
     @safe pure nothrow @nogc
     {
         return normalizePositiveDegrees(degrees_);
     }
 
-    /// Return the equivalent hue in the canonical interval (-180, 180].
+    /// Return the equivalent hue above -180 degrees and at most 180 degrees.
     @property T signedDegrees() const
     @safe pure nothrow @nogc
     {
@@ -110,14 +123,15 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * OKLCH color value: the cylindrical form of Oklab.
+ * OKLCH color value, the cylindrical form of Oklab.
  *
  * Lightness and chroma are stored as mathematical values. Chroma is not
  * silently clamped or canonicalized, and hue preserves its raw degree value.
  *
- * `T` is restricted to the v0.1 computational scalar set: `float` or
- * `double`.
+ * `T` must be `float` or `double`. The natural floating-point `.init` state
+ * contains NaNs and is therefore detectably invalid/uninitialized.
  */
+
 struct Oklch(T)
 if (is(T == float) || is(T == double))
 {
@@ -145,10 +159,17 @@ if (is(T == float) || is(T == double))
     }
 
     /**
-     * Test caller-selected near-achromaticity.
-     *
-     * The library does not impose one global chroma epsilon.
-     */
+ * Tests caller-selected near-achromaticity.
+ *
+ * The library does not impose a global chroma epsilon.
+ *
+ * Params:
+ *     epsilon = Non-negative caller-selected chroma magnitude threshold.
+ *
+ * Returns:
+ *     `true` when `abs(c) <= epsilon`.
+ */
+
     bool isNearAchromatic(T epsilon) const
     @safe pure nothrow @nogc
     {
@@ -174,7 +195,11 @@ if (is(T == float) || is(T == double))
      * 180-degree addition.
      *
      * Non-finite hue values remain non-finite rather than being repaired.
-     */
+ *
+ * Returns:
+ *     An equivalent OKLCH representation with non-negative chroma.
+ */
+
     @property Oklch canonicalized() const
     @safe pure nothrow @nogc
     {
@@ -237,27 +262,22 @@ alias Oklchd = Oklch!double;
 
 
 /**
- * Return a copy of an OKLCH value with raw lightness replaced.
+ * Returns a copy of an OKLCH value with raw lightness replaced.
  *
- * Chroma and stored hue are preserved exactly. No range restriction,
- * clipping, gamut mapping, canonicalization, or other policy is applied.
- * Finite extended and non-finite lightness values therefore remain visible
- * exactly as supplied by the caller.
+ * Chroma and stored hue are preserved exactly. No range restriction, clipping,
+ * gamut mapping, canonicalization, or other policy is applied.
  *
- * Example:
- * ---
- * enum color = Oklchd(
- *     0.55,
- *     0.12,
- *     OklabHued.fromDegrees(250.0)
- * );
- * enum changed = color.withLightness(1.25);
+ * Params:
+ *     color = Source OKLCH value.
+ *     lightness = Raw replacement lightness.
  *
- * static assert(changed.l == 1.25);
- * static assert(changed.c == color.c);
- * static assert(changed.h.rawDegrees == color.h.rawDegrees);
- * ---
+ * Returns:
+ *     A copy of `color` with only lightness replaced.
+ *
+ * See_Also:
+ *     withChroma, withHue
  */
+
 Oklch!T withLightness(T)(
     Oklch!T color,
     T lightness
@@ -268,28 +288,40 @@ Oklch!T withLightness(T)(
     return color;
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    enum color = Oklchd(
+        0.55,
+        0.12,
+        OklabHued.fromDegrees(250.0)
+    );
+    enum changed = color.withLightness(1.25);
+
+    static assert(changed.l == 1.25);
+    static assert(changed.c == color.c);
+    static assert(changed.h.rawDegrees == color.h.rawDegrees);
+}
+
 
 /**
- * Return a copy of an OKLCH value with raw chroma replaced.
+ * Returns a copy of an OKLCH value with raw chroma replaced.
  *
  * Lightness and stored hue are preserved exactly. Negative chroma is not
  * canonicalized, zero chroma does not erase powerless hue, and no clipping or
  * gamut mapping is performed.
  *
- * Example:
- * ---
- * enum color = Oklchd(
- *     0.55,
- *     0.12,
- *     OklabHued.fromDegrees(250.0)
- * );
- * enum changed = color.withChroma(-0.10);
+ * Params:
+ *     color = Source OKLCH value.
+ *     chroma = Raw replacement chroma.
  *
- * static assert(changed.l == color.l);
- * static assert(changed.c == -0.10);
- * static assert(changed.h.rawDegrees == color.h.rawDegrees);
- * ---
+ * Returns:
+ *     A copy of `color` with only chroma replaced.
+ *
+ * See_Also:
+ *     withLightness, withHue
  */
+
 Oklch!T withChroma(T)(
     Oklch!T color,
     T chroma
@@ -300,31 +332,39 @@ Oklch!T withChroma(T)(
     return color;
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    enum color = Oklchd(
+        0.55,
+        0.12,
+        OklabHued.fromDegrees(250.0)
+    );
+    enum changed = color.withChroma(-0.10);
+
+    static assert(changed.l == color.l);
+    static assert(changed.c == -0.10);
+    static assert(changed.h.rawDegrees == color.h.rawDegrees);
+}
+
 
 /**
- * Return a copy of an OKLCH value with raw stored hue replaced.
+ * Returns a copy of an OKLCH value with raw stored hue replaced.
  *
- * Lightness and chroma are preserved exactly. The supplied
- * `OklabHue!T` value is stored without normalization, wrapping, chroma
- * adjustment, clipping, or gamut mapping.
+ * Lightness and chroma are preserved exactly. The supplied hue is stored
+ * without normalization, wrapping, chroma adjustment, clipping, or gamut mapping.
  *
- * Example:
- * ---
- * enum color = Oklchd(
- *     0.55,
- *     0.12,
- *     OklabHued.fromDegrees(250.0)
- * );
- * enum changed =
- *     color.withHue(
- *         OklabHued.fromDegrees(725.0)
- *     );
+ * Params:
+ *     color = Source OKLCH value.
+ *     hue = Raw replacement Oklab-family hue.
  *
- * static assert(changed.l == color.l);
- * static assert(changed.c == color.c);
- * static assert(changed.h.rawDegrees == 725.0);
- * ---
+ * Returns:
+ *     A copy of `color` with only hue replaced.
+ *
+ * See_Also:
+ *     withLightness, withChroma
  */
+
 Oklch!T withHue(T)(
     Oklch!T color,
     OklabHue!T hue
@@ -333,6 +373,24 @@ Oklch!T withHue(T)(
 {
     color.h = hue;
     return color;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    enum color = Oklchd(
+        0.55,
+        0.12,
+        OklabHued.fromDegrees(250.0)
+    );
+    enum changed =
+        color.withHue(
+            OklabHued.fromDegrees(725.0)
+        );
+
+    static assert(changed.l == color.l);
+    static assert(changed.c == color.c);
+    static assert(changed.h.rawDegrees == 725.0);
 }
 
 
@@ -643,12 +701,23 @@ unittest
 }
 
 /**
- * Convert Oklab to its cylindrical OKLCH representation.
+ * Converts Cartesian Oklab to its cylindrical OKLCH representation.
  *
- * Cartesian Oklab has no stored hue revolutions to preserve. Non-achromatic
- * results therefore use non-negative chroma and a hue in [0, 360). Exact
- * achromatic Oklab uses the deterministic numeric fallback C = 0, h = 0°.
+ * Non-achromatic results use non-negative chroma and hue from 0 degrees
+ * inclusive to 360 degrees exclusive.
+ * Exactly achromatic Oklab uses the deterministic numeric representation
+ * `C = 0, h = 0°`.
+ *
+ * Params:
+ *     color = Oklab value to convert.
+ *
+ * Returns:
+ *     The corresponding OKLCH value.
+ *
+ * See_Also:
+ *     toOklab
  */
+
 Oklch!T toOklch(T)(Oklab!T color)
 @safe pure nothrow @nogc
 {
@@ -688,18 +757,33 @@ Oklch!T toOklch(T)(Oklab!T color)
     );
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const neutral = Oklabd(0.5, 0.0, 0.0).toOklch;
+
+    assert(neutral.l == 0.5);
+    assert(neutral.c == 0.0);
+    assert(neutral.h.rawDegrees == 0.0);
+}
+
 /**
- * Convert OKLCH to Cartesian Oklab.
+ * Converts OKLCH to Cartesian Oklab.
  *
- * Raw hue storage is preserved. Before evaluating trigonometric functions,
- * complete revolutions are reduced to the equivalent canonical degree angle.
- * This preserves the represented direction while avoiding overflow in the
- * degree-to-radian conversion for very large finite raw hue values.
+ * Complete hue revolutions are reduced before trigonometric evaluation,
+ * preserving the represented direction without mutating the stored OKLCH value.
+ * Negative chroma remains valid raw mathematical input.
  *
- * Equivalent angles such as 30° and 390° therefore map to the same Cartesian
- * direction without mutating the stored OKLCH value. Negative chroma is also
- * accepted as raw mathematical input.
+ * Params:
+ *     color = OKLCH value to convert.
+ *
+ * Returns:
+ *     The corresponding Cartesian Oklab value.
+ *
+ * See_Also:
+ *     toOklch
  */
+
 Oklab!T toOklab(T)(Oklch!T color)
 @safe pure nothrow @nogc
 {
@@ -715,6 +799,18 @@ Oklab!T toOklab(T)(Oklch!T color)
         color.c * cast(T)cos(radians),
         color.c * cast(T)sin(radians)
     );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const neutral = Oklchd(
+        0.5,
+        0.0,
+        OklabHued.fromDegrees(725.0)
+    ).toOklab;
+
+    assert(neutral == Oklabd(0.5, 0.0, 0.0));
 }
 
 @safe pure nothrow @nogc unittest
