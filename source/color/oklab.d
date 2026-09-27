@@ -94,9 +94,10 @@ private bool isFiniteScalar(T)(const T value)
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {
-    import std.math : isFinite;
-
-    return isFinite(value);
+    return
+        value == value &&
+        value != T.infinity &&
+        value != -T.infinity;
 }
 
 private T magnitude(T)(const T value)
@@ -198,6 +199,20 @@ if (is(T == float) || is(T == double))
 Oklab!T toOklab(T)(XyzD65!T xyz)
 @safe pure nothrow @nogc
 {
+    /*
+     * The largest absolute row sum of the XYZ->LMS matrix is below 4/3.
+     * Therefore |x|,|y|,|z| <= 3/4*T.max guarantees every direct LMS
+     * intermediate remains representable. This cheap gate keeps the ordinary
+     * color path free of post-result finite classification.
+     */
+    const T directSafeMagnitude =
+        cast(T)0.75 * T.max;
+
+    const bool directLmsCannotOverflow =
+        magnitude(xyz.x) <= directSafeMagnitude &&
+        magnitude(xyz.y) <= directSafeMagnitude &&
+        magnitude(xyz.z) <= directSafeMagnitude;
+
     const T l =
         cast(T)0.8190224379967030 * xyz.x +
         cast(T)0.3619062600528904 * xyz.y -
@@ -230,6 +245,9 @@ Oklab!T toOklab(T)(XyzD65!T xyz)
         cast(T)0.7827717124575296 * mp -
         cast(T)0.8086757549230774 * sp
     );
+
+    if (directLmsCannotOverflow)
+        return ordinary;
 
     if (
         isFiniteScalar(ordinary.l) &&
