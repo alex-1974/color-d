@@ -148,16 +148,8 @@ jobs:
         shell: bash
         run: |
           for candidate in \
-              CandidateResultGate \
-              CandidateRowScaled \
-              CandidateInfinityBounds \
-              CandidateInfinityBoundsBitwise \
-              CandidateBitMax \
-              CandidateDominantFactor \
-              CandidateRowScaledMinimal \
-              CandidateWiderWorking \
-              CandidateFma \
-              CandidateHybrid
+              CandidateHybrid \
+              CandidateHybridTinyWider
           do
               "$DC" \
                   -O3 \
@@ -175,16 +167,8 @@ jobs:
         shell: bash
         run: |
           for candidate in \
-              CandidateResultGate \
-              CandidateRowScaled \
-              CandidateInfinityBounds \
-              CandidateInfinityBoundsBitwise \
-              CandidateBitMax \
-              CandidateDominantFactor \
-              CandidateRowScaledMinimal \
-              CandidateWiderWorking \
-              CandidateFma \
-              CandidateHybrid
+              CandidateHybrid \
+              CandidateHybridTinyWider
           do
               echo
               echo "===== $candidate ====="
