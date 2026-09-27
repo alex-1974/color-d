@@ -192,19 +192,28 @@ In particular:
 - renderer- or GPU-specific integration belongs in consumer layers unless a
   generic mathematical abstraction is demonstrated to belong here.
 
-## Architecture references
+## Documentation
 
-Start with:
+Start with the [documentation index](docs/README.md).
 
-- [`docs/spec/TECHNICAL_SPEC.md`](docs/spec/TECHNICAL_SPEC.md) — current
-  research-derived technical specification;
-- [`DESIGN_PRINCIPLES.md`](DESIGN_PRINCIPLES.md) — design constraints and
-  engineering principles;
-- [`docs/research/COLOR_LIB_01.md`](docs/research/COLOR_LIB_01.md) — initial
-  ecosystem and architecture research;
-- [`docs/research/R0_5_OKLCH_SEMANTICS.md`](docs/research/R0_5_OKLCH_SEMANTICS.md)
-  — detailed OKLCH and hue-semantics research;
-- [`ROADMAP.md`](ROADMAP.md) — current development direction.
+For users:
+
+- [Getting started](docs/tutorial/getting-started.md)
+- [How-to guides](docs/how-to/)
+- [Concepts](docs/concepts/)
+- [Glossary](docs/glossary.md)
+- [Accuracy and validation](docs/accuracy-and-validation.md)
+- [Architecture](docs/architecture.md)
+- [Performance](docs/performance.md)
+
+For engineering rationale and evidence:
+
+- [Architecture decision records](docs/adr/)
+- [Technical specification](docs/spec/TECHNICAL_SPEC.md)
+- [Research documents](docs/research/)
+- [Executable experiments](experiments/)
+- [Repository design principles](DESIGN_PRINCIPLES.md)
+- [Roadmap](ROADMAP.md)
 
 ## Project status
 
@@ -268,9 +277,5 @@ Public API documentation, tests, CTFE coverage and documented `unittest`
 examples are developed together with the production API rather than postponed
 to release cleanup.
 
-See:
-
-- `docs/spec/TECHNICAL_SPEC.md`
-- `docs/research/`
-- `ROADMAP.md`
-- the published DDox API documentation linked at the top of this README
+See the [documentation index](docs/README.md), [ROADMAP.md](ROADMAP.md), and
+the published DDox API documentation linked at the top of this README.
