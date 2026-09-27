@@ -187,6 +187,124 @@ private Ref3!R oklabToXyzReference(T, R)(Oklab!T lab)
     );
 }
 
+private T magnitude(T)(T value)
+{
+    return value < cast(T)0 ? -value : value;
+}
+
+private T maximum(T)(T first, T second)
+{
+    return first > second ? first : second;
+}
+
+private T dot3Candidate(T)(
+    T a,
+    T x,
+    T b,
+    T y,
+    T c,
+    T z
+)
+{
+    const T ordinary =
+        a * x +
+        b * y +
+        c * z;
+
+    if (
+        finite(ordinary) ||
+        !finite(x) ||
+        !finite(y) ||
+        !finite(z)
+    )
+    {
+        return ordinary;
+    }
+
+    const T scale =
+        maximum(
+            magnitude(x),
+            maximum(
+                magnitude(y),
+                magnitude(z)
+            )
+        );
+
+    if (scale == cast(T)0)
+        return ordinary;
+
+    return
+        scale *
+        (
+            a * (x / scale) +
+            b * (y / scale) +
+            c * (z / scale)
+        );
+}
+
+private LinearSRgb!T xyzToRgbCandidate(T)(XyzD65!T xyz)
+{
+    return LinearSRgb!T(
+        dot3Candidate(
+            cast(T)12831 / cast(T)3959, xyz.x,
+            cast(T)-329 / cast(T)214, xyz.y,
+            cast(T)-1974 / cast(T)3959, xyz.z
+        ),
+        dot3Candidate(
+            cast(T)-851781 / cast(T)878810, xyz.x,
+            cast(T)1648619 / cast(T)878810, xyz.y,
+            cast(T)36519 / cast(T)878810, xyz.z
+        ),
+        dot3Candidate(
+            cast(T)705 / cast(T)12673, xyz.x,
+            cast(T)-2585 / cast(T)12673, xyz.y,
+            cast(T)705 / cast(T)667, xyz.z
+        )
+    );
+}
+
+private Oklab!T xyzToOklabCandidate(T)(XyzD65!T xyz)
+{
+    const T l =
+        dot3Candidate(
+            cast(T)0.8190224379967030, xyz.x,
+            cast(T)0.3619062600528904, xyz.y,
+            cast(T)-0.1288737815209879, xyz.z
+        );
+
+    const T m =
+        dot3Candidate(
+            cast(T)0.0329836539323885, xyz.x,
+            cast(T)0.9292868615863434, xyz.y,
+            cast(T)0.0361446663506424, xyz.z
+        );
+
+    const T s =
+        dot3Candidate(
+            cast(T)0.0481771893596242, xyz.x,
+            cast(T)0.2642395317527308, xyz.y,
+            cast(T)0.6335478284694309, xyz.z
+        );
+
+    const T lp = cbrt(l);
+    const T mp = cbrt(m);
+    const T sp = cbrt(s);
+
+    return Oklab!T(
+        cast(T)0.2104542683093140 * lp +
+        cast(T)0.7936177747023054 * mp -
+        cast(T)0.0040720430116193 * sp,
+
+        cast(T)1.9779985324311684 * lp -
+        cast(T)2.4285922420485799 * mp +
+        cast(T)0.4505937096174110 * sp,
+
+        cast(T)0.0259040424655478 * lp +
+        cast(T)0.7827717124575296 * mp -
+        cast(T)0.8086757549230774 * sp
+    );
+}
+
 private bool referenceFits(T, R)(Ref3!R value)
 {
     return
@@ -229,8 +347,10 @@ private void auditLinearTransforms(T)(string scalarName)
     size_t rgbToXyzAvoidable = 0;
     size_t xyzToRgbReferenceFinite = 0;
     size_t xyzToRgbAvoidable = 0;
+    size_t xyzToRgbCandidateAvoidable = 0;
     size_t xyzToLabReferenceFinite = 0;
     size_t xyzToLabAvoidable = 0;
+    size_t xyzToLabCandidateAvoidable = 0;
 
     foreach (fx; factors)
     foreach (fy; factors)
@@ -257,6 +377,8 @@ private void auditLinearTransforms(T)(string scalarName)
             ++xyzToRgbReferenceFinite;
             if (!productionFinite(xyz.toLinearSRgb))
                 ++xyzToRgbAvoidable;
+            if (!productionFinite(xyzToRgbCandidate(xyz)))
+                ++xyzToRgbCandidateAvoidable;
         }
 
         const auto xyzLabRef = xyzToOklabReference!(T, R)(xyz);
@@ -265,6 +387,8 @@ private void auditLinearTransforms(T)(string scalarName)
             ++xyzToLabReferenceFinite;
             if (!productionFinite(xyz.toOklab))
                 ++xyzToLabAvoidable;
+            if (!productionFinite(xyzToOklabCandidate(xyz)))
+                ++xyzToLabCandidateAvoidable;
         }
     }
 
@@ -276,17 +400,19 @@ private void auditLinearTransforms(T)(string scalarName)
     );
 
     writefln(
-        "%s XYZ->LinearRGB: representable=%s avoidable_nonfinite=%s",
+        "%s XYZ->LinearRGB: representable=%s production_avoidable=%s candidate_avoidable=%s",
         scalarName,
         xyzToRgbReferenceFinite,
-        xyzToRgbAvoidable
+        xyzToRgbAvoidable,
+        xyzToRgbCandidateAvoidable
     );
 
     writefln(
-        "%s XYZ->Oklab: representable=%s avoidable_nonfinite=%s",
+        "%s XYZ->Oklab: representable=%s production_avoidable=%s candidate_avoidable=%s",
         scalarName,
         xyzToLabReferenceFinite,
-        xyzToLabAvoidable
+        xyzToLabAvoidable,
+        xyzToLabCandidateAvoidable
     );
 }
 
