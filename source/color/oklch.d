@@ -100,14 +100,14 @@ if (is(T == float) || is(T == double))
         return degrees_;
     }
 
-    /// Return the equivalent hue in the canonical interval [0, 360).
+    /// Return the equivalent hue from 0 degrees inclusive to 360 degrees exclusive.
     @property T positiveDegrees() const
     @safe pure nothrow @nogc
     {
         return normalizePositiveDegrees(degrees_);
     }
 
-    /// Return the equivalent hue in the canonical interval (-180, 180].
+    /// Return the equivalent hue above -180 degrees and at most 180 degrees.
     @property T signedDegrees() const
     @safe pure nothrow @nogc
     {
@@ -703,7 +703,8 @@ unittest
 /**
  * Converts Cartesian Oklab to its cylindrical OKLCH representation.
  *
- * Non-achromatic results use non-negative chroma and hue in `[0, 360)`.
+ * Non-achromatic results use non-negative chroma and hue from 0 degrees
+ * inclusive to 360 degrees exclusive.
  * Exactly achromatic Oklab uses the deterministic numeric representation
  * `C = 0, h = 0°`.
  *
