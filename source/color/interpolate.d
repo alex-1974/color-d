@@ -42,6 +42,26 @@ private T lerp(T)(
 )
 @safe pure nothrow @nogc
 {
+    /*
+     * For strictly opposite-sign finite endpoints, forming second - first can
+     * overflow even when the interpolated result is representable. R0.11
+     * validated the weighted-endpoint form for exactly that case.
+     *
+     * Keep the direct-difference form otherwise: in particular it preserves
+     * exact constant interpolation for equal large endpoints, where the pure
+     * weighted form can introduce avoidable rounding.
+     */
+    const bool oppositeSigns =
+        (first < cast(T)0 && second > cast(T)0) ||
+        (first > cast(T)0 && second < cast(T)0);
+
+    if (oppositeSigns)
+    {
+        return
+            (cast(T)1 - t) * first +
+            t * second;
+    }
+
     return first + (second - first) * t;
 }
 
