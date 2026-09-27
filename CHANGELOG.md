@@ -27,6 +27,10 @@ under **Unreleased**.
 
 - XYZ D65 → Oklab now preserves representable finite results for extreme finite
   XYZ inputs that would otherwise overflow the direct LMS intermediate;
+- XYZ D65 → linear-sRGB now avoids the validated extreme finite
+  intermediate-overflow cases while retaining direct-path rounding for ordinary
+  `float` inputs and using a more accurate dominant-factor evaluation for
+  `double`;
 - current public feature scope is closed for v0.1 and is in R4 real-consumer
   validation;
 - the tested pre-1.0 toolchain matrix is DMD 2.113.0 and LDC 1.43.0 on
