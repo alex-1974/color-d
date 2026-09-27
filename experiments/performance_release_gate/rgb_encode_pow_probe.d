@@ -9,6 +9,7 @@
 
 module srgb_encode_pow_probe;
 
+import core.stdc.math : powl;
 import ldc.intrinsics : llvm_pow;
 import std.conv : bitCast;
 import std.datetime.stopwatch : StopWatch;
@@ -47,6 +48,20 @@ private T ldcPowInv24(T)(T base)
     return llvm_pow!T(base, cast(T)(1.0L / 2.4L));
 }
 
+private T referencePowInv24(T)(T base)
+@trusted nothrow @nogc
+{
+    /*
+     * Independent higher-precision runtime reference for the power operation.
+     * powl consumes local scalar copies only; no pointer/lifetime state crosses
+     * this experiment boundary.
+     */
+    return cast(T)powl(
+        cast(real)base,
+        1.0L / 2.4L
+    );
+}
+
 private T encodePhobos(T)(T linear)
 @safe pure nothrow @nogc
 {
@@ -74,6 +89,22 @@ private T encodeLdc(T)(T linear)
     const T encodedMagnitude =
         cast(T)1.055 *
         ldcPowInv24(absLinear) -
+        cast(T)0.055;
+
+    return signOf(linear) * encodedMagnitude;
+}
+
+private T encodeReference(T)(T linear)
+@trusted nothrow @nogc
+{
+    const T absLinear = magnitude(linear);
+
+    if (absLinear <= cast(T)0.0031308)
+        return linear * cast(T)12.92;
+
+    const T encodedMagnitude =
+        cast(T)1.055 *
+        referencePowInv24(absLinear) -
         cast(T)0.055;
 
     return signOf(linear) * encodedMagnitude;
@@ -164,30 +195,48 @@ private bool sameSpecialClass(T)(const T a, const T b)
 private bool validate(T)(string scalarName)
 {
     uint state = 0xC01D_0017U;
-    ulong maxUlp = 0;
-    size_t finiteMismatches = 0;
+
+    ulong maxPhobosVsLdcUlp = 0;
+    ulong maxPhobosVsReferenceUlp = 0;
+    ulong maxLdcVsReferenceUlp = 0;
+
+    size_t phobosVsLdcOver1Ulp = 0;
+    size_t phobosVsReferenceOver1Ulp = 0;
+    size_t ldcVsReferenceOver1Ulp = 0;
 
     foreach (_; 0 .. sampleCount)
     {
         const T input = generatedInput!T(state);
-        const T reference = encodePhobos(input);
-        const T candidate = encodeLdc(input);
+        const T phobosValue = encodePhobos(input);
+        const T ldcValue = encodeLdc(input);
+        const T referenceValue = encodeReference(input);
 
-        if (reference == reference && candidate == candidate &&
-            reference != T.infinity && reference != -T.infinity &&
-            candidate != T.infinity && candidate != -T.infinity)
-        {
-            const ulong distance = cast(ulong)ulpDistance(reference, candidate);
-            if (distance > maxUlp)
-                maxUlp = distance;
+        const ulong phobosVsLdc =
+            cast(ulong)ulpDistance(phobosValue, ldcValue);
 
-            if (distance > 1)
-                ++finiteMismatches;
-        }
-        else if (!sameSpecialClass(reference, candidate))
-        {
-            ++finiteMismatches;
-        }
+        const ulong phobosVsReference =
+            cast(ulong)ulpDistance(phobosValue, referenceValue);
+
+        const ulong ldcVsReference =
+            cast(ulong)ulpDistance(ldcValue, referenceValue);
+
+        if (phobosVsLdc > maxPhobosVsLdcUlp)
+            maxPhobosVsLdcUlp = phobosVsLdc;
+
+        if (phobosVsReference > maxPhobosVsReferenceUlp)
+            maxPhobosVsReferenceUlp = phobosVsReference;
+
+        if (ldcVsReference > maxLdcVsReferenceUlp)
+            maxLdcVsReferenceUlp = ldcVsReference;
+
+        if (phobosVsLdc > 1)
+            ++phobosVsLdcOver1Ulp;
+
+        if (phobosVsReference > 1)
+            ++phobosVsReferenceOver1Ulp;
+
+        if (ldcVsReference > 1)
+            ++ldcVsReferenceOver1Ulp;
     }
 
     const T[9] specials = [
@@ -205,19 +254,33 @@ private bool validate(T)(string scalarName)
     size_t specialMismatches = 0;
     foreach (input; specials)
     {
-        const T reference = encodePhobos(input);
-        const T candidate = encodeLdc(input);
+        const T phobosValue = encodePhobos(input);
+        const T ldcValue = encodeLdc(input);
+        const T referenceValue = encodeReference(input);
 
-        if (!sameSpecialClass(reference, candidate))
+        if (!sameSpecialClass(phobosValue, ldcValue) ||
+            !sameSpecialClass(phobosValue, referenceValue) ||
+            !sameSpecialClass(ldcValue, referenceValue))
+        {
             ++specialMismatches;
+        }
     }
 
     writefln(
-        "%s numerical: samples=%s max_ulp=%s finite_over_1ulp=%s special_mismatches=%s",
+        "%s numerical: samples=%s phobos_vs_ldc_max_ulp=%s over1=%s",
         scalarName,
         sampleCount,
-        maxUlp,
-        finiteMismatches,
+        maxPhobosVsLdcUlp,
+        phobosVsLdcOver1Ulp
+    );
+
+    writefln(
+        "%s reference: phobos_max_ulp=%s over1=%s ldc_max_ulp=%s over1=%s special_mismatches=%s",
+        scalarName,
+        maxPhobosVsReferenceUlp,
+        phobosVsReferenceOver1Ulp,
+        maxLdcVsReferenceUlp,
+        ldcVsReferenceOver1Ulp,
         specialMismatches
     );
 
@@ -309,6 +372,7 @@ static assert(ctfeProbe == encodePhobos!double(0.25));
 int main()
 {
     writeln("=== color-d sRGB encode pow audit ===");
+    writeln("real.sizeof=", real.sizeof, " real.mant_dig=", real.mant_dig);
 
     if (!validate!double("double"))
         return 1;
