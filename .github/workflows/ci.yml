@@ -301,6 +301,61 @@ jobs:
           "$tmp/probe" ordinary 0.125 0.25 0.5
           "$tmp/probe" extended -0.25 0.5 1.25
 
+      - name: README quick-start consumer smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of="$tmp/readme-quickstart" \
+              "$GITHUB_WORKSPACE/tests/examples/readme_quickstart.d"
+
+          "$tmp/readme-quickstart"
+
+      - name: Consumer archive boundary smoke
+        if: matrix.compiler == 'dmd-2.113.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          git archive --format=tar HEAD > "$tmp/color-d.tar"
+          tar -tf "$tmp/color-d.tar" > "$tmp/files.txt"
+
+          for required in \
+              README.md \
+              LICENSE \
+              CHANGELOG.md \
+              dub.sdl \
+              source/color/package.d \
+              docs/tutorial/getting-started.md
+          do
+              grep -Fx "$required" "$tmp/files.txt"
+          done
+
+          for forbidden in \
+              .github/ \
+              AGENTS.md \
+              CONTRIBUTING.md \
+              DESIGN_PRINCIPLES.md \
+              ROADMAP.md \
+              docs/research/ \
+              experiments/ \
+              tests/
+          do
+              if grep -Fq "$forbidden" "$tmp/files.txt"; then
+                  echo "repository-only path leaked into consumer archive: $forbidden" >&2
+                  exit 1
+              fi
+          done
+
       - name: External import compile smoke
         shell: bash
         run: |
