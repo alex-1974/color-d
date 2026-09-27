@@ -152,6 +152,115 @@ jobs:
 
           "$tmp/probe" 0.75 0.75
 
+      - name: TC-0005 current cbrt capability probe
+        shell: bash
+        run: |
+          set -u
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          cat > "$tmp/attributes.d" <<'D'
+          import std.math : cbrt;
+
+          @safe pure nothrow @nogc
+          double strictCbrt(double value)
+          {
+              return cbrt(value);
+          }
+
+          void main()
+          {
+          }
+          D
+
+          if "$DC" -of="$tmp/attributes" "$tmp/attributes.d" >"$tmp/attributes.log" 2>&1
+          then
+              echo "strict attributes: PASS"
+          else
+              echo "strict attributes: FAIL"
+              cat "$tmp/attributes.log"
+          fi
+
+          cat > "$tmp/ctfe.d" <<'D'
+          import std.math : cbrt;
+
+          enum positive = cbrt(8.0);
+          enum negative = cbrt(-8.0);
+
+          static assert(positive == 2.0);
+          static assert(negative == -2.0);
+
+          void main()
+          {
+          }
+          D
+
+          if "$DC" -of="$tmp/ctfe" "$tmp/ctfe.d" >"$tmp/ctfe.log" 2>&1
+          then
+              echo "ctfe: PASS"
+          else
+              echo "ctfe: FAIL"
+              cat "$tmp/ctfe.log"
+          fi
+
+          cat > "$tmp/runtime.d" <<'D'
+          import std.math : cbrt, isNaN;
+          import std.stdio : writeln;
+
+          void main()
+          {
+              const positiveZero = cbrt(0.0);
+              const negativeZero = cbrt(-0.0);
+              const positiveInfinity = cbrt(double.infinity);
+              const negativeInfinity = cbrt(-double.infinity);
+              const nanValue = cbrt(double.nan);
+
+              writeln(
+                  "signed-zero reciprocals: ",
+                  1.0 / positiveZero,
+                  " ",
+                  1.0 / negativeZero
+              );
+
+              writeln(
+                  "infinities: ",
+                  positiveInfinity,
+                  " ",
+                  negativeInfinity
+              );
+
+              writeln(
+                  "nan: ",
+                  isNaN(nanValue)
+              );
+
+              if (1.0 / positiveZero != double.infinity)
+                  return;
+
+              if (1.0 / negativeZero != -double.infinity)
+                  return;
+
+              if (positiveInfinity != double.infinity)
+                  return;
+
+              if (negativeInfinity != -double.infinity)
+                  return;
+
+              if (!isNaN(nanValue))
+                  return;
+          }
+          D
+
+          if "$DC" -of="$tmp/runtime" "$tmp/runtime.d" >"$tmp/runtime-build.log" 2>&1
+          then
+              echo "runtime build: PASS"
+              "$tmp/runtime"
+          else
+              echo "runtime build: FAIL"
+              cat "$tmp/runtime-build.log"
+          fi
+
       - name: External import compile smoke
         shell: bash
         run: |
