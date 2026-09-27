@@ -19,6 +19,8 @@ first release workflow in #14 must extend publication so that:
 3. later `develop` publication does not redefine a released version;
 4. release/version metadata and documentation remain consistent.
 
-GitHub Pages must use **GitHub Actions** as its publishing source. A separate
-branch/Jekyll Pages publisher would compete with the DDox deployment and should
-not be enabled.
+GitHub Pages is configured to use **GitHub Actions** as its publishing source.
+A separate branch/Jekyll Pages publisher would compete with the DDox deployment
+and must remain disabled. This repository setting is verified by observing a
+normal `develop` push: only the explicit documentation workflow should publish
+Pages.
