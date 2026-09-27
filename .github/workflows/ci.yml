@@ -321,8 +321,10 @@ jobs:
               size_t cbrtExact;
               int powMinEqualBits = int.max;
               int cbrtMinEqualBits = int.max;
-              real powMaxRelative;
-              real cbrtMaxRelative;
+              real powMaxRelative = 0.0L;
+              real cbrtMaxRelative = 0.0L;
+              size_t powNonFinite;
+              size_t cbrtNonFinite;
           }
 
           void observe(T)(
@@ -340,6 +342,12 @@ jobs:
                   runtimeCbrt(value);
 
               ++result.count;
+
+              if (!isFinite(powValue))
+                  ++result.powNonFinite;
+
+              if (!isFinite(cbrtValue))
+                  ++result.cbrtNonFinite;
 
               if (powValue == reference)
                   ++result.powExact;
@@ -460,7 +468,11 @@ jobs:
                   " powMaxRelative=",
                   value.powMaxRelative,
                   " cbrtMaxRelative=",
-                  value.cbrtMaxRelative
+                  value.cbrtMaxRelative,
+                  " powNonFinite=",
+                  value.powNonFinite,
+                  " cbrtNonFinite=",
+                  value.cbrtNonFinite
               );
           }
 
