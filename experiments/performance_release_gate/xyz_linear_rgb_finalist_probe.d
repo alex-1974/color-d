@@ -265,6 +265,26 @@ private LinearSRgb!T candidateHybrid(T)(XyzD65!T xyz)
         return candidateInfinityBounds(xyz);
 }
 
+private LinearSRgb!T candidateHybridTinyWider(T)(XyzD65!T xyz)
+{
+    static if (is(T == double))
+    {
+        const bool tiny =
+            magnitude(xyz.x) <= T.min_normal &&
+            magnitude(xyz.y) <= T.min_normal &&
+            magnitude(xyz.z) <= T.min_normal;
+
+        if (tiny)
+            return candidateWiderWorking(xyz);
+
+        return candidateDominantFactor(xyz);
+    }
+    else
+    {
+        return candidateInfinityBounds(xyz);
+    }
+}
+
 private LinearSRgb!T candidateResultGate(T)(XyzD65!T xyz)
 {
     const auto ordinary = xyz.toLinearSRgb;
@@ -415,6 +435,8 @@ private const(char)[] candidateName()
         return "fma";
     else version (CandidateHybrid)
         return "hybrid";
+    else version (CandidateHybridTinyWider)
+        return "hybrid-tiny-wider";
     else
         static assert(false, "select exactly one finalist version");
 }
@@ -441,6 +463,8 @@ private LinearSRgb!T candidate(T)(XyzD65!T xyz)
         return candidateFma(xyz);
     else version (CandidateHybrid)
         return candidateHybrid(xyz);
+    else version (CandidateHybridTinyWider)
+        return candidateHybridTinyWider(xyz);
     else
         static assert(false, "select exactly one finalist version");
 }
