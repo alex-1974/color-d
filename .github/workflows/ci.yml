@@ -366,6 +366,8 @@ jobs:
 
           "$DC" \
               -c \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
               -of="$tmp/linear-schedule-qualifiers.o" \
               "$GITHUB_WORKSPACE/tests/compat/linear_schedule_qualifier_probe.d"
 
