@@ -734,8 +734,11 @@ int main()
     auditOklabInverse!double("double");
     auditOklabInverse!float("float");
 
-    benchmarkOrdinary!double("double");
-    benchmarkOrdinary!float("float");
+    version (LDC)
+    {
+        benchmarkOrdinary!double("double");
+        benchmarkOrdinary!float("float");
+    }
 
     return 0;
 }
