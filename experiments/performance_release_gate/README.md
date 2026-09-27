@@ -63,3 +63,72 @@ the reference x86-64 system:
 The benchmark-only probes in this directory do not themselves define production
 API. Production implementation must preserve the public API, CTFE behavior and
 the numerical contracts established by the relevant research/specification.
+
+
+## R4 audit — sRGB encode reciprocal-power path
+
+The R4 D-code audit revisited the inverse sRGB transfer because production
+`linearToSrgbComponent` still used the generic floating/floating
+`std.math.pow(base, 1/2.4)` route while the decode path already had a
+validated LDC-native power backend.
+
+Executable evidence is retained in:
+
+`rgb_encode_pow_probe.d`
+
+The focused probe compares identical linear-to-encoded component formulas and
+changes only the power backend:
+
+```text
+current/reference runtime     std.math.pow
+candidate LDC runtime         ldc.intrinsics.llvm_pow
+candidate CTFE                std.math.pow
+higher-precision reference    powl with the same T-rounded base/exponent
+```
+
+The numerical corpus contains 1,000,000 deterministic extended finite inputs
+for each public scalar type, plus signed zero, the transfer boundary, ±1,
+infinities, and NaN.
+
+Final GitHub-hosted audit run:
+
+```text
+LDC:       1.43.0
+CPU:       AMD EPYC 7763
+real:      64 mantissa bits
+
+double:
+    Phobos vs LLVM max difference:      4 ULP
+    samples above 1 ULP:                73 / 1,000,000
+    Phobos vs powl max difference:      4 ULP
+    LLVM vs powl max difference:        4 ULP
+    special-value mismatches:           0
+
+float:
+    Phobos vs LLVM max difference:      2 ULP
+    samples above 1 ULP:                56 / 1,000,000
+    Phobos vs powl max difference:      4 ULP
+    LLVM vs powl max difference:        4 ULP
+    special-value mismatches:           0
+```
+
+The higher-precision reference does not show a material accuracy advantage for
+the current Phobos path. The two implementations have the same observed
+maximum ULP distance to that reference and nearly identical >1-ULP counts.
+
+Five balanced-order same-process release rounds gave representative medians:
+
+| Scalar | Phobos | LDC llvm_pow | Approx. ratio |
+| --- | ---: | ---: | ---: |
+| `double` | 126.5 ns/component | 15.0 ns/component | 8.5× |
+| `float` | 127.2 ns/component | 7.7 ns/component | 16.6× |
+
+These absolute values are GitHub-hosted-runner observations, not portable
+throughput guarantees. The large same-process relative gap is nevertheless
+consistent with the already established TC-0006 Phobos floating/floating
+`pow` bottleneck.
+
+**Audit decision:** the encode-side LDC intrinsic route qualifies for a
+separate production implementation trial. Adoption still requires the normal
+DMD/LDC unit, CTFE, reference, special-value and external-consumer gates. The
+experiment itself does not change production semantics.
