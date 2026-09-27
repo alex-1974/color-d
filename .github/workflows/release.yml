@@ -58,6 +58,10 @@ jobs:
       - name: Debug unittests
         run: dub test --compiler="$DC" --build=debug --force
 
+      - name: DDox documentation smoke
+        if: matrix.compiler == 'dmd-2.113.0'
+        run: dub build --compiler="$DC" --build=ddox --force
+
       - name: Release unittests
         run: dub test --compiler="$DC" --build=release --force
 

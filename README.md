@@ -29,6 +29,43 @@ Core principles:
 - `@safe`, `pure`, `nothrow`, and `@nogc` are preferred where applicable;
 - deterministic core operations should support CTFE where technically possible.
 
+## Quick start
+
+The normal computational path keeps each color-space transition explicit:
+
+```d
+import color;
+
+void main()
+{
+    const encoded = SRgbd(0.82, 0.25, 0.12);
+
+    const perceptual =
+        encoded
+        .toLinear
+        .toXyzD65
+        .toOklab
+        .toOklch;
+
+    const adjusted =
+        perceptual
+        .withLightness(0.70)
+        .withChroma(0.16);
+
+    const displayLinear =
+        adjusted.gamutMapRayTraceToLinearSRgb();
+
+    assert(displayLinear.inGamut);
+
+    const display = displayLinear.toSRgb;
+    assert(display.r == display.r);
+}
+```
+
+No step above performs implicit clipping, gamut mapping, alpha resolution, or
+color-space conversion. Application-specific theme and styling policy remains
+outside `color-d`.
+
 ## Validated research
 
 The initial architecture has been exercised through executable research
