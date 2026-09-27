@@ -149,9 +149,9 @@ R2 alpha/interpolation production work is also complete and recorded in
 
 R3 perceptual utilities remain the active accepted production scope before R4
 consumer validation. R3.1 `deltaEOK`, R3.2 WCAG-2 measurements, R3.3 explicit
-Local MINDE / Ray Trace sRGB gamut mapping, and R3.4 raw OKLCH component
-operations are complete. The remaining R3 work is the accepted finite-schedule
-and tone-family production scope.
+Local MINDE / Ray Trace sRGB gamut mapping, R3.4 raw OKLCH component operations,
+and R3.5 finite scalar schedule generation are complete. The remaining R3 work
+is the accepted tone-family batch production scope.
 
 The accepted v0.1 production scope is intentionally smaller than the early
 candidate list. In particular, `SRgb8` / `SRgba8` and HSL/HSV are deferred
