@@ -1,0 +1,23 @@
+name: Feature
+description: Propose consumer-justified public functionality.
+title: ""
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Consumer need
+      description: Which concrete consumer/problem requires this?
+    validations:
+      required: true
+  - type: textarea
+    id: semantics
+    attributes:
+      label: Required semantics
+      description: What mathematical or API contract is needed?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing color-d composition, adapter, or deferred approach.

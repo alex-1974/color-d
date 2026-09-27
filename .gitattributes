@@ -1,0 +1,12 @@
+# Consumer package / release archive boundary.
+#
+# Keep source, README, LICENSE, CHANGELOG, DUB metadata, and user-facing docs.
+# Exclude repository coordination, CI, and research/evidence material from
+# generated source archives where git archive/export-ignore is honored.
+
+/.github export-ignore
+/AGENTS.md export-ignore
+/DESIGN_PRINCIPLES.md export-ignore
+/ROADMAP.md export-ignore
+/docs/research export-ignore
+/experiments export-ignore

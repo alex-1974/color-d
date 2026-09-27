@@ -1,0 +1,22 @@
+name: Design decision
+description: Track an architectural or API decision.
+title: ""
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision to make
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and consequences
+    validations:
+      required: true

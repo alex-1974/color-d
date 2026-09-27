@@ -1,0 +1,21 @@
+name: Research
+description: Investigate a question before production adoption.
+title: ""
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Research question
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Primary/reference sources
+    validations:
+      required: true
+  - type: textarea
+    id: experiment
+    attributes:
+      label: Measurement or prototype required
+      description: State what evidence would decide adopt/adapt/depend/benchmark/defer/reject.
