@@ -121,6 +121,7 @@ jobs:
           import color.interpolate;
           import color.difference;
           import color.wcag;
+          import color.tone;
           D
 
           cat > "$tmp/generic_mapper_negative.d" <<'D'

@@ -85,6 +85,7 @@ jobs:
           import color.interpolate;
           import color.difference;
           import color.wcag;
+          import color.tone;
 
           void main()
           {
