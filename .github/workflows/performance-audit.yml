@@ -8,6 +8,7 @@ on:
       - "source/color/rgb.d"
       - "source/color/oklab.d"
       - "source/color/xyz.d"
+      - "source/color/gamut.d"
       - "experiments/performance_release_gate/**"
       - ".github/workflows/performance-audit.yml"
   workflow_dispatch:
@@ -159,3 +160,62 @@ jobs:
 
       - name: Run focused release probe
         run: ./xyz-linear-rgb-production-probe
+
+
+  gamut-production:
+    name: Audit / gamut production
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout current
+        uses: actions/checkout@v7
+
+      - name: Checkout pre-XYZ-hardening baseline
+        uses: actions/checkout@v7
+        with:
+          ref: 6a4d5c95327fa2c25341865b62d2dad1ed3dd5f2
+          path: baseline
+
+      - name: Install LDC
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-1.43.0
+
+      - name: Environment
+        shell: bash
+        run: |
+          "$DC" --version
+          lscpu
+          uname -a
+
+      - name: Build current production probe
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -Isource \
+              -i \
+              -of=gamut-production-current \
+              experiments/performance_release_gate/gamut_production_probe.d
+
+      - name: Build pre-XYZ-hardening baseline probe
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -Ibaseline/source \
+              -i \
+              -of=gamut-production-baseline \
+              experiments/performance_release_gate/gamut_production_probe.d
+
+      - name: Run baseline
+        run: ./gamut-production-baseline
+
+      - name: Run current
+        run: ./gamut-production-current
