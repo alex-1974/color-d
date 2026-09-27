@@ -8,6 +8,7 @@ on:
       - "source/color/rgb.d"
       - "source/color/oklab.d"
       - "source/color/xyz.d"
+      - "source/color/gamut.d"
       - "experiments/performance_release_gate/**"
       - ".github/workflows/performance-audit.yml"
   workflow_dispatch:
@@ -161,19 +162,13 @@ jobs:
         run: ./xyz-linear-rgb-production-probe
 
 
-  gamut-fastpath-regression:
-    name: Audit / gamut float fastpath
+  gamut-production:
+    name: Audit / gamut production
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout candidate
+      - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Checkout current develop baseline
-        uses: actions/checkout@v7
-        with:
-          ref: 57e9e8a40e13121361b019e265afba6c7a0019a1
-          path: baseline
 
       - name: Install LDC
         uses: dlang-community/setup-dlang@v2
@@ -187,7 +182,7 @@ jobs:
           lscpu
           uname -a
 
-      - name: Build candidate
+      - name: Build focused release probe
         shell: bash
         run: |
           "$DC" \
@@ -197,24 +192,8 @@ jobs:
               -mcpu=native \
               -Isource \
               -i \
-              -of=gamut-candidate \
+              -of=gamut-production-probe \
               experiments/performance_release_gate/gamut_production_probe.d
 
-      - name: Build current baseline
-        shell: bash
-        run: |
-          "$DC" \
-              -O3 \
-              -release \
-              -boundscheck=off \
-              -mcpu=native \
-              -Ibaseline/source \
-              -i \
-              -of=gamut-baseline \
-              experiments/performance_release_gate/gamut_production_probe.d
-
-      - name: Run baseline
-        run: ./gamut-baseline
-
-      - name: Run candidate
-        run: ./gamut-candidate
+      - name: Run focused release probe
+        run: ./gamut-production-probe
