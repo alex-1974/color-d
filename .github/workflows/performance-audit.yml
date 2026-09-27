@@ -151,7 +151,8 @@ jobs:
               CandidateResultGate \
               CandidateRowScaled \
               CandidateInfinityBounds \
-              CandidateInfinityBoundsBitwise
+              CandidateInfinityBoundsBitwise \
+              CandidateBitMax
           do
               "$DC" \
                   -O3 \
@@ -172,7 +173,8 @@ jobs:
               CandidateResultGate \
               CandidateRowScaled \
               CandidateInfinityBounds \
-              CandidateInfinityBoundsBitwise
+              CandidateInfinityBoundsBitwise \
+              CandidateBitMax
           do
               echo
               echo "===== $candidate ====="
