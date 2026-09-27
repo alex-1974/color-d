@@ -44,6 +44,34 @@ not assumed for every floating-point path. Tests apply the property-specific
 numerical contract and explicitly protect cases where exact equality is part of
 the API.
 
+## Extreme finite conversion closure
+
+The public computational types accept extended floating-point values; that does
+not imply that every finite IEEE input can pass through every matrix transform
+without an intermediate overflow.
+
+The pre-v0.1 extreme-finite audit evaluated deterministic grids with a wider
+reference route on DMD 2.113.0 and LDC 1.43.0:
+
+- linear-sRGB → XYZ D65: no avoidable non-finite result was observed in the
+  tested grid;
+- XYZ D65 → Oklab: the former direct LMS path produced 58 avoidable non-finite
+  results among 729 reference-representable cases for each scalar width; the
+  production result-gated scaled fallback reduces the observed count to zero;
+- Oklab → XYZ D65: no avoidable non-finite result was observed in the tested
+  grid;
+- XYZ D65 → linear-sRGB: 42 of 111 reference-representable extreme cases
+  currently become non-finite because individual inverse-matrix terms can
+  overflow before cancellation.
+
+The last case is a documented exceptional-domain limitation, not clipping or
+gamut mapping. A scaled candidate removes the observed failures but currently
+adds roughly 22–43% to the ordinary conversion hot path, so it has not been
+adopted. The lower-overhead production follow-up is tracked separately.
+
+These counts describe the retained deterministic audit corpus. They do not
+claim exhaustive proof over all finite IEEE values.
+
 ## Important standards and provenance
 
 - sRGB transfer and RGB/XYZ behavior are validated against the accepted
