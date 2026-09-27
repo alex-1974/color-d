@@ -144,18 +144,37 @@ jobs:
           lscpu
           uname -a
 
-      - name: Build focused release probe
+      - name: Build isolated finalist probes
         shell: bash
         run: |
-          "$DC" \
-              -O3 \
-              -release \
-              -boundscheck=off \
-              -mcpu=native \
-              -Isource \
-              -i \
-              -of=xyz-linear-rgb-extreme-gate-probe \
-              experiments/performance_release_gate/xyz_linear_rgb_extreme_gate_probe.d
+          for candidate in \
+              CandidateResultGate \
+              CandidateRowScaled \
+              CandidateInfinityBounds \
+              CandidateInfinityBoundsBitwise
+          do
+              "$DC" \
+                  -O3 \
+                  -release \
+                  -boundscheck=off \
+                  -mcpu=native \
+                  -Isource \
+                  -i \
+                  -d-version="$candidate" \
+                  -of="xyz-linear-rgb-$candidate" \
+                  experiments/performance_release_gate/xyz_linear_rgb_finalist_probe.d
+          done
 
-      - name: Run focused release probe
-        run: ./xyz-linear-rgb-extreme-gate-probe
+      - name: Run isolated finalist probes
+        shell: bash
+        run: |
+          for candidate in \
+              CandidateResultGate \
+              CandidateRowScaled \
+              CandidateInfinityBounds \
+              CandidateInfinityBoundsBitwise
+          do
+              echo
+              echo "===== $candidate ====="
+              "./xyz-linear-rgb-$candidate"
+          done
