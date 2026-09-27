@@ -103,7 +103,8 @@ if (is(T == float) || is(T == double))
  *     The corresponding Oklab value.
  *
  * Standards:
- *     Uses the published Oklab XYZ/LMS/Oklab transform.
+ *     Uses Björn Ottosson's published Oklab XYZ/LMS/Oklab transform,
+ *     including the higher-precision sRGB/D65 update validated by color-d.
  *
  * See_Also:
  *     toXyzD65
@@ -171,7 +172,7 @@ Oklab!T toOklab(T)(XyzD65!T xyz)
  *     The corresponding CIE XYZ D65 value.
  *
  * Standards:
- *     Uses the inverse of the published Oklab transform.
+ *     Uses the inverse of Björn Ottosson's published Oklab transform.
  *
  * See_Also:
  *     toOklab
