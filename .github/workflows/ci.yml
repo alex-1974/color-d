@@ -297,6 +297,73 @@ jobs:
           "$tmp/probe" ordinary 0.125 0.25 0.5
           "$tmp/probe" extended -0.25 0.5 1.25
 
+      - name: Generated schedule release invalid-input probe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          cat > "$tmp/probe.d" <<'D'
+          import color;
+          import std.conv : to;
+          import std.stdio : write, writeln;
+
+          double parseValue(string text)
+          {
+              if (text == "nan")
+                  return double.nan;
+
+              if (text == "inf")
+                  return double.infinity;
+
+              if (text == "-inf")
+                  return -double.infinity;
+
+              return text.to!double;
+          }
+
+          void main(string[] args)
+          {
+              if (args.length != 3)
+                  return;
+
+              const start =
+                  parseValue(args[1]);
+
+              const end =
+                  parseValue(args[2]);
+
+              const values =
+                  linearSchedule!5(
+                      start,
+                      end
+                  );
+
+              write(
+                  args[1],
+                  " -> ",
+                  args[2],
+                  ":"
+              );
+
+              foreach (value; values)
+              {
+                  write(" ", value);
+              }
+
+              writeln();
+          }
+          D
+
+          "$DC"               -release               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/probe"               "$tmp/probe.d"
+
+          "$tmp/probe" nan 1
+          "$tmp/probe" inf inf
+          "$tmp/probe" inf -inf
+          "$tmp/probe" -inf 1
+
       - name: External import compile smoke
         shell: bash
         run: |
