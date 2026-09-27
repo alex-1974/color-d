@@ -245,6 +245,30 @@ private T dot3Candidate(T)(
 
 private LinearSRgb!T xyzToRgbCandidate(T)(XyzD65!T xyz)
 {
+    /*
+     * Conservative fast-path gate.
+     *
+     * The largest absolute row sum of the inverse sRGB matrix is the red row.
+     * If every input magnitude is at most T.max / rowAbsSum, then every
+     * product and every partial sum is bounded by T.max.
+     */
+    enum T rowAbsSum =
+        cast(T)12831 / cast(T)3959 +
+        cast(T)329 / cast(T)214 +
+        cast(T)1974 / cast(T)3959;
+
+    enum T safeInputMagnitude =
+        T.max / rowAbsSum;
+
+    if (
+        magnitude(xyz.x) <= safeInputMagnitude &&
+        magnitude(xyz.y) <= safeInputMagnitude &&
+        magnitude(xyz.z) <= safeInputMagnitude
+    )
+    {
+        return xyz.toLinearSRgb;
+    }
+
     return LinearSRgb!T(
         dot3Candidate(
             cast(T)12831 / cast(T)3959, xyz.x,
@@ -266,16 +290,36 @@ private LinearSRgb!T xyzToRgbCandidate(T)(XyzD65!T xyz)
 
 private Oklab!T xyzToOklabCandidate(T)(XyzD65!T xyz)
 {
-    const auto ordinary = xyz.toOklab;
+    /*
+     * The first XYZ->LMS row has the largest absolute coefficient sum.
+     * Below this conservative bound the ordinary LMS transform cannot
+     * overflow through products or partial sums, so retain the production
+     * path unchanged.
+     */
+    enum T lRowAbsSum =
+        cast(T)0.8190224379967030 +
+        cast(T)0.3619062600528904 +
+        cast(T)0.1288737815209879;
+
+    enum T safeInputMagnitude =
+        T.max / lRowAbsSum;
 
     if (
-        productionFinite(ordinary) ||
+        magnitude(xyz.x) <= safeInputMagnitude &&
+        magnitude(xyz.y) <= safeInputMagnitude &&
+        magnitude(xyz.z) <= safeInputMagnitude
+    )
+    {
+        return xyz.toOklab;
+    }
+
+    if (
         !finite(xyz.x) ||
         !finite(xyz.y) ||
         !finite(xyz.z)
     )
     {
-        return ordinary;
+        return xyz.toOklab;
     }
 
     const T scale =
@@ -288,7 +332,7 @@ private Oklab!T xyzToOklabCandidate(T)(XyzD65!T xyz)
         );
 
     if (scale == cast(T)0)
-        return ordinary;
+        return xyz.toOklab;
 
     const T x = xyz.x / scale;
     const T y = xyz.y / scale;
