@@ -47,13 +47,27 @@ private T cubeRoot(T)(const T value)
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {
-    import std.math : pow;
+    import std.math :
+        cbrt,
+        pow;
 
-    // Oklab requires a real, sign-preserving cube root because extended
-    // XYZ values can produce negative LMS intermediates. Returning zero
-    // unchanged also preserves the sign of -0.0.
+    /*
+     * Oklab requires a real, sign-preserving cube root because extended XYZ
+     * values can produce negative LMS intermediates.
+     *
+     * Current Phobos cbrt is @safe pure nothrow @nogc on the tested
+     * DMD 2.113.0 / LDC 1.43.0 line and is both more accurate and faster than
+     * pow(|x|, 1/3) at runtime. It still cannot execute in CTFE because the
+     * implementation reaches the C cbrtl symbol without D source.
+     *
+     * Keep the source-available pow route only for CTFE. Returning zero before
+     * either path also preserves the sign bit of -0.0.
+     */
     if (value == cast(T)0)
         return value;
+
+    if (!__ctfe)
+        return cbrt(value);
 
     const T absValue =
         value < cast(T)0
