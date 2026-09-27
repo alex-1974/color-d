@@ -76,10 +76,17 @@ if (is(T == float) || is(T == double))
     alias Scalar = T;
 
     /**
-     * Construct a hue from a raw degree value.
-     *
-     * No normalization is performed.
-     */
+ * Constructs an Oklab-family hue from a raw degree value.
+ *
+ * No normalization is performed.
+ *
+ * Params:
+ *     value = Raw hue in degrees.
+ *
+ * Returns:
+ *     A hue storing `value` unchanged.
+ */
+
     static OklabHue fromDegrees(T value)
     @safe pure nothrow @nogc
     {
@@ -152,10 +159,17 @@ if (is(T == float) || is(T == double))
     }
 
     /**
-     * Test caller-selected near-achromaticity.
-     *
-     * The library does not impose one global chroma epsilon.
-     */
+ * Tests caller-selected near-achromaticity.
+ *
+ * The library does not impose a global chroma epsilon.
+ *
+ * Params:
+ *     epsilon = Non-negative caller-selected chroma magnitude threshold.
+ *
+ * Returns:
+ *     `true` when `abs(c) <= epsilon`.
+ */
+
     bool isNearAchromatic(T epsilon) const
     @safe pure nothrow @nogc
     {
@@ -181,7 +195,11 @@ if (is(T == float) || is(T == double))
      * 180-degree addition.
      *
      * Non-finite hue values remain non-finite rather than being repaired.
-     */
+ *
+ * Returns:
+ *     An equivalent OKLCH representation with non-negative chroma.
+ */
+
     @property Oklch canonicalized() const
     @safe pure nothrow @nogc
     {
