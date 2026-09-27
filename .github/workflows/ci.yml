@@ -48,6 +48,110 @@ jobs:
       - name: Release unittests
         run: dub test --compiler="$DC" --build=release --force
 
+      - name: Extreme finite interpolation runtime probe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          cat > "$tmp/probe.d" <<'D'
+          import color;
+          import std.conv : to;
+          import std.stdio : writeln;
+
+          int main(string[] args)
+          {
+              if (args.length != 3)
+                  return 2;
+
+              const double scaleD =
+                  args[1].to!double;
+
+              const double largeD =
+                  scaleD * double.max;
+
+              const resultD =
+                  interpolate(
+                      LinearSRgbd(
+                          largeD,
+                          -largeD,
+                          largeD
+                      ),
+                      LinearSRgbd(
+                          -largeD,
+                          largeD,
+                          -largeD
+                      ),
+                      0.5
+                  );
+
+              const float scaleF =
+                  args[2].to!float;
+
+              const float largeF =
+                  scaleF * float.max;
+
+              const resultF =
+                  interpolate(
+                      Oklabf(
+                          largeF,
+                          -largeF,
+                          largeF
+                      ),
+                      Oklabf(
+                          -largeF,
+                          largeF,
+                          -largeF
+                      ),
+                      0.5f
+                  );
+
+              writeln(
+                  "double midpoint: ",
+                  resultD.r,
+                  " ",
+                  resultD.g,
+                  " ",
+                  resultD.b
+              );
+
+              writeln(
+                  "float midpoint: ",
+                  resultF.l,
+                  " ",
+                  resultF.a,
+                  " ",
+                  resultF.b
+              );
+
+              if (
+                  resultD.r != 0.0 ||
+                  resultD.g != 0.0 ||
+                  resultD.b != 0.0
+              )
+              {
+                  return 1;
+              }
+
+              if (
+                  resultF.l != 0.0f ||
+                  resultF.a != 0.0f ||
+                  resultF.b != 0.0f
+              )
+              {
+                  return 1;
+              }
+
+              return 0;
+          }
+          D
+
+          "$DC"               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/probe"               "$tmp/probe.d"
+
+          "$tmp/probe" 0.75 0.75
+
       - name: External import compile smoke
         shell: bash
         run: |
