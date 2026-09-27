@@ -227,13 +227,22 @@ Accepted v0.1 scope:
 
 Tracked by GitHub issue #12.
 
-Accepted v0.1 scope:
+**Status: ACTIVE — R3.1–R3.3 complete; R3.4–R3.6 remain.**
 
-- WCAG-2 relative luminance
-- WCAG-2 contrast ratio
-- `deltaEOK`
-- explicit perceptual gamut mapping with Local MINDE and Ray Trace
-- low-level OKLCH component/tone/schedule primitives
+Completed production slices:
+
+- R3.1 — Oklab `deltaEOK`;
+- R3.2 — WCAG-2 relative luminance and contrast measurement;
+- R3.3 — explicit Local MINDE and Ray Trace perceptual sRGB gamut mapping.
+
+Remaining accepted v0.1 scope:
+
+- R3.4 — raw OKLCH component operations;
+- R3.5 — finite scalar schedule generation;
+- R3.6 — tone-family batch forms.
+
+The gamut-mapping API has no default mapper; algorithm selection remains
+explicit.
 
 ## R4 — First consumer integration
 
