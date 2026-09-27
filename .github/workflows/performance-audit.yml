@@ -49,3 +49,37 @@ jobs:
 
       - name: Run focused release probe
         run: ./rgb-encode-pow-probe
+
+  gamut-inline:
+    name: Audit / gamut inline hint
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install LDC
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-1.43.0
+
+      - name: Environment
+        shell: bash
+        run: |
+          "$DC" --version
+          lscpu
+          uname -a
+
+      - name: Build focused release probe
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -of=gamut-inline-probe \
+              experiments/performance_release_gate/gamut_inline_probe.d
+
+      - name: Run focused release probe
+        run: ./gamut-inline-probe

@@ -342,6 +342,15 @@ private RayIntersection!T noRayIntersection(T)()
 }
 
 
+/*
+ * Keep this explicit inline hint evidence-based.
+ *
+ * The R4 LDC 1.43 audit in gamut_inline_probe.d compared this exact helper
+ * with and without pragma(inline, true): double showed no material benefit,
+ * while float was consistently about 2.2x faster with forced inlining on the
+ * observed release runner. Re-evaluate when the release-performance compiler
+ * changes materially.
+ */
 private pragma(inline, true)
 RayIntersection!T intersectUnitRgbCube(T)(
     LinearSRgb!T start,
