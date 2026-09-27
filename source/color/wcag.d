@@ -157,7 +157,7 @@ private T contrastFromLuminance(T)(T first, T second)
  *     input outside the WCAG 2 sRGB domain.
  *
  * Standards:
- *     WCAG 2 relative luminance for sRGB.
+ *     W3C WCAG 2.2 relative luminance for sRGB.
  */
 
 Wcag2Measurement!T wcag2RelativeLuminance(T)(SRgb!T color)
@@ -187,7 +187,7 @@ Wcag2Measurement!T wcag2RelativeLuminance(T)(SRgb!T color)
  *     input outside the WCAG 2 domain.
  *
  * Standards:
- *     WCAG 2 relative luminance for sRGB.
+ *     W3C WCAG 2.2 relative luminance for sRGB.
  */
 
 Wcag2Measurement!T wcag2RelativeLuminance(T)(LinearSRgb!T color)
@@ -217,7 +217,7 @@ Wcag2Measurement!T wcag2RelativeLuminance(T)(LinearSRgb!T color)
  *     A valid WCAG 2 contrast ratio, or an invalid measurement.
  *
  * Standards:
- *     WCAG 2 contrast ratio.
+ *     W3C WCAG 2.2 contrast ratio.
  */
 
 Wcag2Measurement!T wcag2ContrastRatio(T)(
@@ -258,7 +258,7 @@ Wcag2Measurement!T wcag2ContrastRatio(T)(
  *     A valid WCAG 2 contrast ratio, or an invalid measurement.
  *
  * Standards:
- *     WCAG 2 contrast ratio.
+ *     W3C WCAG 2.2 contrast ratio.
  */
 
 Wcag2Measurement!T wcag2ContrastRatio(T)(
