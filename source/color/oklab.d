@@ -94,10 +94,9 @@ private bool isFiniteScalar(T)(const T value)
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {
-    return
-        value == value &&
-        value != T.infinity &&
-        value != -T.infinity;
+    import std.math : isFinite;
+
+    return isFinite(value);
 }
 
 private T magnitude(T)(const T value)
@@ -196,14 +195,6 @@ if (is(T == float) || is(T == double))
  *     toXyzD65
  */
 
-/*
- * The result-gated finite-overflow fallback adds post-transform checks to a
- * conversion used in tight loops. The R4 production benchmark showed about
- * 2% float overhead without explicit inlining; the original validated
- * candidate used forced inlining. Keep this hint only while benchmark evidence
- * demonstrates value and re-audit with a materially changed release compiler.
- */
-pragma(inline, true)
 Oklab!T toOklab(T)(XyzD65!T xyz)
 @safe pure nothrow @nogc
 {
