@@ -6,7 +6,9 @@
 
 /.github export-ignore
 /AGENTS.md export-ignore
+/CONTRIBUTING.md export-ignore
 /DESIGN_PRINCIPLES.md export-ignore
 /ROADMAP.md export-ignore
 /docs/research export-ignore
 /experiments export-ignore
+/tests export-ignore
