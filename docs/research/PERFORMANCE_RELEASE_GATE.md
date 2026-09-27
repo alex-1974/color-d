@@ -139,3 +139,28 @@ For v0.1:
    behavior are separately validated.
 7. Compiler retests are targeted at plausible code-generation changes rather
    than mechanically performed for every release.
+
+
+## R4 follow-up — inverse sRGB transfer
+
+The later D-code audit applied the same TC-0006 question to the inverse
+linear-sRGB -> encoded-sRGB transfer, which still used generic
+floating/floating Phobos `pow(base, 1/2.4)`.
+
+The retained focused probe is
+`experiments/performance_release_gate/rgb_encode_pow_probe.d`.
+
+On an AMD EPYC 7763 GitHub runner with LDC 1.43.0, five balanced same-process
+rounds measured about 8.5x lower component cost for `double` and 16.6x for
+`float` with the LDC `llvm_pow` route.
+
+The numerical audit used 1,000,000 deterministic extended finite values per
+scalar width plus explicit special values. Phobos and LLVM differed by at most
+4 ULP for `double` and 2 ULP for `float`. Against a `powl` reference using
+the same scalar-rounded base and exponent, both implementations had the same
+observed 4-ULP maximum and nearly identical >1-ULP counts. No tested
+special-value classification/sign mismatch occurred.
+
+This evidence justifies a production implementation trial; it does not by
+itself weaken or replace the existing public sRGB transfer tolerances or CTFE
+contract.
