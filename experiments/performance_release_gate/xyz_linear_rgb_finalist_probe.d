@@ -323,6 +323,55 @@ private LinearSRgb!T candidateRowScaled(T)(XyzD65!T xyz)
     );
 }
 
+private bool allFiniteSelfDifference(T)(LinearSRgb!T value)
+{
+    /*
+     * For every finite IEEE value, x - x is exactly zero.
+     * For NaN or either infinity, x - x is NaN. Combining the three
+     * differences therefore reduces result classification to one comparison
+     * without changing any finite production value.
+     */
+    const T classification =
+        (value.r - value.r) +
+        (value.g - value.g) +
+        (value.b - value.b);
+
+    return classification == cast(T)0;
+}
+
+private LinearSRgb!T candidateSelfDifference(T)(XyzD65!T xyz)
+{
+    const auto ordinary = xyz.toLinearSRgb;
+
+    if (allFiniteSelfDifference(ordinary))
+        return ordinary;
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
+private pragma(inline, true)
+LinearSRgb!T candidateInfinityBoundsInline(T)(XyzD65!T xyz)
+{
+    const auto ordinary = xyz.toLinearSRgb;
+
+    if (
+        finiteInfinityBounds(ordinary.r) &&
+        finiteInfinityBounds(ordinary.g) &&
+        finiteInfinityBounds(ordinary.b)
+    )
+    {
+        return ordinary;
+    }
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
 private bool finiteInfinityBounds(T)(T value)
 {
     return
@@ -437,6 +486,10 @@ private const(char)[] candidateName()
         return "hybrid";
     else version (CandidateHybridTinyWider)
         return "hybrid-tiny-wider";
+    else version (CandidateSelfDifference)
+        return "self-difference";
+    else version (CandidateInfinityBoundsInline)
+        return "infinity-bounds-inline";
     else
         static assert(false, "select exactly one finalist version");
 }
@@ -465,6 +518,10 @@ private LinearSRgb!T candidate(T)(XyzD65!T xyz)
         return candidateHybrid(xyz);
     else version (CandidateHybridTinyWider)
         return candidateHybridTinyWider(xyz);
+    else version (CandidateSelfDifference)
+        return candidateSelfDifference(xyz);
+    else version (CandidateInfinityBoundsInline)
+        return candidateInfinityBoundsInline(xyz);
     else
         static assert(false, "select exactly one finalist version");
 }
