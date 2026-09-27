@@ -1,7 +1,10 @@
 /++
  CIE XYZ D65 values and linear-sRGB/XYZ conversions.
 
- XYZ values are mathematical tristimulus coordinates. Conversion is explicit and does not clip extended finite values.
+ XYZ values are mathematical tristimulus coordinates. Conversion is explicit
+ and does not intentionally clip extended values. As with ordinary IEEE
+ arithmetic, extreme finite magnitudes may overflow intermediate matrix terms;
+ route-specific finite-closure guarantees are documented on the conversion.
 +/
 module color.xyz;
 
@@ -53,7 +56,10 @@ if (is(T == float) || is(T == double))
 /**
  * Converts linear-light sRGB to CIE XYZ D65.
  *
- * Extended finite values are preserved and no gamut clipping is performed.
+ * Extended values are transformed without gamut clipping. The validated
+ * extreme-finite audit found no avoidable non-finite result for this forward
+ * matrix on its deterministic float/double grid; this is validation evidence,
+ * not a promise that every finite IEEE input has a finite output.
  *
  * Params:
  *     rgb = Linear-light sRGB value to convert.
@@ -103,7 +109,13 @@ XyzD65!T toXyzD65(T)(LinearSRgb!T rgb)
 /**
  * Converts CIE XYZ D65 to linear-light sRGB.
  *
- * Extended finite values are preserved and no gamut clipping is performed.
+ * Extended values are transformed without gamut clipping. For ordinary and
+ * validated extended ranges the direct matrix preserves finite results.
+ * Extremely large finite XYZ components can overflow individual matrix terms
+ * before cancellation, so finite input does not currently guarantee a finite
+ * linear-sRGB result even when a wider-precision evaluation would be
+ * representable. This known exceptional-domain limitation is tracked for a
+ * lower-overhead robust implementation.
  *
  * Params:
  *     xyz = CIE XYZ D65 value to convert.
