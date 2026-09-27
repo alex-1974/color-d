@@ -323,6 +323,10 @@ private LinearSRgb!T candidateRowScaled(T)(XyzD65!T xyz)
     );
 }
 
+// Finite classifier finalist: preserve the current conversion exactly, then
+// detect only non-finite results with arithmetic that collapses to one final
+// comparison. This remains evidence-only until both semantic and performance
+// gates pass on the supported compilers.
 private bool allFiniteSelfDifference(T)(LinearSRgb!T value)
 {
     /*
