@@ -185,3 +185,30 @@ hosted runner.
 The result supports retaining the narrow LDC runtime optimization. DMD and CTFE
 continue to use Phobos, and the existing reference/special-value/round-trip
 contracts remain the correctness authority.
+
+
+## R4 follow-up — Ray Trace inline hint
+
+The D-code audit also re-evaluated the explicit `pragma(inline, true)` on the
+ordinary Ray Trace unit-RGB-cube intersection helper.
+
+The retained probe is
+`experiments/performance_release_gate/gamut_inline_probe.d`.
+
+It duplicates the validated helper exactly and compares a forced-inline form
+against an otherwise identical optimizer-controlled form. On the observed
+LDC 1.43.0 release runner:
+
+- 1,000,000 deterministic `double` cases: 0 exact result mismatches;
+- 1,000,000 deterministic `float` cases: 0 exact result mismatches;
+- `double`: the default optimizer-controlled form was slightly faster in the
+  measured rounds, so forced inlining is not justified by `double` alone;
+- `float`: forced inlining was consistently about 2.2x faster than the
+  default form across all seven balanced rounds.
+
+Because `float` is a supported public scalar type and the difference is large
+and stable in the measured release configuration, the explicit inline hint is
+retained. This is compiler/code-generation evidence, not a semantic contract;
+it should be re-audited when the release-performance compiler changes
+materially.
+
