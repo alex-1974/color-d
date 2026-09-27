@@ -11,7 +11,7 @@ module srgb_encode_pow_probe;
 
 import ldc.intrinsics : llvm_pow;
 import std.conv : bitCast;
-import std.datetime.stopwatch : AutoStart, StopWatch;
+import std.datetime.stopwatch : StopWatch;
 import std.math : isNaN, pow;
 import std.stdio : writefln, writeln;
 
@@ -135,7 +135,7 @@ private uint ulpDistance(float a, float b)
     return x >= y ? x - y : y - x;
 }
 
-private bool sameSpecialClass(T)(T a, T b)
+private bool sameSpecialClass(T)(const T a, const T b)
 @safe pure nothrow @nogc
 {
     if (isNaN(a) || isNaN(b))
@@ -226,7 +226,8 @@ private bool validate(T)(string scalarName)
 
 private double timePhobos(T)(const(T)[] values, ref T checksum)
 {
-    StopWatch sw(AutoStart.yes);
+    StopWatch sw;
+    sw.start();
 
     foreach (_; 0 .. repetitions)
     {
@@ -243,7 +244,8 @@ private double timePhobos(T)(const(T)[] values, ref T checksum)
 
 private double timeLdc(T)(const(T)[] values, ref T checksum)
 {
-    StopWatch sw(AutoStart.yes);
+    StopWatch sw;
+    sw.start();
 
     foreach (_; 0 .. repetitions)
     {
