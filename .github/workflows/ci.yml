@@ -261,6 +261,328 @@ jobs:
               cat "$tmp/runtime-build.log"
           fi
 
+      - name: TC-0005 cube-root accuracy and cost probe
+        shell: bash
+        run: |
+          set -u
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          cat > "$tmp/accuracy.d" <<'D'
+          import std.math :
+              cbrt,
+              fabs,
+              feqrel,
+              isFinite,
+              ldexp,
+              pow;
+          import std.stdio : writeln;
+
+          T powCubeRoot(T)(T value)
+          {
+              if (value == cast(T)0)
+                  return value;
+
+              const T magnitude =
+                  value < cast(T)0
+                      ? -value
+                      : value;
+
+              const T root =
+                  cast(T)pow(
+                      magnitude,
+                      cast(T)(1.0L / 3.0L)
+                  );
+
+              return
+                  value < cast(T)0
+                      ? -root
+                      : root;
+          }
+
+          T runtimeCbrt(T)(T value)
+          {
+              return cbrt(value);
+          }
+
+          T highPrecisionReference(T)(T value)
+          {
+              return
+                  cast(T)cbrt(
+                      cast(real)value
+                  );
+          }
+
+          struct Accuracy
+          {
+              size_t count;
+              size_t powExact;
+              size_t cbrtExact;
+              int powMinEqualBits = int.max;
+              int cbrtMinEqualBits = int.max;
+              real powMaxRelative;
+              real cbrtMaxRelative;
+          }
+
+          void observe(T)(
+              ref Accuracy result,
+              T value
+          )
+          {
+              const T reference =
+                  highPrecisionReference(value);
+
+              const T powValue =
+                  powCubeRoot(value);
+
+              const T cbrtValue =
+                  runtimeCbrt(value);
+
+              ++result.count;
+
+              if (powValue == reference)
+                  ++result.powExact;
+
+              if (cbrtValue == reference)
+                  ++result.cbrtExact;
+
+              const int powBits =
+                  feqrel(
+                      cast(real)powValue,
+                      cast(real)reference
+                  );
+
+              const int cbrtBits =
+                  feqrel(
+                      cast(real)cbrtValue,
+                      cast(real)reference
+                  );
+
+              if (powBits < result.powMinEqualBits)
+                  result.powMinEqualBits = powBits;
+
+              if (cbrtBits < result.cbrtMinEqualBits)
+                  result.cbrtMinEqualBits = cbrtBits;
+
+              if (reference != cast(T)0)
+              {
+                  const real refReal =
+                      cast(real)reference;
+
+                  const real powRelative =
+                      fabs(
+                          (
+                              cast(real)powValue -
+                              refReal
+                          ) /
+                          refReal
+                      );
+
+                  const real cbrtRelative =
+                      fabs(
+                          (
+                              cast(real)cbrtValue -
+                              refReal
+                          ) /
+                          refReal
+                      );
+
+                  if (powRelative > result.powMaxRelative)
+                      result.powMaxRelative = powRelative;
+
+                  if (cbrtRelative > result.cbrtMaxRelative)
+                      result.cbrtMaxRelative = cbrtRelative;
+              }
+          }
+
+          Accuracy characterize(T)(
+              int minExponent,
+              int maxExponent
+          )
+          {
+              Accuracy result;
+
+              immutable real[7] mantissas =
+              [
+                  0.5000001L,
+                  0.625L,
+                  0.75L,
+                  1.0L,
+                  1.25L,
+                  1.5L,
+                  1.999999L
+              ];
+
+              foreach (exponent; minExponent .. maxExponent + 1)
+              {
+                  foreach (mantissa; mantissas)
+                  {
+                      const T positive =
+                          cast(T)ldexp(
+                              cast(real)mantissa,
+                              exponent
+                          );
+
+                      if (
+                          !isFinite(positive) ||
+                          positive == cast(T)0
+                      )
+                      {
+                          continue;
+                      }
+
+                      observe(result, positive);
+                      observe(result, -positive);
+                  }
+              }
+
+              return result;
+          }
+
+          void printResult(
+              string name,
+              Accuracy value
+          )
+          {
+              writeln(
+                  name,
+                  " samples=",
+                  value.count,
+                  " powExact=",
+                  value.powExact,
+                  " cbrtExact=",
+                  value.cbrtExact,
+                  " powMinEqualBits=",
+                  value.powMinEqualBits,
+                  " cbrtMinEqualBits=",
+                  value.cbrtMinEqualBits,
+                  " powMaxRelative=",
+                  value.powMaxRelative,
+                  " cbrtMaxRelative=",
+                  value.cbrtMaxRelative
+              );
+          }
+
+          void main()
+          {
+              printResult(
+                  "float",
+                  characterize!float(
+                      -125,
+                      125
+                  )
+              );
+
+              printResult(
+                  "double",
+                  characterize!double(
+                      -1020,
+                      1020
+                  )
+              );
+          }
+          D
+
+          if "$DC" -O -release -of="$tmp/accuracy" "$tmp/accuracy.d" >"$tmp/accuracy-build.log" 2>&1
+          then
+              echo "accuracy build: PASS"
+              "$tmp/accuracy"
+          else
+              echo "accuracy build: FAIL"
+              cat "$tmp/accuracy-build.log"
+          fi
+
+          cat > "$tmp/bench_pow.d" <<'D'
+          import std.math : pow;
+          import std.stdio : writeln;
+
+          pragma(inline, false)
+          double cubeRoot(double value)
+          {
+              if (value == 0.0)
+                  return value;
+
+              const double magnitude =
+                  value < 0.0
+                      ? -value
+                      : value;
+
+              const double root =
+                  cast(double)pow(
+                      magnitude,
+                      cast(double)(1.0L / 3.0L)
+                  );
+
+              return value < 0.0 ? -root : root;
+          }
+
+          void main()
+          {
+              double sum;
+
+              foreach (i; 0 .. 5_000_000)
+              {
+                  double value =
+                      cast(double)((i % 20_000) + 1) /
+                      10_000.0;
+
+                  if (i & 1)
+                      value = -value;
+
+                  sum += cubeRoot(value);
+              }
+
+              writeln(sum);
+          }
+          D
+
+          cat > "$tmp/bench_cbrt.d" <<'D'
+          import std.math : cbrt;
+          import std.stdio : writeln;
+
+          pragma(inline, false)
+          double cubeRoot(double value)
+          {
+              return cbrt(value);
+          }
+
+          void main()
+          {
+              double sum;
+
+              foreach (i; 0 .. 5_000_000)
+              {
+                  double value =
+                      cast(double)((i % 20_000) + 1) /
+                      10_000.0;
+
+                  if (i & 1)
+                      value = -value;
+
+                  sum += cubeRoot(value);
+              }
+
+              writeln(sum);
+          }
+          D
+
+          if [[ "$DC" == *ldc2 ]]
+          then
+              opt=(-O3 -release)
+          else
+              opt=(-O -release -inline)
+          fi
+
+          "$DC" "${opt[@]}" -of="$tmp/bench_pow" "$tmp/bench_pow.d"
+          "$DC" "${opt[@]}" -of="$tmp/bench_cbrt" "$tmp/bench_cbrt.d"
+
+          for run in 1 2 3
+          do
+              /usr/bin/time -f "pow run=$run seconds=%e" "$tmp/bench_pow" >/dev/null
+              /usr/bin/time -f "cbrt run=$run seconds=%e" "$tmp/bench_cbrt" >/dev/null
+          done
+
       - name: External import compile smoke
         shell: bash
         run: |
