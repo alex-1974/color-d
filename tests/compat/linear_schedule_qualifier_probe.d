@@ -2,6 +2,9 @@ module linear_schedule_qualifier_probe;
 
 import color : linearSchedule;
 
+// Regression: public scalar template deduction must accept const lvalues while
+// preserving the float/double-only scalar contract.
+
 static assert(
     __traits(
         compiles,
