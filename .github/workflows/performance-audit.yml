@@ -197,3 +197,19 @@ jobs:
 
       - name: Run focused release probe
         run: ./gamut-production-probe
+
+      - name: Build gamut path audit
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -Isource \
+              -i \
+              -of=gamut-path-probe \
+              experiments/performance_release_gate/gamut_path_probe.d
+
+      - name: Run gamut path audit
+        run: ./gamut-path-probe
