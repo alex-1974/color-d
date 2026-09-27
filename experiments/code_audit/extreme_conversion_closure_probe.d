@@ -21,6 +21,7 @@ import color :
     toOklab,
     toXyzD65;
 
+import std.datetime.stopwatch : StopWatch;
 import std.math : cbrt;
 import std.stdio : writefln, writeln;
 
@@ -483,6 +484,196 @@ private void auditOklabInverse(T)(string scalarName)
     );
 }
 
+private uint nextRandom(ref uint state)
+{
+    state =
+        state * 1_664_525U +
+        1_013_904_223U;
+
+    return state;
+}
+
+private T ordinaryValue(T)(ref uint state)
+{
+    const uint bits =
+        nextRandom(state) &
+        0x00FF_FFFFU;
+
+    const T unit =
+        cast(T)bits /
+        cast(T)0x00FF_FFFFU;
+
+    return
+        cast(T)-0.25 +
+        cast(T)1.50 * unit;
+}
+
+enum benchCount = 8_192;
+enum rgbRepetitions = 1_000;
+enum labRepetitions = 200;
+enum benchRounds = 5;
+
+private double timeRgbProduction(T)(
+    const(XyzD65!T)[] values,
+    ref T checksum
+)
+{
+    StopWatch sw;
+    sw.start();
+
+    foreach (_; 0 .. rgbRepetitions)
+    foreach (value; values)
+    {
+        const auto result = value.toLinearSRgb;
+        checksum += result.r + result.g + result.b;
+    }
+
+    sw.stop();
+
+    return
+        cast(double)sw.peek.total!"nsecs" /
+        cast(double)(values.length * rgbRepetitions);
+}
+
+private double timeRgbCandidate(T)(
+    const(XyzD65!T)[] values,
+    ref T checksum
+)
+{
+    StopWatch sw;
+    sw.start();
+
+    foreach (_; 0 .. rgbRepetitions)
+    foreach (value; values)
+    {
+        const auto result = xyzToRgbCandidate(value);
+        checksum += result.r + result.g + result.b;
+    }
+
+    sw.stop();
+
+    return
+        cast(double)sw.peek.total!"nsecs" /
+        cast(double)(values.length * rgbRepetitions);
+}
+
+private double timeLabProduction(T)(
+    const(XyzD65!T)[] values,
+    ref T checksum
+)
+{
+    StopWatch sw;
+    sw.start();
+
+    foreach (_; 0 .. labRepetitions)
+    foreach (value; values)
+    {
+        const auto result = value.toOklab;
+        checksum += result.l + result.a + result.b;
+    }
+
+    sw.stop();
+
+    return
+        cast(double)sw.peek.total!"nsecs" /
+        cast(double)(values.length * labRepetitions);
+}
+
+private double timeLabCandidate(T)(
+    const(XyzD65!T)[] values,
+    ref T checksum
+)
+{
+    StopWatch sw;
+    sw.start();
+
+    foreach (_; 0 .. labRepetitions)
+    foreach (value; values)
+    {
+        const auto result = xyzToOklabCandidate(value);
+        checksum += result.l + result.a + result.b;
+    }
+
+    sw.stop();
+
+    return
+        cast(double)sw.peek.total!"nsecs" /
+        cast(double)(values.length * labRepetitions);
+}
+
+private void benchmarkOrdinary(T)(string scalarName)
+{
+    XyzD65!T[benchCount] values;
+    uint state = 0xC01D_0023U;
+
+    foreach (ref value; values)
+    {
+        value =
+            XyzD65!T(
+                ordinaryValue!T(state),
+                ordinaryValue!T(state),
+                ordinaryValue!T(state)
+            );
+    }
+
+    T checksum = cast(T)0;
+
+    foreach (round; 0 .. benchRounds)
+    {
+        double rgbProduction;
+        double rgbCandidate;
+        double labProduction;
+        double labCandidate;
+
+        if ((round & 1) == 0)
+        {
+            rgbProduction =
+                timeRgbProduction(values[], checksum);
+            rgbCandidate =
+                timeRgbCandidate(values[], checksum);
+            labProduction =
+                timeLabProduction(values[], checksum);
+            labCandidate =
+                timeLabCandidate(values[], checksum);
+        }
+        else
+        {
+            rgbCandidate =
+                timeRgbCandidate(values[], checksum);
+            rgbProduction =
+                timeRgbProduction(values[], checksum);
+            labCandidate =
+                timeLabCandidate(values[], checksum);
+            labProduction =
+                timeLabProduction(values[], checksum);
+        }
+
+        writefln(
+            "%s benchmark round %s RGB: production=%.3f ns candidate=%.3f ns candidate_over_production=%.4f",
+            scalarName,
+            round + 1,
+            rgbProduction,
+            rgbCandidate,
+            rgbCandidate / rgbProduction
+        );
+
+        writefln(
+            "%s benchmark round %s Oklab: production=%.3f ns candidate=%.3f ns candidate_over_production=%.4f",
+            scalarName,
+            round + 1,
+            labProduction,
+            labCandidate,
+            labCandidate / labProduction
+        );
+    }
+
+    writeln(
+        scalarName,
+        " benchmark checksum=",
+        checksum
+    );
+}
+
 int main()
 {
     writeln("=== color-d extreme conversion closure audit ===");
@@ -498,6 +689,9 @@ int main()
 
     auditOklabInverse!double("double");
     auditOklabInverse!float("float");
+
+    benchmarkOrdinary!double("double");
+    benchmarkOrdinary!float("float");
 
     return 0;
 }
