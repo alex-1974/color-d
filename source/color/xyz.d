@@ -86,7 +86,7 @@ if (is(T == float) || is(T == double))
         finiteInfinityBounds(xyz.z);
 }
 
-private LinearSRgb!T toLinearSRgbDirect(T)(XyzD65!T xyz)
+package(color) LinearSRgb!T toLinearSRgbDirect(T)(XyzD65!T xyz)
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {
@@ -187,21 +187,6 @@ if (is(T == float) || is(T == double))
     );
 }
 
-private pragma(inline, false)
-LinearSRgb!T toLinearSRgbFloatExceptional(T)(
-    XyzD65!T xyz,
-    LinearSRgb!T ordinary
-)
-@safe pure nothrow @nogc
-if (is(T == float))
-{
-    if (!finiteXyz(xyz))
-        return ordinary;
-
-    return
-        toLinearSRgbScaledFinite(xyz);
-}
-
 /**
  * Converts linear-light sRGB to CIE XYZ D65.
  *
@@ -286,7 +271,6 @@ XyzD65!T toXyzD65(T)(LinearSRgb!T rgb)
  *     toXyzD65
  */
 
-pragma(inline, true)
 LinearSRgb!T toLinearSRgb(T)(XyzD65!T xyz)
 @safe pure nothrow @nogc
 {
@@ -308,11 +292,10 @@ LinearSRgb!T toLinearSRgb(T)(XyzD65!T xyz)
             return ordinary;
         }
 
-        return
-            toLinearSRgbFloatExceptional(
-                xyz,
-                ordinary
-            );
+        if (!finiteXyz(xyz))
+            return ordinary;
+
+        return toLinearSRgbScaledFinite(xyz);
     }
 }
 
