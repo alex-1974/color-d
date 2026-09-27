@@ -181,7 +181,8 @@ private bool validateOrdinary(T)(string scalarName)
 
         static foreach (member; ["r", "g", "b"])
         {
-            const real oldError =
+            {
+                const real oldError =
                 referenceError(
                     __traits(getMember, former, member),
                     __traits(getMember, refValue, member)
@@ -206,8 +207,9 @@ private bool validateOrdinary(T)(string scalarName)
                 ++productionBetter;
             else if (newError > oldError)
                 ++productionWorse;
-            else
-                ++equalError;
+                else
+                    ++equalError;
+            }
         }
     }
 
@@ -408,7 +410,8 @@ private void characterizeSubnormal(T)(string scalarName)
 
         static foreach (member; ["r", "g", "b"])
         {
-            const real oldError =
+            {
+                const real oldError =
                 referenceError(
                     __traits(getMember, former, member),
                     __traits(getMember, refValue, member)
@@ -424,8 +427,9 @@ private void characterizeSubnormal(T)(string scalarName)
                 ++better;
             else if (newError > oldError)
                 ++worse;
-            else
-                ++equal;
+                else
+                    ++equal;
+            }
         }
     }
 
