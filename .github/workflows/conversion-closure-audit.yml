@@ -58,7 +58,10 @@ jobs:
         shell: bash
         run: |
           "$DC" \
+              -O3 \
               -release \
+              -boundscheck=off \
+              -mcpu=native \
               -I"$GITHUB_WORKSPACE/source" \
               -i \
               -of=extreme-conversion-closure \
