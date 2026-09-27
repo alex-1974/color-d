@@ -323,6 +323,57 @@ private LinearSRgb!T resultGateProductSentinel(T)(XyzD65!T xyz)
     return scaledShared(xyz);
 }
 
+private LinearSRgb!T resultGateBitMax(T)(XyzD65!T xyz)
+{
+    import std.conv : bitCast;
+
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    if (__ctfe)
+    {
+        if (outputFinite(ordinary))
+            return ordinary;
+    }
+    else
+    {
+        alias U = UIntFor!T;
+
+        const U signlessMask = U.max >> 1;
+
+        static if (is(T == float))
+            enum U infinityBits = 0x7F80_0000U;
+        else
+            enum U infinityBits = 0x7FF0_0000_0000_0000UL;
+
+        const U rBits =
+            bitCast!U(ordinary.r) &
+            signlessMask;
+
+        const U gBits =
+            bitCast!U(ordinary.g) &
+            signlessMask;
+
+        const U bBits =
+            bitCast!U(ordinary.b) &
+            signlessMask;
+
+        const U maxRG =
+            rBits > gBits ? rBits : gBits;
+
+        const U maxBits =
+            maxRG > bBits ? maxRG : bBits;
+
+        if (maxBits < infinityBits)
+            return ordinary;
+    }
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
 private LinearSRgb!T resultGateCoreAbs(T)(XyzD65!T xyz)
 {
     const auto ordinary =
@@ -717,6 +768,8 @@ private LinearSRgb!T path(T, int kind)(XyzD65!T xyz)
         return resultGateInfinityBoundsBitwise(xyz);
     else static if (kind == 20)
         return resultGateProductSentinel(xyz);
+    else static if (kind == 21)
+        return resultGateBitMax(xyz);
     else
         static assert(false, "unknown path");
 }
@@ -765,6 +818,8 @@ private const(char)[] pathName(int kind)()
         return "result-gate-infinity-bounds-bitwise";
     else static if (kind == 20)
         return "result-gate-product-sentinel";
+    else static if (kind == 21)
+        return "result-gate-bit-max";
     else
         static assert(false, "unknown path");
 }
@@ -1161,6 +1216,7 @@ private void benchmarkAll(T)()
     benchmarkPair!(T, 18)(values[]);
     benchmarkPair!(T, 19)(values[]);
     benchmarkPair!(T, 20)(values[]);
+    benchmarkPair!(T, 21)(values[]);
 }
 
 // CTFE must retain the ordinary public result exactly for pre-gated candidates.
@@ -1218,6 +1274,7 @@ int main()
     ordinaryMismatches!(double, 18)();
     ordinaryMismatches!(double, 19)();
     ordinaryMismatches!(double, 20)();
+    ordinaryMismatches!(double, 21)();
 
     ordinaryMismatches!(float, 1)();
     ordinaryMismatches!(float, 2)();
@@ -1239,6 +1296,7 @@ int main()
     ordinaryMismatches!(float, 18)();
     ordinaryMismatches!(float, 19)();
     ordinaryMismatches!(float, 20)();
+    ordinaryMismatches!(float, 21)();
 
     subnormalCharacterization!(double, 2)();
     subnormalCharacterization!(double, 3)();
@@ -1257,6 +1315,7 @@ int main()
     subnormalCharacterization!(double, 18)();
     subnormalCharacterization!(double, 19)();
     subnormalCharacterization!(double, 20)();
+    subnormalCharacterization!(double, 21)();
 
     subnormalCharacterization!(float, 2)();
     subnormalCharacterization!(float, 3)();
@@ -1275,6 +1334,7 @@ int main()
     subnormalCharacterization!(float, 18)();
     subnormalCharacterization!(float, 19)();
     subnormalCharacterization!(float, 20)();
+    subnormalCharacterization!(float, 21)();
 
     extremeAvoidable!(double, 0)();
     extremeAvoidable!(double, 1)();
@@ -1297,6 +1357,7 @@ int main()
     extremeAvoidable!(double, 18)();
     extremeAvoidable!(double, 19)();
     extremeAvoidable!(double, 20)();
+    extremeAvoidable!(double, 21)();
 
     extremeAvoidable!(float, 0)();
     extremeAvoidable!(float, 1)();
@@ -1319,6 +1380,7 @@ int main()
     extremeAvoidable!(float, 18)();
     extremeAvoidable!(float, 19)();
     extremeAvoidable!(float, 20)();
+    extremeAvoidable!(float, 21)();
 
     version (LDC)
     {
