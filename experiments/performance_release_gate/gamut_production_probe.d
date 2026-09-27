@@ -256,7 +256,7 @@ private void hashColor(T)(
 }
 
 
-private void validateMapped(T)(
+private bool validateMapped(T)(
     string label,
     const(Oklch!T)[] values
 )
@@ -316,6 +316,10 @@ private void validateMapped(T)(
         localHash,
         rayHash
     );
+
+    return
+        localFailures == 0 &&
+        rayFailures == 0;
 }
 
 private double timeLocal(T)(
@@ -478,12 +482,31 @@ int main()
 
     writeln("=== color-d current gamut production audit ===");
 
-    validateMapped("out-of-gamut", outD[]);
-    validateMapped("out-of-gamut", outF[]);
-    validateMapped("in-gamut", inD[]);
-    validateMapped("in-gamut", inF[]);
-    validateMapped("huge-chroma", hugeD[]);
-    validateMapped("huge-chroma", hugeF[]);
+    bool ok = true;
+
+    ok =
+        validateMapped("out-of-gamut", outD[]) &&
+        ok;
+
+    ok =
+        validateMapped("out-of-gamut", outF[]) &&
+        ok;
+
+    ok =
+        validateMapped("in-gamut", inD[]) &&
+        ok;
+
+    ok =
+        validateMapped("in-gamut", inF[]) &&
+        ok;
+
+    ok =
+        validateMapped("huge-chroma", hugeD[]) &&
+        ok;
+
+    ok =
+        validateMapped("huge-chroma", hugeF[]) &&
+        ok;
 
     benchmarkDataset(
         "out-of-gamut",
@@ -527,5 +550,5 @@ int main()
         20
     );
 
-    return 0;
+    return ok ? 0 : 1;
 }
