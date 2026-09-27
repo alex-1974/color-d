@@ -69,29 +69,38 @@ jobs:
 
           static assert(mapped.inGamut);
 
-          enum toneSeed =
-              Oklchd(
-                  0.50,
-                  0.10,
-                  OklabHued.fromDegrees(210.0)
+          bool toneBatchCtfe()
+          @safe pure nothrow @nogc
+          {
+              const seed =
+                  Oklchd(
+                      0.50,
+                      0.10,
+                      OklabHued.fromDegrees(210.0)
+                  );
+
+              const double[3] lightnesses =
+                  [0.20, 0.50, 0.80];
+
+              const double[3] chromas =
+                  [0.04, 0.10, 0.06];
+
+              Oklchd[3] tones;
+
+              tonesAtLightnessAndChromaInto(
+                  seed,
+                  lightnesses,
+                  chromas,
+                  tones
               );
 
-          enum double[3] toneLightnesses =
-              [0.20, 0.50, 0.80];
+              return
+                  tones[0].l == 0.20 &&
+                  tones[1].c == 0.10 &&
+                  tones[2].c == 0.06;
+          }
 
-          enum double[3] toneChromas =
-              [0.04, 0.10, 0.06];
-
-          enum tones =
-              tonesAtLightnessAndChroma(
-                  toneSeed,
-                  toneLightnesses,
-                  toneChromas
-              );
-
-          static assert(tones.length == 3);
-          static assert(tones[0].l == 0.20);
-          static assert(tones[2].c == 0.06);
+          static assert(toneBatchCtfe());
 
           void main()
           {
@@ -105,7 +114,11 @@ jobs:
 
               assert(
                   tryTonesAtLightnessAndChromaInto(
-                      toneSeed,
+                      Oklchd(
+                          0.50,
+                          0.10,
+                          OklabHued.fromDegrees(210.0)
+                      ),
                       lightnesses[],
                       chromas[],
                       output[]
