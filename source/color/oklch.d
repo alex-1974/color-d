@@ -163,8 +163,17 @@ if (is(T == float) || is(T == double))
     /**
      * Return an equivalent representation with non-negative chroma.
      *
-     * Negative chroma is represented by flipping its sign and adding 180
-     * degrees to the raw hue. The resulting hue is deliberately not wrapped.
+     * Negative chroma is represented by flipping its sign and rotating hue
+     * by 180 degrees.
+     *
+     * Raw hue revolutions are preserved when adding 180 degrees is exactly
+     * representable in `T`. For very large finite raw hue values where that
+     * addition would lose the required angular rotation through floating-point
+     * rounding, the hue is first reduced to its positive-degree equivalent and
+     * then rotated. The fallback hue is deliberately not wrapped after the
+     * 180-degree addition.
+     *
+     * Non-finite hue values remain non-finite rather than being repaired.
      */
     @property Oklch canonicalized() const
     @safe pure nothrow @nogc
@@ -172,11 +181,43 @@ if (is(T == float) || is(T == double))
         if (c >= cast(T)0)
             return this;
 
+        const T rawHue =
+            h.rawDegrees;
+
+        T oppositeHue =
+            rawHue +
+            cast(T)180;
+
+        const bool finiteHue =
+            rawHue == rawHue &&
+            rawHue != T.infinity &&
+            rawHue != -T.infinity;
+
+        /*
+         * Preserve the raw revolution count whenever the exact 180-degree
+         * increment is representable.
+         *
+         * At sufficiently large magnitudes the ULP exceeds the requested
+         * rotation. In that case rawHue + 180 may equal rawHue or may move by
+         * some other representable increment. Preserving that raw value would
+         * no longer preserve the represented color direction.
+         */
+        if (
+            finiteHue &&
+            oppositeHue - rawHue !=
+                cast(T)180
+        )
+        {
+            oppositeHue =
+                h.positiveDegrees +
+                cast(T)180;
+        }
+
         return Oklch(
             l,
             -c,
             OklabHue!T.fromDegrees(
-                h.rawDegrees + cast(T)180
+                oppositeHue
             )
         );
     }
@@ -193,6 +234,175 @@ alias Oklchf = Oklch!float;
 
 /// OKLCH with `double` components.
 alias Oklchd = Oklch!double;
+
+
+unittest
+{
+    /*
+     * Negative-chroma canonicalization preserves ordinary raw hue
+     * revolutions when the exact +180-degree operation is representable.
+     */
+    enum ordinaryPositive =
+        Oklchd(
+            0.7,
+            -0.3,
+            OklabHued.fromDegrees(400.0)
+        )
+        .canonicalized;
+
+    static assert(
+        ordinaryPositive.c == 0.3
+    );
+
+    static assert(
+        ordinaryPositive.h.rawDegrees ==
+            580.0
+    );
+
+    enum ordinaryNegative =
+        Oklchd(
+            0.7,
+            -0.3,
+            OklabHued.fromDegrees(-400.0)
+        )
+        .canonicalized;
+
+    static assert(
+        ordinaryNegative.h.rawDegrees ==
+            -220.0
+    );
+
+
+    /*
+     * At extreme finite raw hue magnitudes, +180 is no longer representable
+     * relative to the raw value. Canonicalization must still preserve the
+     * mathematically required opposite direction.
+     */
+    enum hugePositiveDouble =
+        Oklchd(
+            0.7,
+            -0.3,
+            OklabHued.fromDegrees(
+                double.max
+            )
+        )
+        .canonicalized;
+
+    static assert(
+        hugePositiveDouble.c == 0.3
+    );
+
+    static assert(
+        hugePositiveDouble.h.rawDegrees ==
+            308.0
+    );
+
+    static assert(
+        hugePositiveDouble.h.positiveDegrees ==
+            308.0
+    );
+
+
+    enum hugeNegativeDouble =
+        Oklchd(
+            0.7,
+            -0.3,
+            OklabHued.fromDegrees(
+                -double.max
+            )
+        )
+        .canonicalized;
+
+    /*
+     * Preserve the fallback's unwrapped +180 representation:
+     * 232 + 180 = 412, whose positive-degree view is 52.
+     */
+    static assert(
+        hugeNegativeDouble.h.rawDegrees ==
+            412.0
+    );
+
+    static assert(
+        hugeNegativeDouble.h.positiveDegrees ==
+            52.0
+    );
+
+
+    enum hugePositiveFloat =
+        Oklchf(
+            0.7f,
+            -0.3f,
+            OklabHuef.fromDegrees(
+                float.max
+            )
+        )
+        .canonicalized;
+
+    static assert(
+        hugePositiveFloat.h.rawDegrees ==
+            180.0f
+    );
+
+    static assert(
+        hugePositiveFloat.h.positiveDegrees ==
+            180.0f
+    );
+
+
+    enum hugeNegativeFloat =
+        Oklchf(
+            0.7f,
+            -0.3f,
+            OklabHuef.fromDegrees(
+                -float.max
+            )
+        )
+        .canonicalized;
+
+    static assert(
+        hugeNegativeFloat.h.rawDegrees ==
+            180.0f
+    );
+
+    static assert(
+        hugeNegativeFloat.h.positiveDegrees ==
+            180.0f
+    );
+
+
+    /*
+     * Non-finite hue remains non-finite.
+     */
+    enum positiveInfinity =
+        Oklchd(
+            0.7,
+            -0.3,
+            OklabHued.fromDegrees(
+                double.infinity
+            )
+        )
+        .canonicalized;
+
+    static assert(
+        positiveInfinity.h.rawDegrees ==
+            double.infinity
+    );
+
+    enum nanHue =
+        Oklchd(
+            0.7,
+            -0.3,
+            OklabHued.fromDegrees(
+                double.nan
+            )
+        )
+        .canonicalized;
+
+    static assert(
+        nanHue.h.rawDegrees !=
+            nanHue.h.rawDegrees
+    );
+}
 
 /**
  * Convert Oklab to its cylindrical OKLCH representation.
@@ -243,17 +453,24 @@ Oklch!T toOklch(T)(Oklab!T color)
 /**
  * Convert OKLCH to Cartesian Oklab.
  *
- * Raw hue storage is respected directly. Equivalent angles such as 30° and
- * 390° therefore map to the same Cartesian direction without mutating the
- * stored OKLCH value. Negative chroma is also accepted as raw mathematical
- * input.
+ * Raw hue storage is preserved. Before evaluating trigonometric functions,
+ * complete revolutions are reduced to the equivalent canonical degree angle.
+ * This preserves the represented direction while avoiding overflow in the
+ * degree-to-radian conversion for very large finite raw hue values.
+ *
+ * Equivalent angles such as 30° and 390° therefore map to the same Cartesian
+ * direction without mutating the stored OKLCH value. Negative chroma is also
+ * accepted as raw mathematical input.
  */
 Oklab!T toOklab(T)(Oklch!T color)
 @safe pure nothrow @nogc
 {
     import std.math : cos, sin;
 
-    const T radians = color.h.radians;
+    const T radians =
+        degreesToRadians(
+            color.h.positiveDegrees
+        );
 
     return Oklab!T(
         color.l,
@@ -487,6 +704,89 @@ version (unittest)
             30.0
         ) <= 1e-13
     );
+
+    // REGRESSION: very large finite raw hue remains a finite Cartesian
+    // direction. Reducing complete revolutions before degree-to-radian
+    // conversion avoids overflow while preserving raw stored hue.
+    enum hugePositiveHue =
+        OklabHued.fromDegrees(double.max);
+
+    enum hugeNegativeHue =
+        OklabHued.fromDegrees(-double.max);
+
+    static assert(
+        hugePositiveHue.rawDegrees == double.max
+    );
+    static assert(
+        hugeNegativeHue.rawDegrees == -double.max
+    );
+
+    static assert(
+        hugePositiveHue.positiveDegrees == 128.0
+    );
+    static assert(
+        hugeNegativeHue.positiveDegrees == 232.0
+    );
+
+    enum hugePositive = Oklchd(
+        0.7,
+        0.3,
+        hugePositiveHue
+    ).toOklab;
+
+    enum reducedPositive = Oklchd(
+        0.7,
+        0.3,
+        OklabHued.fromDegrees(128.0)
+    ).toOklab;
+
+    enum hugeNegative = Oklchd(
+        0.7,
+        0.3,
+        hugeNegativeHue
+    ).toOklab;
+
+    enum reducedNegative = Oklchd(
+        0.7,
+        0.3,
+        OklabHued.fromDegrees(232.0)
+    ).toOklab;
+
+    static assert(
+        hugePositive.a == hugePositive.a &&
+        hugePositive.b == hugePositive.b
+    );
+
+    static assert(
+        hugeNegative.a == hugeNegative.a &&
+        hugeNegative.b == hugeNegative.b
+    );
+
+    static assert(oklchReferenceClose(
+        hugePositive.a,
+        reducedPositive.a,
+        1e-14,
+        1e-14
+    ));
+    static assert(oklchReferenceClose(
+        hugePositive.b,
+        reducedPositive.b,
+        1e-14,
+        1e-14
+    ));
+
+    static assert(oklchReferenceClose(
+        hugeNegative.a,
+        reducedNegative.a,
+        1e-14,
+        1e-14
+    ));
+    static assert(oklchReferenceClose(
+        hugeNegative.b,
+        reducedNegative.b,
+        1e-14,
+        1e-14
+    ));
 
     // RAW/CANONICAL SEMANTICS: negative chroma remains constructible and
     // canonicalization preserves the represented Cartesian color.
