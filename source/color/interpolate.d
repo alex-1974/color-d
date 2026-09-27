@@ -24,6 +24,9 @@ private import color.oklch :
  *
  * The four policies follow CSS-style angular interpolation semantics. Raw
  * stored-hue interpolation is deliberately not represented by this enum.
+ *
+ * `HuePath.init` is `HuePath.shorter`. This is a valid interpolation policy
+ * and is part of the public value-type contract.
  */
 
 enum HuePath : ubyte
@@ -40,6 +43,8 @@ enum HuePath : ubyte
     /// Move hue in the decreasing-angle direction.
     decreasing
 }
+
+static assert(HuePath.init == HuePath.shorter);
 
 private struct HueEndpoints(T)
 if (is(T == float) || is(T == double))

@@ -1056,6 +1056,13 @@ private LinearSRgb!T gamutMapRayTraceImpl(T)(
  * Returns:
  *     A linear-sRGB color in gamut for finite mapped input.
  *
+ * Allocation:
+ *     Does not allocate.
+ *
+ * Complexity:
+ *     O(1) per color with a fixed defensive iteration bound; cost is
+ *     independent of image or collection size.
+ *
  * See_Also:
  *     gamutMapRayTraceToLinearSRgb, clip
  */
@@ -1112,6 +1119,13 @@ LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
  *
  * Returns:
  *     A linear-sRGB color in gamut for finite mapped input.
+ *
+ * Allocation:
+ *     Does not allocate.
+ *
+ * Complexity:
+ *     O(1) per color using a fixed bounded ray-intersection refinement; cost
+ *     is independent of image or collection size.
  *
  * See_Also:
  *     gamutMapLocalMindeToLinearSRgb, clip
