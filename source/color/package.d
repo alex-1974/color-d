@@ -15,3 +15,4 @@ public import color.composite;
 public import color.interpolate;
 public import color.difference;
 public import color.wcag;
+public import color.tone;
