@@ -163,8 +163,9 @@ if (is(T == float) || is(T == double))
  *     The corresponding linear-light sRGB value.
  *
  * Standards:
- *     The nominal transfer follows the sRGB transfer function; color-d extends
- *     it sign-preservingly outside the nominal display range.
+ *     The nominal transfer follows the sRGB transfer model used by W3C CSS
+ *     Color Module Level 4; color-d extends it sign-preservingly outside the
+ *     nominal display range.
  *
  * See_Also:
  *     toSRgb
@@ -202,8 +203,9 @@ LinearSRgb!T toLinear(T)(SRgb!T color)
  *     The corresponding encoded sRGB value.
  *
  * Standards:
- *     The nominal transfer follows the sRGB transfer function; color-d extends
- *     it sign-preservingly outside the nominal display range.
+ *     The nominal transfer follows the sRGB transfer model used by W3C CSS
+ *     Color Module Level 4; color-d extends it sign-preservingly outside the
+ *     nominal display range.
  *
  * See_Also:
  *     toLinear

@@ -347,6 +347,10 @@ Oklab!T interpolate(T)(
  * Returns:
  *     The interpolated OKLCH value.
  *
+ * Standards:
+ *     Hue-path semantics follow the W3C CSS Color Module Level 4
+ *     shorter/longer/increasing/decreasing angular policies.
+ *
  * See_Also:
  *     HuePath
  */
@@ -688,6 +692,10 @@ Alpha!(Oklab!T) interpolate(T)(
  *
  * Returns:
  *     The alpha-aware interpolated OKLCH value.
+ *
+ * Standards:
+ *     Hue-path and premultiplied interpolation semantics follow the W3C CSS
+ *     Color Module Level 4 model adapted to color-d's explicit numeric types.
  *
  * See_Also:
  *     HuePath
