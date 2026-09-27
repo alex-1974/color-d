@@ -3,6 +3,8 @@
 `color-d` is a small, type-safe, allocation-free modern color mathematics
 library for D.
 
+Public API documentation: https://alex-1974.github.io/color-d/
+
 The library is intended to provide explicit color-space types, correct
 linear-light operations, perceptual color workflows, alpha compositing,
 interpolation, gamut handling, contrast analysis, and palette primitives.
