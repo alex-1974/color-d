@@ -60,17 +60,31 @@ reference route on DMD 2.113.0 and LDC 1.43.0:
   production result-gated scaled fallback reduces the observed count to zero;
 - Oklab → XYZ D65: no avoidable non-finite result was observed in the tested
   grid;
-- XYZ D65 → linear-sRGB: 42 of 111 reference-representable extreme cases
-  currently become non-finite because individual inverse-matrix terms can
-  overflow before cancellation.
+- XYZ D65 → linear-sRGB: the former direct implementation produced 42
+  avoidable non-finite results among 111 reference-representable retained
+  extreme-grid cases for each scalar width. The promoted hybrid implementation
+  reduces the observed count to zero.
 
-The last case is a documented exceptional-domain limitation, not clipping or
-gamut mapping. A scaled candidate removes the observed failures but currently
-adds roughly 22–43% to the ordinary conversion hot path, so it has not been
-adopted. The lower-overhead production follow-up is tracked separately.
+The inverse XYZ transform deliberately uses different numerically equivalent
+evaluation strategies for the two public scalar widths:
 
-These counts describe the retained deterministic audit corpus. They do not
-claim exhaustive proof over all finite IEEE values.
+- `float` preserves the original direct-matrix evaluation for ordinary finite
+  results. Only a non-finite direct result from finite XYZ input enters a
+  normalized scaled fallback. Two million ordinary audit samples were
+  bit-identical to the former production result.
+- `double` uses an exact rational dominant-factor refactorization. On two
+  million ordinary audit samples it changed the final rounding of many values,
+  but reduced both measured mean absolute error and maximum absolute error
+  against the wider `real` reference. The retained subnormal corpus can differ
+  by a few ULPs; signed-zero and non-finite classification remained unchanged.
+
+The hybrid was selected over a bit-identical result-gated `double` fallback
+because the latter retained roughly 15% ordinary-path overhead on the LDC
+release-performance compiler, while the dominant-factor `double` route was
+slightly faster than the former direct implementation in the isolated audit.
+
+These counts and error comparisons describe the retained deterministic audit
+corpora. They do not claim exhaustive proof over all finite IEEE values.
 
 ## Important standards and provenance
 
