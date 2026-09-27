@@ -1,6 +1,7 @@
 module named_arguments;
 
 import color;
+import std.traits : Unqual;
 
 void main()
 {
@@ -14,7 +15,7 @@ void main()
             t: 0.5
         );
 
-    static assert(is(typeof(encodedMid) == SRgbd));
+    static assert(is(Unqual!(typeof(encodedMid)) == SRgbd));
 
     const polarA =
         Oklchd(
@@ -38,14 +39,14 @@ void main()
             path: HuePath.shorter
         );
 
-    static assert(is(typeof(polarMid) == Oklchd));
+    static assert(is(Unqual!(typeof(polarMid)) == Oklchd));
 
     const mapped =
         gamutMapRayTraceToLinearSRgb(
             color: polarMid
         );
 
-    static assert(is(typeof(mapped) == LinearSRgbd));
+    static assert(is(Unqual!(typeof(mapped)) == LinearSRgbd));
 
     const contrast =
         wcag2ContrastRatio(
@@ -53,7 +54,7 @@ void main()
             second: encodedB
         );
 
-    static assert(is(typeof(contrast) == Wcag2Measurement!double));
+    static assert(is(Unqual!(typeof(contrast)) == Wcag2Measurement!double));
 
     enum schedule =
         linearSchedule!3(
