@@ -18,6 +18,8 @@ private double parse(string text)
         return double.infinity;
     if (text == "-inf")
         return -double.infinity;
+    if (text == "1")
+        return 1.0;
 
     assert(0, "unsupported probe input");
 }
