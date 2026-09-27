@@ -159,3 +159,62 @@ jobs:
 
       - name: Run focused release probe
         run: ./xyz-linear-rgb-production-probe
+
+
+  gamut-fastpath-regression:
+    name: Audit / gamut float fastpath
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v7
+
+      - name: Checkout current develop baseline
+        uses: actions/checkout@v7
+        with:
+          ref: 57e9e8a40e13121361b019e265afba6c7a0019a1
+          path: baseline
+
+      - name: Install LDC
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-1.43.0
+
+      - name: Environment
+        shell: bash
+        run: |
+          "$DC" --version
+          lscpu
+          uname -a
+
+      - name: Build candidate
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -Isource \
+              -i \
+              -of=gamut-candidate \
+              experiments/performance_release_gate/gamut_production_probe.d
+
+      - name: Build current baseline
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -Ibaseline/source \
+              -i \
+              -of=gamut-baseline \
+              experiments/performance_release_gate/gamut_production_probe.d
+
+      - name: Run baseline
+        run: ./gamut-baseline
+
+      - name: Run candidate
+        run: ./gamut-candidate
