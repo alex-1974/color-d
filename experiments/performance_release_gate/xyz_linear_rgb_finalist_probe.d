@@ -5,6 +5,7 @@
 //   -d-version=CandidateRowScaled
 //   -d-version=CandidateInfinityBounds
 //   -d-version=CandidateInfinityBoundsBitwise
+//   -d-version=CandidateBitMax
 //
 // Keeping one candidate per binary avoids code-layout and optimizer-context
 // interference from the broad exploratory probe.
@@ -171,6 +172,49 @@ private LinearSRgb!T candidateInfinityBounds(T)(XyzD65!T xyz)
     return scaledShared(xyz);
 }
 
+private LinearSRgb!T candidateBitMax(T)(XyzD65!T xyz)
+{
+    import std.conv : bitCast;
+
+    const auto ordinary = xyz.toLinearSRgb;
+
+    if (__ctfe)
+    {
+        if (outputFinite(ordinary))
+            return ordinary;
+    }
+    else
+    {
+        static if (is(T == float))
+        {
+            alias U = uint;
+            enum U signlessMask = 0x7FFF_FFFFU;
+            enum U infinityBits = 0x7F80_0000U;
+        }
+        else
+        {
+            alias U = ulong;
+            enum U signlessMask = 0x7FFF_FFFF_FFFF_FFFFUL;
+            enum U infinityBits = 0x7FF0_0000_0000_0000UL;
+        }
+
+        const U rBits = bitCast!U(ordinary.r) & signlessMask;
+        const U gBits = bitCast!U(ordinary.g) & signlessMask;
+        const U bBits = bitCast!U(ordinary.b) & signlessMask;
+
+        const U maxRG = rBits > gBits ? rBits : gBits;
+        const U maxBits = maxRG > bBits ? maxRG : bBits;
+
+        if (maxBits < infinityBits)
+            return ordinary;
+    }
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
 private LinearSRgb!T candidateInfinityBoundsBitwise(T)(XyzD65!T xyz)
 {
     const auto ordinary = xyz.toLinearSRgb;
@@ -202,6 +246,8 @@ private const(char)[] candidateName()
         return "infinity-bounds";
     else version (CandidateInfinityBoundsBitwise)
         return "infinity-bounds-bitwise";
+    else version (CandidateBitMax)
+        return "bit-max";
     else
         static assert(false, "select exactly one finalist version");
 }
@@ -216,6 +262,8 @@ private LinearSRgb!T candidate(T)(XyzD65!T xyz)
         return candidateInfinityBounds(xyz);
     else version (CandidateInfinityBoundsBitwise)
         return candidateInfinityBoundsBitwise(xyz);
+    else version (CandidateBitMax)
+        return candidateBitMax(xyz);
     else
         static assert(false, "select exactly one finalist version");
 }
