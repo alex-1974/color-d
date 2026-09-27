@@ -1056,6 +1056,10 @@ private LinearSRgb!T gamutMapRayTraceImpl(T)(
  * Returns:
  *     A linear-sRGB color in gamut for finite mapped input.
  *
+ * Standards:
+ *     Implements the Local MINDE SDR RGB gamut-mapping strategy described by
+ *     the W3C CSS Color Module Level 4 model and validated by color-d R0.8.
+ *
  * Allocation:
  *     Does not allocate.
  *
@@ -1119,6 +1123,10 @@ LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
  *
  * Returns:
  *     A linear-sRGB color in gamut for finite mapped input.
+ *
+ * Standards:
+ *     Implements the Ray Trace SDR RGB gamut-mapping strategy described by
+ *     the W3C CSS Color Module Level 4 model and validated by color-d R0.8.
  *
  * Allocation:
  *     Does not allocate.
