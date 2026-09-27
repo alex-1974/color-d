@@ -38,7 +38,8 @@ private R ratio(R)(long numerator, long denominator)
     return cast(R)numerator / cast(R)denominator;
 }
 
-private bool finite(T)(T value)
+private pragma(inline, true)
+bool finite(T)(T value)
 {
     return
         value == value &&
@@ -198,7 +199,7 @@ private T maximum(T)(T first, T second)
     return first > second ? first : second;
 }
 
-private T dot3Candidate(T)(
+private T scaledDot3(T)(
     T a,
     T x,
     T b,
@@ -207,21 +208,6 @@ private T dot3Candidate(T)(
     T z
 )
 {
-    const T ordinary =
-        a * x +
-        b * y +
-        c * z;
-
-    if (
-        finite(ordinary) ||
-        !finite(x) ||
-        !finite(y) ||
-        !finite(z)
-    )
-    {
-        return ordinary;
-    }
-
     const T scale =
         maximum(
             magnitude(x),
@@ -232,7 +218,7 @@ private T dot3Candidate(T)(
         );
 
     if (scale == cast(T)0)
-        return ordinary;
+        return cast(T)0;
 
     return
         scale *
@@ -243,32 +229,20 @@ private T dot3Candidate(T)(
         );
 }
 
-private LinearSRgb!T xyzToRgbCandidate(T)(XyzD65!T xyz)
+private LinearSRgb!T xyzToRgbCandidateSlow(T)(XyzD65!T xyz)
 {
-    const auto ordinary = xyz.toLinearSRgb;
-
-    if (
-        productionFinite(ordinary) ||
-        !finite(xyz.x) ||
-        !finite(xyz.y) ||
-        !finite(xyz.z)
-    )
-    {
-        return ordinary;
-    }
-
     return LinearSRgb!T(
-        dot3Candidate(
+        scaledDot3(
             cast(T)12831 / cast(T)3959, xyz.x,
             cast(T)-329 / cast(T)214, xyz.y,
             cast(T)-1974 / cast(T)3959, xyz.z
         ),
-        dot3Candidate(
+        scaledDot3(
             cast(T)-851781 / cast(T)878810, xyz.x,
             cast(T)1648619 / cast(T)878810, xyz.y,
             cast(T)36519 / cast(T)878810, xyz.z
         ),
-        dot3Candidate(
+        scaledDot3(
             cast(T)705 / cast(T)12673, xyz.x,
             cast(T)-2585 / cast(T)12673, xyz.y,
             cast(T)705 / cast(T)667, xyz.z
@@ -276,12 +250,21 @@ private LinearSRgb!T xyzToRgbCandidate(T)(XyzD65!T xyz)
     );
 }
 
-private Oklab!T xyzToOklabCandidate(T)(XyzD65!T xyz)
+private pragma(inline, true)
+LinearSRgb!T xyzToRgbCandidate(T)(XyzD65!T xyz)
 {
-    const auto ordinary = xyz.toOklab;
+    const auto ordinary = xyz.toLinearSRgb;
 
     if (
-        productionFinite(ordinary) ||
+        finite(ordinary.r) &&
+        finite(ordinary.g) &&
+        finite(ordinary.b)
+    )
+    {
+        return ordinary;
+    }
+
+    if (
         !finite(xyz.x) ||
         !finite(xyz.y) ||
         !finite(xyz.z)
@@ -290,6 +273,11 @@ private Oklab!T xyzToOklabCandidate(T)(XyzD65!T xyz)
         return ordinary;
     }
 
+    return xyzToRgbCandidateSlow(xyz);
+}
+
+private Oklab!T xyzToOklabCandidateSlow(T)(XyzD65!T xyz)
+{
     const T scale =
         maximum(
             magnitude(xyz.x),
@@ -300,7 +288,7 @@ private Oklab!T xyzToOklabCandidate(T)(XyzD65!T xyz)
         );
 
     if (scale == cast(T)0)
-        return ordinary;
+        return xyz.toOklab;
 
     const T x = xyz.x / scale;
     const T y = xyz.y / scale;
@@ -340,6 +328,32 @@ private Oklab!T xyzToOklabCandidate(T)(XyzD65!T xyz)
         cast(T)0.7827717124575296 * mp -
         cast(T)0.8086757549230774 * sp
     );
+}
+
+private pragma(inline, true)
+Oklab!T xyzToOklabCandidate(T)(XyzD65!T xyz)
+{
+    const auto ordinary = xyz.toOklab;
+
+    if (
+        finite(ordinary.l) &&
+        finite(ordinary.a) &&
+        finite(ordinary.b)
+    )
+    {
+        return ordinary;
+    }
+
+    if (
+        !finite(xyz.x) ||
+        !finite(xyz.y) ||
+        !finite(xyz.z)
+    )
+    {
+        return ordinary;
+    }
+
+    return xyzToOklabCandidateSlow(xyz);
 }
 
 private bool referenceFits(T, R)(Ref3!R value)
