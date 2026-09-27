@@ -31,6 +31,10 @@ under **Unreleased**.
   intermediate-overflow cases while retaining direct-path rounding for ordinary
   `float` inputs and using a more accurate dominant-factor evaluation for
   `double`;
+- float Local MINDE and Ray Trace mapping retain their validated direct
+  internal XYZ-to-linear-sRGB hot path while the public XYZ conversion keeps
+  its extreme-finite fallback, recovering the pre-hardening mapping cost
+  without changing retained mapper outputs;
 - current public feature scope is closed for v0.1 and is in R4 real-consumer
   validation;
 - the tested pre-1.0 toolchain matrix is DMD 2.113.0 and LDC 1.43.0 on

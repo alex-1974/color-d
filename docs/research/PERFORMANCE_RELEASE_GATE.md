@@ -255,3 +255,53 @@ improving both ordinary `double` reference accuracy and measured LDC runtime.
 
 The retained production probe is
 `experiments/performance_release_gate/xyz_linear_rgb_production_probe.d`.
+
+
+## R4 follow-up — float gamut mapping after XYZ hardening
+
+The public extreme-finite hardening of XYZ D65 -> linear-sRGB exposed a larger
+than expected code-generation effect inside the float gamut mappers. Although
+the isolated public float conversion cost increased by only about 2.6%, a
+public-API mapper comparison against the pre-hardening develop state measured
+larger regressions:
+
+- ordinary out-of-gamut Local MINDE: about +6.9%;
+- ordinary out-of-gamut Ray Trace: about +6.5%;
+- in-gamut Local MINDE fast path: about +42%;
+- in-gamut Ray Trace fast path: about +94%;
+- huge-chroma Local MINDE: about +12.7%;
+- huge-chroma Ray Trace: about +10.5%.
+
+Two source-layout experiments were rejected. Moving the exceptional float
+fallback to a non-inlined helper made the critical paths slower, and combining
+that split with `pragma(inline, true)` on the public conversion also regressed
+the mapper benchmark.
+
+The retained solution keeps the robust public
+`XyzD65!float.toLinearSRgb` behavior unchanged and exposes the former direct
+inverse matrix only at `package(color)` protection. `color.gamut` uses that
+direct route internally for float Oklab/OKLCH mapping. This is appropriate
+because the promoted R0.8 mapper semantics were validated with the direct
+matrix and Ray Trace already owns a dedicated huge-chroma overflow fallback.
+Double mapping continues to use the promoted dominant-factor public route.
+
+A same-runner comparison against the robust public-path develop baseline
+measured the retained package-internal float route as:
+
+- ordinary out-of-gamut Local MINDE: about 3684 -> 3445 ns/color;
+- ordinary out-of-gamut Ray Trace: about 1096 -> 1029 ns/color;
+- in-gamut Local MINDE: about 47.2 -> 32.9 ns/color;
+- in-gamut Ray Trace: about 65.0 -> 33.5 ns/color;
+- huge-chroma Local MINDE: about 27634 -> 24447 ns/color;
+- huge-chroma Ray Trace: about 1188 -> 1074 ns/color.
+
+The benchmark also hashes every mapped RGB component. Baseline and candidate
+hashes were identical for all six retained dataset/algorithm combinations,
+including finite huge-chroma inputs. All mapping validation failures remained
+zero.
+
+The retained probe is
+`experiments/performance_release_gate/gamut_production_probe.d`. It is run
+against current production by the advisory performance workflow; the historical
+baseline comparison remains in PR #90 evidence rather than as a permanent
+hard-coded CI dependency.

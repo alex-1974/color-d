@@ -21,7 +21,8 @@ private import color.difference :
 
 private import color.xyz :
     xyzFromLinearSRgb = toXyzD65,
-    linearSRgbFromXyz = toLinearSRgb;
+    linearSRgbFromXyz = toLinearSRgb,
+    linearSRgbFromXyzDirect = toLinearSRgbDirect;
 
 private import color.oklab :
     Oklab,
@@ -202,10 +203,19 @@ private bool isFiniteLinearSRgb(T)(LinearSRgb!T value)
 private LinearSRgb!T oklabToLinearSRgb(T)(Oklab!T value)
 @safe pure nothrow @nogc
 {
-    return
-        linearSRgbFromXyz(
-            xyzFromOklab(value)
-        );
+    const auto xyz =
+        xyzFromOklab(value);
+
+    /*
+     * Ray Trace already owns a dedicated first-ray overflow fallback for huge
+     * finite chroma. Keeping float on the direct inverse matrix here preserves
+     * the R0.8-validated mapping hot path without weakening the robust public
+     * XYZ conversion. Double retains the promoted dominant-factor route.
+     */
+    static if (is(T == float))
+        return linearSRgbFromXyzDirect(xyz);
+    else
+        return linearSRgbFromXyz(xyz);
 }
 
 
