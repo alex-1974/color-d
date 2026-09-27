@@ -1,0 +1,353 @@
+// Extreme-finite conversion closure characterization.
+//
+// This experiment compares the production float/double conversion routes with
+// a wider reference evaluation. It specifically counts cases where:
+//   1. every input component is finite;
+//   2. the wider mathematical reference result is representable in T;
+//   3. production nevertheless produces NaN or infinity.
+//
+// Such a case is avoidable intermediate overflow/cancellation, not unavoidable
+// output overflow.
+//
+// Experiment code only. It does not define public API policy.
+
+module extreme_conversion_closure_probe;
+
+import color :
+    LinearSRgb,
+    Oklab,
+    XyzD65,
+    toLinearSRgb,
+    toOklab,
+    toXyzD65;
+
+import std.math : cbrt;
+import std.stdio : writefln, writeln;
+
+template ReferenceScalar(T)
+{
+    static if (is(T == float))
+        alias ReferenceScalar = double;
+    else
+        alias ReferenceScalar = real;
+}
+
+private R ratio(R)(long numerator, long denominator)
+{
+    return cast(R)numerator / cast(R)denominator;
+}
+
+private bool finite(T)(T value)
+{
+    return
+        value == value &&
+        value != T.infinity &&
+        value != -T.infinity;
+}
+
+private bool representableAs(T, R)(R value)
+{
+    return
+        value == value &&
+        value <= cast(R)T.max &&
+        value >= -cast(R)T.max;
+}
+
+private struct Ref3(R)
+{
+    R x;
+    R y;
+    R z;
+}
+
+private Ref3!R rgbToXyzReference(T, R)(LinearSRgb!T rgb)
+{
+    const R r = cast(R)rgb.r;
+    const R g = cast(R)rgb.g;
+    const R b = cast(R)rgb.b;
+
+    return Ref3!R(
+        ratio!R(506752, 1228815) * r +
+        ratio!R(87881,   245763) * g +
+        ratio!R(12673,    70218) * b,
+
+        ratio!R(87098,   409605) * r +
+        ratio!R(175762,  245763) * g +
+        ratio!R(12673,   175545) * b,
+
+        ratio!R(7918,    409605) * r +
+        ratio!R(87881,   737289) * g +
+        ratio!R(1001167, 1053270) * b
+    );
+}
+
+private Ref3!R xyzToRgbReference(T, R)(XyzD65!T xyz)
+{
+    const R x = cast(R)xyz.x;
+    const R y = cast(R)xyz.y;
+    const R z = cast(R)xyz.z;
+
+    return Ref3!R(
+        ratio!R(12831,    3959)   * x +
+        ratio!R(-329,      214)   * y +
+        ratio!R(-1974,    3959)   * z,
+
+        ratio!R(-851781, 878810)  * x +
+        ratio!R(1648619, 878810)  * y +
+        ratio!R(36519,   878810)  * z,
+
+        ratio!R(705,      12673)  * x +
+        ratio!R(-2585,    12673)  * y +
+        ratio!R(705,        667)  * z
+    );
+}
+
+private Ref3!R xyzToOklabReference(T, R)(XyzD65!T xyz)
+{
+    const R x = cast(R)xyz.x;
+    const R y = cast(R)xyz.y;
+    const R z = cast(R)xyz.z;
+
+    const R l =
+        cast(R)0.8190224379967030L * x +
+        cast(R)0.3619062600528904L * y -
+        cast(R)0.1288737815209879L * z;
+
+    const R m =
+        cast(R)0.0329836539323885L * x +
+        cast(R)0.9292868615863434L * y +
+        cast(R)0.0361446663506424L * z;
+
+    const R s =
+        cast(R)0.0481771893596242L * x +
+        cast(R)0.2642395317527308L * y +
+        cast(R)0.6335478284694309L * z;
+
+    const R lp = cbrt(l);
+    const R mp = cbrt(m);
+    const R sp = cbrt(s);
+
+    return Ref3!R(
+        cast(R)0.2104542683093140L * lp +
+        cast(R)0.7936177747023054L * mp -
+        cast(R)0.0040720430116193L * sp,
+
+        cast(R)1.9779985324311684L * lp -
+        cast(R)2.4285922420485799L * mp +
+        cast(R)0.4505937096174110L * sp,
+
+        cast(R)0.0259040424655478L * lp +
+        cast(R)0.7827717124575296L * mp -
+        cast(R)0.8086757549230774L * sp
+    );
+}
+
+private R cube(R)(R value)
+{
+    return value * value * value;
+}
+
+private Ref3!R oklabToXyzReference(T, R)(Oklab!T lab)
+{
+    const R l0 = cast(R)lab.l;
+    const R a0 = cast(R)lab.a;
+    const R b0 = cast(R)lab.b;
+
+    const R lp =
+        l0 +
+        cast(R)0.3963377773761749L * a0 +
+        cast(R)0.2158037573099136L * b0;
+
+    const R mp =
+        l0 -
+        cast(R)0.1055613458156586L * a0 -
+        cast(R)0.0638541728258133L * b0;
+
+    const R sp =
+        l0 -
+        cast(R)0.0894841775298119L * a0 -
+        cast(R)1.2914855480194092L * b0;
+
+    const R l = cube(lp);
+    const R m = cube(mp);
+    const R s = cube(sp);
+
+    return Ref3!R(
+        cast(R)1.2268798758459243L * l -
+        cast(R)0.5578149944602171L * m +
+        cast(R)0.2813910456659647L * s,
+
+       -cast(R)0.0405757452148008L * l +
+        cast(R)1.1122868032803170L * m -
+        cast(R)0.0717110580655164L * s,
+
+       -cast(R)0.0763729366746601L * l -
+        cast(R)0.4214933324022432L * m +
+        cast(R)1.5869240198367816L * s
+    );
+}
+
+private bool referenceFits(T, R)(Ref3!R value)
+{
+    return
+        representableAs!T(value.x) &&
+        representableAs!T(value.y) &&
+        representableAs!T(value.z);
+}
+
+private bool productionFinite(T)(LinearSRgb!T value)
+{
+    return finite(value.r) && finite(value.g) && finite(value.b);
+}
+
+private bool productionFinite(T)(XyzD65!T value)
+{
+    return finite(value.x) && finite(value.y) && finite(value.z);
+}
+
+private bool productionFinite(T)(Oklab!T value)
+{
+    return finite(value.l) && finite(value.a) && finite(value.b);
+}
+
+private T scaledMax(T)(double factor)
+{
+    return cast(T)(cast(ReferenceScalar!T)T.max * cast(ReferenceScalar!T)factor);
+}
+
+private void auditLinearTransforms(T)(string scalarName)
+{
+    alias R = ReferenceScalar!T;
+
+    const double[9] factors = [
+        -1.0, -0.75, -0.50, -0.25,
+         0.0,
+         0.25, 0.50, 0.75, 1.0
+    ];
+
+    size_t rgbToXyzReferenceFinite = 0;
+    size_t rgbToXyzAvoidable = 0;
+    size_t xyzToRgbReferenceFinite = 0;
+    size_t xyzToRgbAvoidable = 0;
+    size_t xyzToLabReferenceFinite = 0;
+    size_t xyzToLabAvoidable = 0;
+
+    foreach (fx; factors)
+    foreach (fy; factors)
+    foreach (fz; factors)
+    {
+        const T x = scaledMax!T(fx);
+        const T y = scaledMax!T(fy);
+        const T z = scaledMax!T(fz);
+
+        const auto rgb = LinearSRgb!T(x, y, z);
+        const auto rgbXyzRef = rgbToXyzReference!(T, R)(rgb);
+        if (referenceFits!T(rgbXyzRef))
+        {
+            ++rgbToXyzReferenceFinite;
+            if (!productionFinite(rgb.toXyzD65))
+                ++rgbToXyzAvoidable;
+        }
+
+        const auto xyz = XyzD65!T(x, y, z);
+
+        const auto xyzRgbRef = xyzToRgbReference!(T, R)(xyz);
+        if (referenceFits!T(xyzRgbRef))
+        {
+            ++xyzToRgbReferenceFinite;
+            if (!productionFinite(xyz.toLinearSRgb))
+                ++xyzToRgbAvoidable;
+        }
+
+        const auto xyzLabRef = xyzToOklabReference!(T, R)(xyz);
+        if (referenceFits!T(xyzLabRef))
+        {
+            ++xyzToLabReferenceFinite;
+            if (!productionFinite(xyz.toOklab))
+                ++xyzToLabAvoidable;
+        }
+    }
+
+    writefln(
+        "%s LinearRGB->XYZ: representable=%s avoidable_nonfinite=%s",
+        scalarName,
+        rgbToXyzReferenceFinite,
+        rgbToXyzAvoidable
+    );
+
+    writefln(
+        "%s XYZ->LinearRGB: representable=%s avoidable_nonfinite=%s",
+        scalarName,
+        xyzToRgbReferenceFinite,
+        xyzToRgbAvoidable
+    );
+
+    writefln(
+        "%s XYZ->Oklab: representable=%s avoidable_nonfinite=%s",
+        scalarName,
+        xyzToLabReferenceFinite,
+        xyzToLabAvoidable
+    );
+}
+
+private void auditOklabInverse(T)(string scalarName)
+{
+    alias R = ReferenceScalar!T;
+
+    const R rootMax = cbrt(cast(R)T.max);
+    const double[9] factors = [
+        -2.0, -1.5, -1.0, -0.5,
+         0.0,
+         0.5, 1.0, 1.5, 2.0
+    ];
+
+    size_t referenceFinite = 0;
+    size_t avoidable = 0;
+
+    foreach (fl; factors)
+    foreach (fa; factors)
+    foreach (fb; factors)
+    {
+        const Oklab!T lab = Oklab!T(
+            cast(T)(rootMax * cast(R)fl),
+            cast(T)(rootMax * cast(R)fa),
+            cast(T)(rootMax * cast(R)fb)
+        );
+
+        const auto reference =
+            oklabToXyzReference!(T, R)(lab);
+
+        if (referenceFits!T(reference))
+        {
+            ++referenceFinite;
+            if (!productionFinite(lab.toXyzD65))
+                ++avoidable;
+        }
+    }
+
+    writefln(
+        "%s Oklab->XYZ: representable=%s avoidable_nonfinite=%s",
+        scalarName,
+        referenceFinite,
+        avoidable
+    );
+}
+
+int main()
+{
+    writeln("=== color-d extreme conversion closure audit ===");
+    writefln(
+        "real.sizeof=%s real.mant_dig=%s real.max_exp=%s",
+        real.sizeof,
+        real.mant_dig,
+        real.max_exp
+    );
+
+    auditLinearTransforms!double("double");
+    auditLinearTransforms!float("float");
+
+    auditOklabInverse!double("double");
+    auditOklabInverse!float("float");
+
+    return 0;
+}
