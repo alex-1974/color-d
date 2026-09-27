@@ -28,7 +28,8 @@ jobs:
           compiler: dmd-2.113.0
 
       - name: Toolchain version
-        run: "$DC" --version
+        run: |
+          "$DC" --version
 
       - name: Debug build rejects non-finite endpoint
         shell: bash
@@ -84,7 +85,8 @@ jobs:
           compiler: ldc-1.43.0
 
       - name: Toolchain version
-        run: "$DC" --version
+        run: |
+          "$DC" --version
 
       - name: Debug build rejects non-finite endpoint
         shell: bash
