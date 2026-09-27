@@ -286,6 +286,7 @@ XyzD65!T toXyzD65(T)(LinearSRgb!T rgb)
  *     toXyzD65
  */
 
+pragma(inline, true)
 LinearSRgb!T toLinearSRgb(T)(XyzD65!T xyz)
 @safe pure nothrow @nogc
 {
