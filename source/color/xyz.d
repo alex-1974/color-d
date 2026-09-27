@@ -164,7 +164,7 @@ static assert(!__traits(compiles, XyzD65!real));
 static assert(!__traits(compiles, SRgbf.init.toXyzD65));
 static assert(!__traits(compiles, LinearSRgbf.init.toLinearSRgb));
 
-unittest
+@safe pure nothrow @nogc unittest
 {
     assert(XyzD65f.sizeof == 3 * float.sizeof);
     assert(XyzD65d.sizeof == 3 * double.sizeof);
