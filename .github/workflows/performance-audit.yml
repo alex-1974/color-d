@@ -154,7 +154,10 @@ jobs:
               CandidateInfinityBoundsBitwise \
               CandidateBitMax \
               CandidateDominantFactor \
-              CandidateRowScaledMinimal
+              CandidateRowScaledMinimal \
+              CandidateWiderWorking \
+              CandidateFma \
+              CandidateHybrid
           do
               "$DC" \
                   -O3 \
@@ -178,7 +181,10 @@ jobs:
               CandidateInfinityBoundsBitwise \
               CandidateBitMax \
               CandidateDominantFactor \
-              CandidateRowScaledMinimal
+              CandidateRowScaledMinimal \
+              CandidateWiderWorking \
+              CandidateFma \
+              CandidateHybrid
           do
               echo
               echo "===== $candidate ====="
