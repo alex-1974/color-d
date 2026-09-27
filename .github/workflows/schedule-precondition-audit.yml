@@ -1,0 +1,78 @@
+name: Schedule precondition audit
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - "source/color/tone.d"
+      - "experiments/code_audit/linear_schedule_release_precondition_probe.d"
+      - ".github/workflows/schedule-precondition-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  characterize:
+    name: Audit / schedule precondition / ${{ matrix.compiler }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - dmd-2.113.0
+          - ldc-1.43.0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install D toolchain
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      - name: Toolchain version
+        run: "$DC" --version
+
+      - name: Debug build rejects non-finite endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          "$DC" \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of=schedule-precondition-debug \
+              experiments/code_audit/linear_schedule_release_precondition_probe.d
+
+          set +e
+          ./schedule-precondition-debug nan 1
+          status=$?
+          set -e
+
+          if [ "$status" -eq 0 ]; then
+              echo "debug precondition unexpectedly accepted NaN" >&2
+              exit 1
+          fi
+
+          echo "debug precondition rejected NaN as expected (exit $status)"
+
+      - name: Characterize release invalid-input behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          "$DC" \
+              -release \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of=schedule-precondition-release \
+              experiments/code_audit/linear_schedule_release_precondition_probe.d
+
+          ./schedule-precondition-release nan 1
+          ./schedule-precondition-release inf inf
+          ./schedule-precondition-release inf -inf
+          ./schedule-precondition-release -inf 1
