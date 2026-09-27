@@ -6,6 +6,8 @@
 //   -d-version=CandidateInfinityBounds
 //   -d-version=CandidateInfinityBoundsBitwise
 //   -d-version=CandidateBitMax
+//   -d-version=CandidateDominantFactor
+//   -d-version=CandidateRowScaledMinimal
 //
 // Keeping one candidate per binary avoids code-layout and optimizer-context
 // interference from the broad exploratory probe.
@@ -104,6 +106,83 @@ private LinearSRgb!T scaledShared(T)(XyzD65!T xyz)
             ratio!T(705,      12673) * x +
             ratio!T(-2585,    12673) * y +
             ratio!T(705,        667) * z
+        )
+    );
+}
+
+private LinearSRgb!T candidateDominantFactor(T)(XyzD65!T xyz)
+{
+    /*
+     * Exact rational refactorization of each inverse-matrix row around its
+     * dominant coefficient:
+     *
+     * R = (12831/3959) * (X - 37/78 Y - 2/13 Z)
+     * G = (1648619/878810) * (Y - 2589/5011 X + 111/5011 Z)
+     * B = (705/667) * (Z + 1/19 X - 11/57 Y)
+     *
+     * Evaluate the two minor terms first. Their absolute coefficient sums are
+     * below one, so their partial sums cannot overflow for finite XYZ. If the
+     * final channel is representable, adding the dominant unscaled component
+     * also has a representable exact result before the final multiplication.
+     */
+    const T redMinor =
+       -ratio!T(37, 78) * xyz.y -
+        ratio!T(2, 13) * xyz.z;
+
+    const T greenMinor =
+       -ratio!T(2589, 5011) * xyz.x +
+        ratio!T(111, 5011) * xyz.z;
+
+    const T blueMinor =
+        ratio!T(1, 19) * xyz.x -
+        ratio!T(11, 57) * xyz.y;
+
+    return LinearSRgb!T(
+        ratio!T(12831, 3959) *
+            (redMinor + xyz.x),
+
+        ratio!T(1648619, 878810) *
+            (greenMinor + xyz.y),
+
+        ratio!T(705, 667) *
+            (blueMinor + xyz.z)
+    );
+}
+
+private LinearSRgb!T candidateRowScaledMinimal(T)(XyzD65!T xyz)
+{
+    /*
+     * Minimum power-of-two row factors with minor terms evaluated first.
+     * Red needs 4; green and blue need 2.
+     */
+    enum T redScale = cast(T)4;
+    enum T greenScale = cast(T)2;
+    enum T blueScale = cast(T)2;
+
+    const T redMinor =
+        (ratio!T(-329, 214) / redScale) * xyz.y +
+        (ratio!T(-1974, 3959) / redScale) * xyz.z;
+
+    const T greenMinor =
+        (ratio!T(-851781, 878810) / greenScale) * xyz.x +
+        (ratio!T(36519, 878810) / greenScale) * xyz.z;
+
+    const T blueMinor =
+        (ratio!T(705, 12673) / blueScale) * xyz.x +
+        (ratio!T(-2585, 12673) / blueScale) * xyz.y;
+
+    return LinearSRgb!T(
+        redScale * (
+            redMinor +
+            (ratio!T(12831, 3959) / redScale) * xyz.x
+        ),
+        greenScale * (
+            greenMinor +
+            (ratio!T(1648619, 878810) / greenScale) * xyz.y
+        ),
+        blueScale * (
+            blueMinor +
+            (ratio!T(705, 667) / blueScale) * xyz.z
         )
     );
 }
@@ -248,6 +327,10 @@ private const(char)[] candidateName()
         return "infinity-bounds-bitwise";
     else version (CandidateBitMax)
         return "bit-max";
+    else version (CandidateDominantFactor)
+        return "dominant-factor";
+    else version (CandidateRowScaledMinimal)
+        return "row-scaled-minimal";
     else
         static assert(false, "select exactly one finalist version");
 }
@@ -264,6 +347,10 @@ private LinearSRgb!T candidate(T)(XyzD65!T xyz)
         return candidateInfinityBoundsBitwise(xyz);
     else version (CandidateBitMax)
         return candidateBitMax(xyz);
+    else version (CandidateDominantFactor)
+        return candidateDominantFactor(xyz);
+    else version (CandidateRowScaledMinimal)
+        return candidateRowScaledMinimal(xyz);
     else
         static assert(false, "select exactly one finalist version");
 }
