@@ -1,0 +1,207 @@
+name: Release Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Release / ${{ matrix.compiler }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - dmd-2.113.0
+          - ldc-1.43.0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install D toolchain
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      - name: Toolchain versions
+        run: |
+          "$DC" --version
+          dub --version
+
+      - name: Repository metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for file in AGENTS.md README.md ROADMAP.md DESIGN_PRINCIPLES.md LICENSE dub.sdl
+          do
+              test -s "$file"
+          done
+
+          grep -q '^name "color-d"$' dub.sdl
+          grep -q '^targetType "library"$' dub.sdl
+
+      - name: Debug unittests
+        run: dub test --compiler="$DC" --build=debug --force
+
+      - name: Release unittests
+        run: dub test --compiler="$DC" --build=release --force
+
+      - name: Public API compile contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          compile_ok()
+          {
+              source="$1"
+              object="$2"
+
+              "$DC" -c -I"$GITHUB_WORKSPACE/source" -i -of="$object" "$source"
+          }
+
+          compile_fail()
+          {
+              source="$1"
+              object="$2"
+
+              if "$DC" -c -I"$GITHUB_WORKSPACE/source" -i -of="$object" "$source" >"$tmp/negative.log" 2>&1
+              then
+                  echo "Unexpected compile success: $source"
+                  cat "$tmp/negative.log"
+                  return 1
+              fi
+          }
+
+          cat > "$tmp/root_positive.d" <<'D'
+          import color;
+
+          enum mapped =
+              Oklchd(
+                  0.70,
+                  0.30,
+                  OklabHued.fromDegrees(40.0)
+              )
+              .gamutMapRayTraceToLinearSRgb();
+
+          static assert(mapped.inGamut);
+
+          @safe pure nothrow @nogc
+          LinearSRgbd mapColor(Oklchd value)
+          {
+              return value.gamutMapLocalMindeToLinearSRgb();
+          }
+          D
+
+          cat > "$tmp/direct_positive.d" <<'D'
+          import color.rgb;
+          import color.xyz;
+          import color.oklab;
+          import color.oklch;
+          import color.gamut;
+          import color.alpha;
+          import color.composite;
+          import color.interpolate;
+          import color.difference;
+          import color.wcag;
+          D
+
+          cat > "$tmp/generic_mapper_negative.d" <<'D'
+          import color;
+
+          void probe(Oklchd value)
+          {
+              auto mapped = gamutMapToLinearSRgb(value);
+          }
+          D
+
+          cat > "$tmp/method_enum_negative.d" <<'D'
+          import color;
+
+          GamutMapMethod method;
+          D
+
+          cat > "$tmp/wrong_space_negative.d" <<'D'
+          import color;
+
+          void probe(Oklabd value)
+          {
+              auto mapped =
+                  value.gamutMapRayTraceToLinearSRgb();
+          }
+          D
+
+          cat > "$tmp/unsupported_scalar_negative.d" <<'D'
+          import color;
+
+          alias InvalidOklch = Oklch!int;
+          D
+
+          compile_ok "$tmp/root_positive.d" "$tmp/root_positive.o"
+          compile_ok "$tmp/direct_positive.d" "$tmp/direct_positive.o"
+
+          compile_fail "$tmp/generic_mapper_negative.d" "$tmp/generic_mapper_negative.o"
+          compile_fail "$tmp/method_enum_negative.d" "$tmp/method_enum_negative.o"
+          compile_fail "$tmp/wrong_space_negative.d" "$tmp/wrong_space_negative.o"
+          compile_fail "$tmp/unsupported_scalar_negative.d" "$tmp/unsupported_scalar_negative.o"
+
+      - name: External DUB consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          mkdir -p "$tmp/source"
+
+          cat > "$tmp/dub.json" <<JSON
+          {
+            "name": "color-d-release-consumer",
+            "targetType": "executable",
+            "dependencies": {
+              "color-d": {
+                "path": "$GITHUB_WORKSPACE"
+              }
+            }
+          }
+          JSON
+
+          cat > "$tmp/source/app.d" <<'D'
+          import color;
+
+          void main()
+          {
+              const mapped =
+                  Oklchd(
+                      0.70,
+                      0.30,
+                      OklabHued.fromDegrees(40.0)
+                  )
+                  .gamutMapRayTraceToLinearSRgb();
+
+              assert(mapped.inGamut);
+          }
+          D
+
+          (
+              cd "$tmp"
+              dub build --compiler="$DC" --build=release
+          )
