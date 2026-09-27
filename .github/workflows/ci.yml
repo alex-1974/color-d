@@ -1,0 +1,96 @@
+name: Fast CI
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fast-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    name: Fast / ${{ matrix.compiler }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - dmd-2.113.0
+          - ldc-1.43.0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install D toolchain
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      - name: Toolchain versions
+        run: |
+          "$DC" --version
+          dub --version
+
+      - name: Debug unittests
+        run: dub test --compiler="$DC" --build=debug --force
+
+      - name: Release unittests
+        run: dub test --compiler="$DC" --build=release --force
+
+      - name: External import compile smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          cat > "$tmp/root.d" <<'D'
+          import color;
+
+          enum mapped =
+              Oklchd(
+                  0.70,
+                  0.30,
+                  OklabHued.fromDegrees(40.0)
+              )
+              .gamutMapRayTraceToLinearSRgb();
+
+          static assert(mapped.inGamut);
+
+          void main()
+          {
+          }
+          D
+
+          cat > "$tmp/direct.d" <<'D'
+          import color.rgb;
+          import color.xyz;
+          import color.oklab;
+          import color.oklch;
+          import color.gamut;
+          import color.alpha;
+          import color.composite;
+          import color.interpolate;
+          import color.difference;
+          import color.wcag;
+
+          void main()
+          {
+          }
+          D
+
+          "$DC"               -c               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/root.o"               "$tmp/root.d"
+
+          "$DC"               -c               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/direct.o"               "$tmp/direct.d"
