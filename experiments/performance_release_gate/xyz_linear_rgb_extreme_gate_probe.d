@@ -185,6 +185,33 @@ private LinearSRgb!T resultGate(T)(XyzD65!T xyz)
     return scaledShared(xyz);
 }
 
+private LinearSRgb!T aggregateResultGate(T)(XyzD65!T xyz)
+{
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    /*
+     * Under strict IEEE arithmetic, any NaN/infinity component makes this
+     * aggregate non-finite. Finite components can only create a conservative
+     * false positive by overflowing the aggregate itself, which merely selects
+     * the robust slow path.
+     *
+     * p - p is exactly zero for every finite p and NaN for ±infinity/NaN.
+     */
+    const T p =
+        ordinary.r +
+        ordinary.g +
+        ordinary.b;
+
+    if (p - p == cast(T)0)
+        return ordinary;
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
 private LinearSRgb!T fpGate(T)(XyzD65!T xyz)
 {
     if (directSafeFp(xyz))
@@ -242,6 +269,85 @@ private LinearSRgb!T bitGateColdLikely(T)(XyzD65!T xyz)
 // the dot product. The final exact power-of-two rescale can overflow only when
 // the row result itself is outside the scalar range, apart from rounding-edge
 // effects. Validation below checks ordinary bit equality and extreme closure.
+private LinearSRgb!T rowScaledMinFma(T)(XyzD65!T xyz)
+{
+    import core.stdc.math :
+        fma,
+        fmaf;
+
+    if (__ctfe)
+        return rowScaled(xyz);
+
+    enum T redScale = cast(T)4;
+    enum T greenScale = cast(T)2;
+    enum T blueScale = cast(T)2;
+
+    static if (is(T == float))
+    {
+        return LinearSRgb!T(
+            redScale * fmaf(
+                ratio!T(12831, 3959) / redScale,
+                xyz.x,
+                fmaf(
+                    ratio!T(-329, 214) / redScale,
+                    xyz.y,
+                    (ratio!T(-1974, 3959) / redScale) * xyz.z
+                )
+            ),
+            greenScale * fmaf(
+                ratio!T(1648619, 878810) / greenScale,
+                xyz.y,
+                fmaf(
+                    ratio!T(-851781, 878810) / greenScale,
+                    xyz.x,
+                    (ratio!T(36519, 878810) / greenScale) * xyz.z
+                )
+            ),
+            blueScale * fmaf(
+                ratio!T(705, 667) / blueScale,
+                xyz.z,
+                fmaf(
+                    ratio!T(-2585, 12673) / blueScale,
+                    xyz.y,
+                    (ratio!T(705, 12673) / blueScale) * xyz.x
+                )
+            )
+        );
+    }
+    else
+    {
+        return LinearSRgb!T(
+            redScale * fma(
+                ratio!T(12831, 3959) / redScale,
+                xyz.x,
+                fma(
+                    ratio!T(-329, 214) / redScale,
+                    xyz.y,
+                    (ratio!T(-1974, 3959) / redScale) * xyz.z
+                )
+            ),
+            greenScale * fma(
+                ratio!T(1648619, 878810) / greenScale,
+                xyz.y,
+                fma(
+                    ratio!T(-851781, 878810) / greenScale,
+                    xyz.x,
+                    (ratio!T(36519, 878810) / greenScale) * xyz.z
+                )
+            ),
+            blueScale * fma(
+                ratio!T(705, 667) / blueScale,
+                xyz.z,
+                fma(
+                    ratio!T(-2585, 12673) / blueScale,
+                    xyz.y,
+                    (ratio!T(705, 12673) / blueScale) * xyz.x
+                )
+            )
+        );
+    }
+}
+
 private LinearSRgb!T rowScaled(T)(XyzD65!T xyz)
 {
     enum T redScale = cast(T)8;
@@ -283,6 +389,10 @@ private LinearSRgb!T path(T, int kind)(XyzD65!T xyz)
         return bitGateColdLikely(xyz);
     else static if (kind == 6)
         return rowScaled(xyz);
+    else static if (kind == 7)
+        return aggregateResultGate(xyz);
+    else static if (kind == 8)
+        return rowScaledMinFma(xyz);
     else
         static assert(false, "unknown path");
 }
@@ -303,6 +413,10 @@ private const(char)[] pathName(int kind)()
         return "bit-pre-gate-cold-likely";
     else static if (kind == 6)
         return "row-scaled";
+    else static if (kind == 7)
+        return "aggregate-result-gate";
+    else static if (kind == 8)
+        return "row-scaled-min-fma";
     else
         static assert(false, "unknown path");
 }
@@ -685,6 +799,8 @@ private void benchmarkAll(T)()
     benchmarkPair!(T, 4)(values[]);
     benchmarkPair!(T, 5)(values[]);
     benchmarkPair!(T, 6)(values[]);
+    benchmarkPair!(T, 7)(values[]);
+    benchmarkPair!(T, 8)(values[]);
 }
 
 // CTFE must retain the ordinary public result exactly for pre-gated candidates.
@@ -728,6 +844,8 @@ int main()
     ordinaryMismatches!(double, 4)();
     ordinaryMismatches!(double, 5)();
     ordinaryMismatches!(double, 6)();
+    ordinaryMismatches!(double, 7)();
+    ordinaryMismatches!(double, 8)();
 
     ordinaryMismatches!(float, 1)();
     ordinaryMismatches!(float, 2)();
@@ -735,14 +853,20 @@ int main()
     ordinaryMismatches!(float, 4)();
     ordinaryMismatches!(float, 5)();
     ordinaryMismatches!(float, 6)();
+    ordinaryMismatches!(float, 7)();
+    ordinaryMismatches!(float, 8)();
 
     subnormalCharacterization!(double, 2)();
     subnormalCharacterization!(double, 3)();
     subnormalCharacterization!(double, 6)();
+    subnormalCharacterization!(double, 7)();
+    subnormalCharacterization!(double, 8)();
 
     subnormalCharacterization!(float, 2)();
     subnormalCharacterization!(float, 3)();
     subnormalCharacterization!(float, 6)();
+    subnormalCharacterization!(float, 7)();
+    subnormalCharacterization!(float, 8)();
 
     extremeAvoidable!(double, 0)();
     extremeAvoidable!(double, 1)();
@@ -751,6 +875,8 @@ int main()
     extremeAvoidable!(double, 4)();
     extremeAvoidable!(double, 5)();
     extremeAvoidable!(double, 6)();
+    extremeAvoidable!(double, 7)();
+    extremeAvoidable!(double, 8)();
 
     extremeAvoidable!(float, 0)();
     extremeAvoidable!(float, 1)();
@@ -759,6 +885,8 @@ int main()
     extremeAvoidable!(float, 4)();
     extremeAvoidable!(float, 5)();
     extremeAvoidable!(float, 6)();
+    extremeAvoidable!(float, 7)();
+    extremeAvoidable!(float, 8)();
 
     version (LDC)
     {
