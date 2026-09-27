@@ -53,6 +53,140 @@ if (is(T == float) || is(T == double))
     return cast(T)numerator / cast(T)denominator;
 }
 
+private T magnitude(T)(const T value)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    return value < cast(T)0 ? -value : value;
+}
+
+private T maximum(T)(const T first, const T second)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    return first > second ? first : second;
+}
+
+private bool finiteInfinityBounds(T)(const T value)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    return
+        value > -T.infinity &&
+        value < T.infinity;
+}
+
+private bool finiteXyz(T)(XyzD65!T xyz)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    return
+        finiteInfinityBounds(xyz.x) &&
+        finiteInfinityBounds(xyz.y) &&
+        finiteInfinityBounds(xyz.z);
+}
+
+private LinearSRgb!T toLinearSRgbDirect(T)(XyzD65!T xyz)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    return LinearSRgb!T(
+        ratio!T(12831,    3959)   * xyz.x +
+        ratio!T(-329,      214)   * xyz.y +
+        ratio!T(-1974,    3959)   * xyz.z,
+
+        ratio!T(-851781, 878810)  * xyz.x +
+        ratio!T(1648619, 878810)  * xyz.y +
+        ratio!T(36519,   878810)  * xyz.z,
+
+        ratio!T(705,      12673)  * xyz.x +
+        ratio!T(-2585,    12673)  * xyz.y +
+        ratio!T(705,        667)  * xyz.z
+    );
+}
+
+private LinearSRgb!T toLinearSRgbScaledFinite(T)(XyzD65!T xyz)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    const T scale =
+        maximum(
+            magnitude(xyz.x),
+            maximum(
+                magnitude(xyz.y),
+                magnitude(xyz.z)
+            )
+        );
+
+    if (scale == cast(T)0)
+        return LinearSRgb!T(
+            cast(T)0,
+            cast(T)0,
+            cast(T)0
+        );
+
+    const T x = xyz.x / scale;
+    const T y = xyz.y / scale;
+    const T z = xyz.z / scale;
+
+    return LinearSRgb!T(
+        scale * (
+            ratio!T(12831,    3959)   * x +
+            ratio!T(-329,      214)   * y +
+            ratio!T(-1974,    3959)   * z
+        ),
+        scale * (
+            ratio!T(-851781, 878810)  * x +
+            ratio!T(1648619, 878810)  * y +
+            ratio!T(36519,   878810)  * z
+        ),
+        scale * (
+            ratio!T(705,      12673)  * x +
+            ratio!T(-2585,    12673)  * y +
+            ratio!T(705,        667)  * z
+        )
+    );
+}
+
+private LinearSRgb!T toLinearSRgbDominantFactor(T)(XyzD65!T xyz)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    /*
+     * Exact rational refactorization of the inverse matrix:
+     *
+     * R = (12831/3959) * (X - 37/78 Y - 2/13 Z)
+     * G = (1648619/878810) * (Y - 2589/5011 X + 111/5011 Z)
+     * B = (705/667) * (Z + 1/19 X - 11/57 Y)
+     *
+     * The absolute minor-coefficient sum in every parenthesis is below one.
+     * This prevents the known product/partial-sum overflow pattern before the
+     * dominant term is combined and then scaled.
+     */
+    const T redMinor =
+       -ratio!T(37, 78) * xyz.y -
+        ratio!T(2, 13) * xyz.z;
+
+    const T greenMinor =
+       -ratio!T(2589, 5011) * xyz.x +
+        ratio!T(111, 5011) * xyz.z;
+
+    const T blueMinor =
+        ratio!T(1, 19) * xyz.x -
+        ratio!T(11, 57) * xyz.y;
+
+    return LinearSRgb!T(
+        ratio!T(12831, 3959) *
+            (redMinor + xyz.x),
+
+        ratio!T(1648619, 878810) *
+            (greenMinor + xyz.y),
+
+        ratio!T(705, 667) *
+            (blueMinor + xyz.z)
+    );
+}
+
 /**
  * Converts linear-light sRGB to CIE XYZ D65.
  *
@@ -109,13 +243,19 @@ XyzD65!T toXyzD65(T)(LinearSRgb!T rgb)
 /**
  * Converts CIE XYZ D65 to linear-light sRGB.
  *
- * Extended values are transformed without gamut clipping. For ordinary and
- * validated extended ranges the direct matrix preserves finite results.
- * Extremely large finite XYZ components can overflow individual matrix terms
- * before cancellation, so finite input does not currently guarantee a finite
- * linear-sRGB result even when a wider-precision evaluation would be
- * representable. This known exceptional-domain limitation is tracked for a
- * lower-overhead robust implementation.
+ * Extended values are transformed without gamut clipping.
+ *
+ * For `double`, an algebraically equivalent dominant-factor evaluation avoids
+ * the validated intermediate-overflow pattern and improves the measured mean
+ * and maximum error against a wider reference on the ordinary audit corpus.
+ * Because the operation order changes, ordinary `double` results are not
+ * promised to be bit-identical to the unfactored matrix, and subnormal results
+ * can differ by a few ULPs.
+ *
+ * For `float`, the direct matrix remains the ordinary path. If that path
+ * produces a non-finite result from finite XYZ input, a scale-equivalent
+ * fallback evaluates the same matrix in a normalized range. Ordinary `float`
+ * results therefore retain the direct-path rounding behavior.
  *
  * Params:
  *     xyz = CIE XYZ D65 value to convert.
@@ -134,19 +274,29 @@ XyzD65!T toXyzD65(T)(LinearSRgb!T rgb)
 LinearSRgb!T toLinearSRgb(T)(XyzD65!T xyz)
 @safe pure nothrow @nogc
 {
-    return LinearSRgb!T(
-        ratio!T(12831,    3959)   * xyz.x +
-        ratio!T(-329,      214)   * xyz.y +
-        ratio!T(-1974,    3959)   * xyz.z,
+    static if (is(T == double))
+    {
+        return toLinearSRgbDominantFactor(xyz);
+    }
+    else
+    {
+        const LinearSRgb!T ordinary =
+            toLinearSRgbDirect(xyz);
 
-        ratio!T(-851781, 878810)  * xyz.x +
-        ratio!T(1648619, 878810)  * xyz.y +
-        ratio!T(36519,   878810)  * xyz.z,
+        if (
+            finiteInfinityBounds(ordinary.r) &&
+            finiteInfinityBounds(ordinary.g) &&
+            finiteInfinityBounds(ordinary.b)
+        )
+        {
+            return ordinary;
+        }
 
-        ratio!T(705,      12673)  * xyz.x +
-        ratio!T(-2585,    12673)  * xyz.y +
-        ratio!T(705,        667)  * xyz.z
-    );
+        if (!finiteXyz(xyz))
+            return ordinary;
+
+        return toLinearSRgbScaledFinite(xyz);
+    }
 }
 
 ///
@@ -156,6 +306,87 @@ LinearSRgb!T toLinearSRgb(T)(XyzD65!T xyz)
 
     assert(black == LinearSRgbd(0.0, 0.0, 0.0));
 }
+
+///
+@safe pure nothrow @nogc unittest
+{
+    import std.math : fabs;
+
+    const double factorX = -0.75;
+    const double factorY = -0.75;
+    const double factorZ = -1.0;
+
+    const rgb =
+        XyzD65d(
+            factorX * double.max,
+            factorY * double.max,
+            factorZ * double.max
+        ).toLinearSRgb;
+
+    const double expectedR =
+        ratio!double(12831, 3959) * factorX +
+        ratio!double(-329, 214) * factorY +
+        ratio!double(-1974, 3959) * factorZ;
+
+    const double expectedG =
+        ratio!double(-851781, 878810) * factorX +
+        ratio!double(1648619, 878810) * factorY +
+        ratio!double(36519, 878810) * factorZ;
+
+    const double expectedB =
+        ratio!double(705, 12673) * factorX +
+        ratio!double(-2585, 12673) * factorY +
+        ratio!double(705, 667) * factorZ;
+
+    assert(finiteInfinityBounds(rgb.r));
+    assert(finiteInfinityBounds(rgb.g));
+    assert(finiteInfinityBounds(rgb.b));
+
+    assert(fabs(rgb.r / double.max - expectedR) < 1e-14);
+    assert(fabs(rgb.g / double.max - expectedG) < 1e-14);
+    assert(fabs(rgb.b / double.max - expectedB) < 1e-14);
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    import std.math : fabs;
+
+    const float factorX = -0.75f;
+    const float factorY = -0.75f;
+    const float factorZ = -1.0f;
+
+    const rgb =
+        XyzD65f(
+            factorX * float.max,
+            factorY * float.max,
+            factorZ * float.max
+        ).toLinearSRgb;
+
+    const float expectedR =
+        ratio!float(12831, 3959) * factorX +
+        ratio!float(-329, 214) * factorY +
+        ratio!float(-1974, 3959) * factorZ;
+
+    const float expectedG =
+        ratio!float(-851781, 878810) * factorX +
+        ratio!float(1648619, 878810) * factorY +
+        ratio!float(36519, 878810) * factorZ;
+
+    const float expectedB =
+        ratio!float(705, 12673) * factorX +
+        ratio!float(-2585, 12673) * factorY +
+        ratio!float(705, 667) * factorZ;
+
+    assert(finiteInfinityBounds(rgb.r));
+    assert(finiteInfinityBounds(rgb.g));
+    assert(finiteInfinityBounds(rgb.b));
+
+    assert(fabs(rgb.r / float.max - expectedR) < 2e-6f);
+    assert(fabs(rgb.g / float.max - expectedG) < 2e-6f);
+    assert(fabs(rgb.b / float.max - expectedB) < 2e-6f);
+}
+
 
 @safe pure nothrow @nogc unittest
 {
@@ -323,6 +554,30 @@ version (unittest)
         1e-14,
         1e-14
     ));
+
+    // REGRESSION: a retained extreme case whose direct inverse-matrix
+    // evaluation previously became non-finite before cancellation.
+    enum extremeLinearD =
+        XyzD65d(
+            -0.75 * double.max,
+            -0.75 * double.max,
+            -double.max
+        ).toLinearSRgb;
+
+    static assert(finiteInfinityBounds(extremeLinearD.r));
+    static assert(finiteInfinityBounds(extremeLinearD.g));
+    static assert(finiteInfinityBounds(extremeLinearD.b));
+
+    enum extremeLinearF =
+        XyzD65f(
+            -0.75f * float.max,
+            -0.75f * float.max,
+            -float.max
+        ).toLinearSRgb;
+
+    static assert(finiteInfinityBounds(extremeLinearF.r));
+    static assert(finiteInfinityBounds(extremeLinearF.g));
+    static assert(finiteInfinityBounds(extremeLinearF.b));
 
     // REFERENCE + DERIVED: finite extended-range values are not clipped.
     enum extended = LinearSRgbd(-0.2, 1.3, 0.5);

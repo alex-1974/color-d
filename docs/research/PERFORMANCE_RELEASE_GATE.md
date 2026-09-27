@@ -212,3 +212,46 @@ retained. This is compiler/code-generation evidence, not a semantic contract;
 it should be re-audited when the release-performance compiler changes
 materially.
 
+
+
+## R4 follow-up — XYZ D65 to linear-sRGB extreme finite hardening
+
+The extreme-conversion audit found a correctness/performance tension in the
+inverse XYZ D65 -> linear-sRGB matrix. The former direct evaluation produced
+42 avoidable non-finite results among 111 reference-representable cases in the
+retained extreme grid for both public scalar widths.
+
+Evidence PR #85 compared result-gated, pre-gated, bit-classification,
+row-scaled, dominant-factor, wider-working and FMA candidates. The selected
+production strategy is scalar-specific because the best measured trade-off was
+different for `float` and `double`.
+
+For `double`, the production path uses an exact rational dominant-factor
+refactorization of each matrix row. On the retained two-million-sample ordinary
+corpus:
+
+- many last-bit results change because evaluation order changes;
+- mean absolute error versus a wider `real` reference decreased from about
+  7.68e-17 to 7.06e-17;
+- maximum absolute error decreased from about 1.38e-15 to 9.65e-16;
+- the retained subnormal corpus can differ by a few ULPs;
+- signed-zero and non-finite classification matched the former path;
+- isolated LDC 1.43 production median was about 0.964x the former direct path,
+  i.e. roughly 3.6% faster.
+
+For `float`, the ordinary direct matrix is retained. Only a non-finite direct
+result from finite XYZ input enters a common-scale normalized fallback. On the
+retained production audit:
+
+- 2,000,000 ordinary samples were bit-identical to the former direct result;
+- signed-zero and non-finite classification were unchanged;
+- the extreme-grid avoidable non-finite count decreased from 42 to 0;
+- isolated LDC 1.43 production median was about 1.026x the former direct path,
+  i.e. roughly 2.6% slower.
+
+The promoted implementation therefore restores the retained extreme finite
+closure cases while keeping the `float` ordinary numerical path unchanged and
+improving both ordinary `double` reference accuracy and measured LDC runtime.
+
+The retained production probe is
+`experiments/performance_release_gate/xyz_linear_rgb_production_probe.d`.

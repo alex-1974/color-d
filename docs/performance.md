@@ -22,7 +22,9 @@ including:
 - sRGB transfer / encoded paths;
 - WCAG measurement;
 - perceptual gamut mapping;
-- low-level tone construction.
+- low-level tone construction;
+- XYZ D65 → linear-sRGB extreme-finite hardening, including scalar-specific
+  ordinary-path cost and reference-accuracy evidence.
 
 The main performance evidence is summarized in
 [`research/PERFORMANCE_RELEASE_GATE.md`](research/PERFORMANCE_RELEASE_GATE.md)
