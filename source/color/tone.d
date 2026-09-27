@@ -59,6 +59,16 @@ if (is(T == float) || is(T == double))
  *
  * Returns:
  *     A fixed-size inclusive schedule of `N` values.
+ *
+ * Preconditions:
+ *     `start` and `end` are finite. This is a programmer precondition, not
+ *     a recoverable validation channel.
+ *
+ * Allocation:
+ *     Does not allocate.
+ *
+ * Complexity:
+ *     O(N).
  */
 
 T[N] linearSchedule(size_t N, T)(
@@ -126,6 +136,12 @@ if (
  *     lightnesses = Raw lightness schedule.
  *     chromas = Raw chroma schedule.
  *     output = Caller-owned output array.
+ *
+ * Allocation:
+ *     Does not allocate; all output storage is supplied by the caller.
+ *
+ * Complexity:
+ *     O(N).
  *
  * See_Also:
  *     tryTonesAtLightnessAndChromaInto
@@ -219,6 +235,12 @@ if (is(T == float) || is(T == double))
  *
  * Returns:
  *     `true` on an exact length match; otherwise `false` with output unchanged.
+ *
+ * Allocation:
+ *     Does not allocate; all output storage is supplied by the caller.
+ *
+ * Complexity:
+ *     O(N) on success and O(1) when the slice lengths do not match.
  *
  * See_Also:
  *     tonesAtLightnessAndChromaInto
