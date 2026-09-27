@@ -259,7 +259,7 @@ static assert(!__traits(compiles, LinearSRgb!ubyte));
 static assert(!__traits(compiles, LinearSRgb!int));
 static assert(!__traits(compiles, LinearSRgb!real));
 
-unittest
+@safe pure nothrow @nogc unittest
 {
     assert(SRgbf.sizeof == 3 * float.sizeof);
     assert(SRgbd.sizeof == 3 * double.sizeof);
