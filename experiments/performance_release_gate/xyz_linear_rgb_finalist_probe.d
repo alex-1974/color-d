@@ -20,6 +20,7 @@ import color :
     toLinearSRgb;
 
 import std.datetime.stopwatch : StopWatch;
+import std.math : fma;
 import std.stdio : writefln, writeln;
 
 template ReferenceScalar(T)
@@ -187,6 +188,83 @@ private LinearSRgb!T candidateRowScaledMinimal(T)(XyzD65!T xyz)
     );
 }
 
+private LinearSRgb!T candidateWiderWorking(T)(XyzD65!T xyz)
+{
+    alias R = ReferenceScalar!T;
+
+    const R x = cast(R)xyz.x;
+    const R y = cast(R)xyz.y;
+    const R z = cast(R)xyz.z;
+
+    return LinearSRgb!T(
+        cast(T)(
+            ratio!R(12831,    3959)   * x +
+            ratio!R(-329,      214)   * y +
+            ratio!R(-1974,    3959)   * z
+        ),
+        cast(T)(
+            ratio!R(-851781, 878810)  * x +
+            ratio!R(1648619, 878810)  * y +
+            ratio!R(36519,   878810)  * z
+        ),
+        cast(T)(
+            ratio!R(705,      12673)  * x +
+            ratio!R(-2585,    12673)  * y +
+            ratio!R(705,        667)  * z
+        )
+    );
+}
+
+private LinearSRgb!T candidateFma(T)(XyzD65!T xyz)
+{
+    const T redSafe =
+        ratio!T(-1974, 3959) * xyz.z;
+
+    const T greenSafe =
+        ratio!T(36519, 878810) * xyz.z;
+
+    const T blueSafe =
+        ratio!T(705, 12673) * xyz.x;
+
+    return LinearSRgb!T(
+        fma(
+            ratio!T(12831, 3959),
+            xyz.x,
+            fma(
+                ratio!T(-329, 214),
+                xyz.y,
+                redSafe
+            )
+        ),
+        fma(
+            ratio!T(1648619, 878810),
+            xyz.y,
+            fma(
+                ratio!T(-851781, 878810),
+                xyz.x,
+                greenSafe
+            )
+        ),
+        fma(
+            ratio!T(705, 667),
+            xyz.z,
+            fma(
+                ratio!T(-2585, 12673),
+                xyz.y,
+                blueSafe
+            )
+        )
+    );
+}
+
+private LinearSRgb!T candidateHybrid(T)(XyzD65!T xyz)
+{
+    static if (is(T == double))
+        return candidateDominantFactor(xyz);
+    else
+        return candidateInfinityBounds(xyz);
+}
+
 private LinearSRgb!T candidateResultGate(T)(XyzD65!T xyz)
 {
     const auto ordinary = xyz.toLinearSRgb;
@@ -331,6 +409,12 @@ private const(char)[] candidateName()
         return "dominant-factor";
     else version (CandidateRowScaledMinimal)
         return "row-scaled-minimal";
+    else version (CandidateWiderWorking)
+        return "wider-working";
+    else version (CandidateFma)
+        return "fma";
+    else version (CandidateHybrid)
+        return "hybrid";
     else
         static assert(false, "select exactly one finalist version");
 }
@@ -351,6 +435,12 @@ private LinearSRgb!T candidate(T)(XyzD65!T xyz)
         return candidateDominantFactor(xyz);
     else version (CandidateRowScaledMinimal)
         return candidateRowScaledMinimal(xyz);
+    else version (CandidateWiderWorking)
+        return candidateWiderWorking(xyz);
+    else version (CandidateFma)
+        return candidateFma(xyz);
+    else version (CandidateHybrid)
+        return candidateHybrid(xyz);
     else
         static assert(false, "select exactly one finalist version");
 }
