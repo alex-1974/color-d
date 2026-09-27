@@ -777,14 +777,14 @@ version (unittest)
 
             const auto reverse =
                 wcag2ContrastRatio(
-                    second,
-                    first
+                    first: second,
+                    second: first
                 );
 
             const auto identity =
                 wcag2ContrastRatio(
-                    first,
-                    first
+                    first: first,
+                    second: first
                 );
 
             assert(forward.valid);
