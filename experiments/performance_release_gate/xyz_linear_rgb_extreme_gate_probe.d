@@ -263,6 +263,81 @@ private LinearSRgb!T aggregateResultGate(T)(XyzD65!T xyz)
     return scaledShared(xyz);
 }
 
+private LinearSRgb!T resultGateAggregateSubtract(T)(XyzD65!T xyz)
+{
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    const T classification =
+        (ordinary.r - ordinary.r) +
+        (ordinary.g - ordinary.g) +
+        (ordinary.b - ordinary.b);
+
+    if (classification == cast(T)0)
+        return ordinary;
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
+private LinearSRgb!T resultGateAggregateZeroMultiply(T)(XyzD65!T xyz)
+{
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    const T zero = cast(T)0;
+    const T classification =
+        ordinary.r * zero +
+        ordinary.g * zero +
+        ordinary.b * zero;
+
+    if (classification == cast(T)0)
+        return ordinary;
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
+private LinearSRgb!T resultGateStdIsFinite(T)(XyzD65!T xyz)
+{
+    import std.math : isFinite;
+
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    if (
+        isFinite(ordinary.r) &&
+        isFinite(ordinary.g) &&
+        isFinite(ordinary.b)
+    )
+    {
+        return ordinary;
+    }
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
+private LinearSRgb!T resultGateLikely(T)(XyzD65!T xyz)
+{
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    if (likely(outputFinite(ordinary)))
+        return ordinary;
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
 private LinearSRgb!T resultGateBounds(T)(XyzD65!T xyz)
 {
     const auto ordinary =
@@ -526,6 +601,14 @@ private LinearSRgb!T path(T, int kind)(XyzD65!T xyz)
         return resultGateSelfSubtract(xyz);
     else static if (kind == 12)
         return resultGateBits(xyz);
+    else static if (kind == 13)
+        return resultGateAggregateSubtract(xyz);
+    else static if (kind == 14)
+        return resultGateAggregateZeroMultiply(xyz);
+    else static if (kind == 15)
+        return resultGateStdIsFinite(xyz);
+    else static if (kind == 16)
+        return resultGateLikely(xyz);
     else
         static assert(false, "unknown path");
 }
@@ -558,6 +641,14 @@ private const(char)[] pathName(int kind)()
         return "result-gate-self-subtract";
     else static if (kind == 12)
         return "result-gate-bits";
+    else static if (kind == 13)
+        return "result-gate-aggregate-subtract";
+    else static if (kind == 14)
+        return "result-gate-zero-multiply";
+    else static if (kind == 15)
+        return "result-gate-std-isfinite";
+    else static if (kind == 16)
+        return "result-gate-likely";
     else
         static assert(false, "unknown path");
 }
@@ -946,6 +1037,10 @@ private void benchmarkAll(T)()
     benchmarkPair!(T, 10)(values[]);
     benchmarkPair!(T, 11)(values[]);
     benchmarkPair!(T, 12)(values[]);
+    benchmarkPair!(T, 13)(values[]);
+    benchmarkPair!(T, 14)(values[]);
+    benchmarkPair!(T, 15)(values[]);
+    benchmarkPair!(T, 16)(values[]);
 }
 
 // CTFE must retain the ordinary public result exactly for pre-gated candidates.
@@ -995,6 +1090,10 @@ int main()
     ordinaryMismatches!(double, 10)();
     ordinaryMismatches!(double, 11)();
     ordinaryMismatches!(double, 12)();
+    ordinaryMismatches!(double, 13)();
+    ordinaryMismatches!(double, 14)();
+    ordinaryMismatches!(double, 15)();
+    ordinaryMismatches!(double, 16)();
 
     ordinaryMismatches!(float, 1)();
     ordinaryMismatches!(float, 2)();
@@ -1008,6 +1107,10 @@ int main()
     ordinaryMismatches!(float, 10)();
     ordinaryMismatches!(float, 11)();
     ordinaryMismatches!(float, 12)();
+    ordinaryMismatches!(float, 13)();
+    ordinaryMismatches!(float, 14)();
+    ordinaryMismatches!(float, 15)();
+    ordinaryMismatches!(float, 16)();
 
     subnormalCharacterization!(double, 2)();
     subnormalCharacterization!(double, 3)();
@@ -1018,6 +1121,10 @@ int main()
     subnormalCharacterization!(double, 10)();
     subnormalCharacterization!(double, 11)();
     subnormalCharacterization!(double, 12)();
+    subnormalCharacterization!(double, 13)();
+    subnormalCharacterization!(double, 14)();
+    subnormalCharacterization!(double, 15)();
+    subnormalCharacterization!(double, 16)();
 
     subnormalCharacterization!(float, 2)();
     subnormalCharacterization!(float, 3)();
@@ -1028,6 +1135,10 @@ int main()
     subnormalCharacterization!(float, 10)();
     subnormalCharacterization!(float, 11)();
     subnormalCharacterization!(float, 12)();
+    subnormalCharacterization!(float, 13)();
+    subnormalCharacterization!(float, 14)();
+    subnormalCharacterization!(float, 15)();
+    subnormalCharacterization!(float, 16)();
 
     extremeAvoidable!(double, 0)();
     extremeAvoidable!(double, 1)();
@@ -1042,6 +1153,10 @@ int main()
     extremeAvoidable!(double, 10)();
     extremeAvoidable!(double, 11)();
     extremeAvoidable!(double, 12)();
+    extremeAvoidable!(double, 13)();
+    extremeAvoidable!(double, 14)();
+    extremeAvoidable!(double, 15)();
+    extremeAvoidable!(double, 16)();
 
     extremeAvoidable!(float, 0)();
     extremeAvoidable!(float, 1)();
@@ -1056,6 +1171,10 @@ int main()
     extremeAvoidable!(float, 10)();
     extremeAvoidable!(float, 11)();
     extremeAvoidable!(float, 12)();
+    extremeAvoidable!(float, 13)();
+    extremeAvoidable!(float, 14)();
+    extremeAvoidable!(float, 15)();
+    extremeAvoidable!(float, 16)();
 
     version (LDC)
     {
