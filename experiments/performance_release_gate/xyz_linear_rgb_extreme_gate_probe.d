@@ -74,6 +74,57 @@ private bool outputFinite(T)(LinearSRgb!T rgb)
         finite(rgb.b);
 }
 
+
+private bool finiteBounds(T)(T value)
+{
+    return
+        value <= T.max &&
+        value >= -T.max;
+}
+
+private bool finiteAbs(T)(T value)
+{
+    import std.math : fabs;
+
+    return fabs(value) <= T.max;
+}
+
+private bool finiteSelfSubtract(T)(T value)
+{
+    return value - value == cast(T)0;
+}
+
+private bool outputFiniteBits(T)(LinearSRgb!T rgb)
+{
+    alias U = UIntFor!T;
+
+    const U signlessMask =
+        U.max >> 1;
+
+    static if (is(T == float))
+        enum U exponentMask = 0x7F80_0000U;
+    else
+        enum U exponentMask = 0x7FF0_0000_0000_0000UL;
+
+    const U combined =
+        (
+            bitCast!U(rgb.r) |
+            bitCast!U(rgb.g) |
+            bitCast!U(rgb.b)
+        ) &
+        signlessMask;
+
+    return (combined & exponentMask) != exponentMask;
+}
+
+private bool outputFiniteBitsRuntimeFpCtfe(T)(LinearSRgb!T rgb)
+{
+    if (__ctfe)
+        return outputFinite(rgb);
+
+    return outputFiniteBits(rgb);
+}
+
 private LinearSRgb!T scaledShared(T)(XyzD65!T xyz)
 {
     const T scale =
@@ -204,6 +255,80 @@ private LinearSRgb!T aggregateResultGate(T)(XyzD65!T xyz)
         ordinary.b;
 
     if (p - p == cast(T)0)
+        return ordinary;
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
+private LinearSRgb!T resultGateBounds(T)(XyzD65!T xyz)
+{
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    if (
+        finiteBounds(ordinary.r) &&
+        finiteBounds(ordinary.g) &&
+        finiteBounds(ordinary.b)
+    )
+    {
+        return ordinary;
+    }
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
+private LinearSRgb!T resultGateAbs(T)(XyzD65!T xyz)
+{
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    if (
+        finiteAbs(ordinary.r) &&
+        finiteAbs(ordinary.g) &&
+        finiteAbs(ordinary.b)
+    )
+    {
+        return ordinary;
+    }
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
+private LinearSRgb!T resultGateSelfSubtract(T)(XyzD65!T xyz)
+{
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    if (
+        finiteSelfSubtract(ordinary.r) &&
+        finiteSelfSubtract(ordinary.g) &&
+        finiteSelfSubtract(ordinary.b)
+    )
+    {
+        return ordinary;
+    }
+
+    if (!inputFinite(xyz))
+        return ordinary;
+
+    return scaledShared(xyz);
+}
+
+private LinearSRgb!T resultGateBits(T)(XyzD65!T xyz)
+{
+    const auto ordinary =
+        xyz.toLinearSRgb;
+
+    if (outputFiniteBitsRuntimeFpCtfe(ordinary))
         return ordinary;
 
     if (!inputFinite(xyz))
@@ -393,6 +518,14 @@ private LinearSRgb!T path(T, int kind)(XyzD65!T xyz)
         return aggregateResultGate(xyz);
     else static if (kind == 8)
         return rowScaledMinFma(xyz);
+    else static if (kind == 9)
+        return resultGateBounds(xyz);
+    else static if (kind == 10)
+        return resultGateAbs(xyz);
+    else static if (kind == 11)
+        return resultGateSelfSubtract(xyz);
+    else static if (kind == 12)
+        return resultGateBits(xyz);
     else
         static assert(false, "unknown path");
 }
@@ -417,6 +550,14 @@ private const(char)[] pathName(int kind)()
         return "aggregate-result-gate";
     else static if (kind == 8)
         return "row-scaled-min-fma";
+    else static if (kind == 9)
+        return "result-gate-bounds";
+    else static if (kind == 10)
+        return "result-gate-fabs";
+    else static if (kind == 11)
+        return "result-gate-self-subtract";
+    else static if (kind == 12)
+        return "result-gate-bits";
     else
         static assert(false, "unknown path");
 }
@@ -801,6 +942,10 @@ private void benchmarkAll(T)()
     benchmarkPair!(T, 6)(values[]);
     benchmarkPair!(T, 7)(values[]);
     benchmarkPair!(T, 8)(values[]);
+    benchmarkPair!(T, 9)(values[]);
+    benchmarkPair!(T, 10)(values[]);
+    benchmarkPair!(T, 11)(values[]);
+    benchmarkPair!(T, 12)(values[]);
 }
 
 // CTFE must retain the ordinary public result exactly for pre-gated candidates.
@@ -846,6 +991,10 @@ int main()
     ordinaryMismatches!(double, 6)();
     ordinaryMismatches!(double, 7)();
     ordinaryMismatches!(double, 8)();
+    ordinaryMismatches!(double, 9)();
+    ordinaryMismatches!(double, 10)();
+    ordinaryMismatches!(double, 11)();
+    ordinaryMismatches!(double, 12)();
 
     ordinaryMismatches!(float, 1)();
     ordinaryMismatches!(float, 2)();
@@ -855,18 +1004,30 @@ int main()
     ordinaryMismatches!(float, 6)();
     ordinaryMismatches!(float, 7)();
     ordinaryMismatches!(float, 8)();
+    ordinaryMismatches!(float, 9)();
+    ordinaryMismatches!(float, 10)();
+    ordinaryMismatches!(float, 11)();
+    ordinaryMismatches!(float, 12)();
 
     subnormalCharacterization!(double, 2)();
     subnormalCharacterization!(double, 3)();
     subnormalCharacterization!(double, 6)();
     subnormalCharacterization!(double, 7)();
     subnormalCharacterization!(double, 8)();
+    subnormalCharacterization!(double, 9)();
+    subnormalCharacterization!(double, 10)();
+    subnormalCharacterization!(double, 11)();
+    subnormalCharacterization!(double, 12)();
 
     subnormalCharacterization!(float, 2)();
     subnormalCharacterization!(float, 3)();
     subnormalCharacterization!(float, 6)();
     subnormalCharacterization!(float, 7)();
     subnormalCharacterization!(float, 8)();
+    subnormalCharacterization!(float, 9)();
+    subnormalCharacterization!(float, 10)();
+    subnormalCharacterization!(float, 11)();
+    subnormalCharacterization!(float, 12)();
 
     extremeAvoidable!(double, 0)();
     extremeAvoidable!(double, 1)();
@@ -877,6 +1038,10 @@ int main()
     extremeAvoidable!(double, 6)();
     extremeAvoidable!(double, 7)();
     extremeAvoidable!(double, 8)();
+    extremeAvoidable!(double, 9)();
+    extremeAvoidable!(double, 10)();
+    extremeAvoidable!(double, 11)();
+    extremeAvoidable!(double, 12)();
 
     extremeAvoidable!(float, 0)();
     extremeAvoidable!(float, 1)();
@@ -887,6 +1052,10 @@ int main()
     extremeAvoidable!(float, 6)();
     extremeAvoidable!(float, 7)();
     extremeAvoidable!(float, 8)();
+    extremeAvoidable!(float, 9)();
+    extremeAvoidable!(float, 10)();
+    extremeAvoidable!(float, 11)();
+    extremeAvoidable!(float, 12)();
 
     version (LDC)
     {
