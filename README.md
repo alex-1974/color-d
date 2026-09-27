@@ -101,6 +101,10 @@ No step above performs implicit clipping, gamut mapping, alpha resolution, or
 color-space conversion. Application-specific theme and styling policy remains
 outside `color-d`.
 
+The same quick-start source is compiled and executed from
+[`tests/examples/readme_quickstart.d`](tests/examples/readme_quickstart.d) by
+Fast CI so this documented call path cannot silently drift.
+
 ## Validated research
 
 The initial architecture has been exercised through executable research
