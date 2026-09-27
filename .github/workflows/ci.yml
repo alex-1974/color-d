@@ -356,6 +356,19 @@ jobs:
               fi
           done
 
+      - name: Linear schedule qualifier probe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -c \
+              -of="$tmp/linear-schedule-qualifiers.o" \
+              "$GITHUB_WORKSPACE/tests/compat/linear_schedule_qualifier_probe.d"
+
       - name: Named-argument compatibility probe
         shell: bash
         run: |
