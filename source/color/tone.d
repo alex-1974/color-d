@@ -72,8 +72,8 @@ if (is(T == float) || is(T == double))
  */
 
 T[N] linearSchedule(size_t N, T)(
-    T start,
-    T end
+    const T start,
+    const T end
 )
 @safe pure nothrow @nogc
 if (
@@ -118,6 +118,19 @@ if (
     static assert(values[2] == 0.50);
     static assert(values[3] == 0.75);
     static assert(values[4] == 1.0);
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const double start = 0.20;
+    const double end = 0.80;
+
+    const values = linearSchedule!3(start, end);
+
+    assert(values[0] == start);
+    assert(values[1] == 0.50);
+    assert(values[2] == end);
 }
 
 
