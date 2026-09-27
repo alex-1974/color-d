@@ -152,6 +152,151 @@ jobs:
 
           "$tmp/probe" 0.75 0.75
 
+      - name: Oklab CTFE/runtime parity probe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          cat > "$tmp/probe.d" <<'D'
+          import color;
+          import std.conv : to;
+          import std.math : fabs;
+          import std.stdio : writeln;
+
+          enum ordinaryExpectedD =
+              XyzD65d(
+                  0.125,
+                  0.25,
+                  0.5
+              )
+              .toOklab;
+
+          enum extendedExpectedD =
+              XyzD65d(
+                  -0.25,
+                  0.5,
+                  1.25
+              )
+              .toOklab;
+
+          enum ordinaryExpectedF =
+              XyzD65f(
+                  0.125f,
+                  0.25f,
+                  0.5f
+              )
+              .toOklab;
+
+          enum extendedExpectedF =
+              XyzD65f(
+                  -0.25f,
+                  0.5f,
+                  1.25f
+              )
+              .toOklab;
+
+          bool close(T)(
+              T actual,
+              T expected,
+              T tolerance
+          )
+          {
+              return
+                  fabs(
+                      cast(real)actual -
+                      cast(real)expected
+                  ) <= cast(real)tolerance;
+          }
+
+          int main(string[] args)
+          {
+              if (args.length != 5)
+                  return 2;
+
+              const bool extended =
+                  args[1] == "extended";
+
+              const double xD = args[2].to!double;
+              const double yD = args[3].to!double;
+              const double zD = args[4].to!double;
+
+              const actualD =
+                  XyzD65d(xD, yD, zD).toOklab;
+
+              const expectedD =
+                  extended
+                      ? extendedExpectedD
+                      : ordinaryExpectedD;
+
+              writeln(
+                  "double diff: ",
+                  fabs(actualD.l - expectedD.l),
+                  " ",
+                  fabs(actualD.a - expectedD.a),
+                  " ",
+                  fabs(actualD.b - expectedD.b)
+              );
+
+              if (
+                  !close(actualD.l, expectedD.l, 5e-14) ||
+                  !close(actualD.a, expectedD.a, 5e-14) ||
+                  !close(actualD.b, expectedD.b, 5e-14)
+              )
+              {
+                  return 1;
+              }
+
+              const float xF = args[2].to!float;
+              const float yF = args[3].to!float;
+              const float zF = args[4].to!float;
+
+              const actualF =
+                  XyzD65f(xF, yF, zF).toOklab;
+
+              const expectedF =
+                  extended
+                      ? extendedExpectedF
+                      : ordinaryExpectedF;
+
+              writeln(
+                  "float diff: ",
+                  fabs(
+                      cast(double)actualF.l -
+                      cast(double)expectedF.l
+                  ),
+                  " ",
+                  fabs(
+                      cast(double)actualF.a -
+                      cast(double)expectedF.a
+                  ),
+                  " ",
+                  fabs(
+                      cast(double)actualF.b -
+                      cast(double)expectedF.b
+                  )
+              );
+
+              if (
+                  !close(actualF.l, expectedF.l, 3e-6f) ||
+                  !close(actualF.a, expectedF.a, 3e-6f) ||
+                  !close(actualF.b, expectedF.b, 3e-6f)
+              )
+              {
+                  return 1;
+              }
+
+              return 0;
+          }
+          D
+
+          "$DC"               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/probe"               "$tmp/probe.d"
+
+          "$tmp/probe" ordinary 0.125 0.25 0.5
+          "$tmp/probe" extended -0.25 0.5 1.25
+
       - name: External import compile smoke
         shell: bash
         run: |
