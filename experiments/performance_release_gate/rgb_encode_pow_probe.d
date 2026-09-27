@@ -56,9 +56,12 @@ private T referencePowInv24(T)(T base)
      * powl consumes local scalar copies only; no pointer/lifetime state crosses
      * this experiment boundary.
      */
+    const T exponent =
+        cast(T)(1.0L / 2.4L);
+
     return cast(T)powl(
         cast(real)base,
-        1.0L / 2.4L
+        cast(real)exponent
     );
 }
 
