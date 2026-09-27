@@ -113,6 +113,39 @@ if (is(Unqual!T == float) || is(Unqual!T == double))
     }
 }
 
+/*
+ * Narrow LDC runtime optimization validated by the R4 D-code performance audit.
+ *
+ * The intrinsic path is used only for the inverse sRGB transfer power with a
+ * positive base and exponent 1/2.4. CTFE and non-LDC builds retain
+ * std.math.pow. The retained experiment compares both routes against a
+ * higher-precision powl reference and preserves special-value behavior.
+ */
+private auto srgbEncodePowInv24(T)(T base)
+@safe pure nothrow @nogc
+if (is(Unqual!T == float) || is(Unqual!T == double))
+{
+    import std.math : pow;
+
+    alias U = Unqual!T;
+    const U value = cast(U)base;
+    const U exponent =
+        cast(U)(1.0L / 2.4L);
+
+    if (__ctfe)
+        return cast(U)pow(value, exponent);
+
+    version (LDC)
+    {
+        import ldc.intrinsics : llvm_pow;
+        return llvm_pow!U(value, exponent);
+    }
+    else
+    {
+        return cast(U)pow(value, exponent);
+    }
+}
+
 private T srgbToLinearComponent(T)(T encoded)
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
@@ -133,18 +166,14 @@ private T linearToSrgbComponent(T)(T linear)
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {
-    import std.math : pow;
-
     const T absLinear = magnitude(linear);
 
     if (absLinear <= cast(T)0.0031308)
         return linear * cast(T)12.92;
 
-    const T exponent = cast(T)(1.0 / 2.4);
-
     const T encodedMagnitude =
         cast(T)1.055 *
-        cast(T)pow(absLinear, exponent) -
+        srgbEncodePowInv24(absLinear) -
         cast(T)0.055;
 
     return signOf(linear) * encodedMagnitude;
@@ -361,6 +390,44 @@ version (unittest)
         1e-15,
         1e-14
     ));
+
+    @safe pure nothrow @nogc unittest
+    {
+        /*
+         * CROSS: runtime may use the LDC intrinsic while CTFE deliberately
+         * retains Phobos. Compare through the public numerical contract rather
+         * than requiring backend-specific bit identity.
+         */
+        enum ctfeEncoded =
+            linearToSrgbComponent(
+                0.21404114048223255
+            );
+
+        const runtimeEncoded =
+            linearToSrgbComponent(
+                0.21404114048223255
+            );
+
+        assert(transferReferenceClose(
+            runtimeEncoded,
+            ctfeEncoded,
+            1e-15,
+            1e-14
+        ));
+
+        enum ctfeExtended =
+            linearToSrgbComponent(1.5168374366863642);
+
+        const runtimeExtended =
+            linearToSrgbComponent(1.5168374366863642);
+
+        assert(transferReferenceClose(
+            runtimeExtended,
+            ctfeExtended,
+            1e-14,
+            1e-14
+        ));
+    }
 
     // CTFE + DERIVED round trip for an ordinary float color.
     enum encodedCtfe = SRgbf(0.691f, 0.139f, 0.259f);

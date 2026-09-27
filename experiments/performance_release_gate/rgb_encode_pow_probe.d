@@ -9,6 +9,11 @@
 
 module srgb_encode_pow_probe;
 
+import color.rgb :
+    LinearSRgb,
+    SRgb,
+    toSRgb;
+
 import core.stdc.math : powl;
 import ldc.intrinsics : llvm_pow;
 import std.conv : bitCast;
@@ -17,8 +22,10 @@ import std.math : isNaN, pow;
 import std.stdio : writefln, writeln;
 
 enum sampleCount = 1_000_000;
+enum productionSampleCount = 100_000;
 enum benchCount = 8_192;
 enum repetitions = 500;
+enum productionRepetitions = 200;
 enum rounds = 5;
 
 private T magnitude(T)(T value)
@@ -293,6 +300,183 @@ private bool validate(T)(string scalarName)
     return specialMismatches == 0;
 }
 
+private SRgb!T encodePhobosColor(T)(LinearSRgb!T linear)
+@safe pure nothrow @nogc
+{
+    return SRgb!T(
+        encodePhobos(linear.r),
+        encodePhobos(linear.g),
+        encodePhobos(linear.b)
+    );
+}
+
+private bool validateProduction(T)(string scalarName)
+{
+    uint state = 0xC01D_0019U;
+    ulong maxUlp = 0;
+    size_t above1Ulp = 0;
+
+    foreach (_; 0 .. productionSampleCount)
+    {
+        const LinearSRgb!T input =
+            LinearSRgb!T(
+                generatedInput!T(state),
+                generatedInput!T(state),
+                generatedInput!T(state)
+            );
+
+        const auto reference =
+            encodePhobosColor(input);
+
+        const auto production =
+            input.toSRgb;
+
+        const ulong dr =
+            cast(ulong)ulpDistance(reference.r, production.r);
+        const ulong dg =
+            cast(ulong)ulpDistance(reference.g, production.g);
+        const ulong db =
+            cast(ulong)ulpDistance(reference.b, production.b);
+
+        const ulong localMax =
+            dr > dg
+                ? (dr > db ? dr : db)
+                : (dg > db ? dg : db);
+
+        if (localMax > maxUlp)
+            maxUlp = localMax;
+
+        if (dr > 1)
+            ++above1Ulp;
+        if (dg > 1)
+            ++above1Ulp;
+        if (db > 1)
+            ++above1Ulp;
+    }
+
+    writefln(
+        "%s production numerical: colors=%s max_ulp=%s components_over1=%s",
+        scalarName,
+        productionSampleCount,
+        maxUlp,
+        above1Ulp
+    );
+
+    return true;
+}
+
+private double timePhobosColor(T)(
+    const(LinearSRgb!T)[] values,
+    ref T checksum
+)
+{
+    StopWatch sw;
+    sw.start();
+
+    foreach (_; 0 .. productionRepetitions)
+    {
+        foreach (value; values)
+        {
+            const auto encoded =
+                encodePhobosColor(value);
+
+            checksum +=
+                encoded.r +
+                encoded.g +
+                encoded.b;
+        }
+    }
+
+    sw.stop();
+
+    return
+        cast(double)sw.peek.total!"nsecs" /
+        cast(double)(values.length * productionRepetitions);
+}
+
+private double timeProductionColor(T)(
+    const(LinearSRgb!T)[] values,
+    ref T checksum
+)
+{
+    StopWatch sw;
+    sw.start();
+
+    foreach (_; 0 .. productionRepetitions)
+    {
+        foreach (value; values)
+        {
+            const auto encoded =
+                value.toSRgb;
+
+            checksum +=
+                encoded.r +
+                encoded.g +
+                encoded.b;
+        }
+    }
+
+    sw.stop();
+
+    return
+        cast(double)sw.peek.total!"nsecs" /
+        cast(double)(values.length * productionRepetitions);
+}
+
+private void benchmarkProduction(T)(string scalarName)
+{
+    LinearSRgb!T[benchCount] values;
+    uint state = 0xC01D_0020U;
+
+    foreach (ref value; values)
+    {
+        value =
+            LinearSRgb!T(
+                generatedInput!T(state),
+                generatedInput!T(state),
+                generatedInput!T(state)
+            );
+    }
+
+    T checksum = cast(T)0;
+
+    foreach (round; 0 .. rounds)
+    {
+        double phobosNs;
+        double productionNs;
+
+        if ((round & 1) == 0)
+        {
+            phobosNs =
+                timePhobosColor(values[], checksum);
+            productionNs =
+                timeProductionColor(values[], checksum);
+        }
+        else
+        {
+            productionNs =
+                timeProductionColor(values[], checksum);
+            phobosNs =
+                timePhobosColor(values[], checksum);
+        }
+
+        writefln(
+            "%s production round %s: local_phobos=%.3f ns/color public_toSRgb=%.3f ns/color ratio=%.3f",
+            scalarName,
+            round + 1,
+            phobosNs,
+            productionNs,
+            phobosNs / productionNs
+        );
+    }
+
+    writeln(
+        scalarName,
+        " production checksum=",
+        checksum
+    );
+}
+
 private double timePhobos(T)(const(T)[] values, ref T checksum)
 {
     StopWatch sw;
@@ -383,8 +567,17 @@ int main()
     if (!validate!float("float"))
         return 1;
 
+    if (!validateProduction!double("double"))
+        return 1;
+
+    if (!validateProduction!float("float"))
+        return 1;
+
     benchmark!double("double");
     benchmark!float("float");
+
+    benchmarkProduction!double("double");
+    benchmarkProduction!float("float");
 
     return 0;
 }

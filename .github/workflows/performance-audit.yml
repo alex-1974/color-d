@@ -5,6 +5,7 @@ on:
     branches:
       - develop
     paths:
+      - "source/color/rgb.d"
       - "experiments/performance_release_gate/**"
       - ".github/workflows/performance-audit.yml"
   workflow_dispatch:
@@ -41,6 +42,8 @@ jobs:
               -release \
               -boundscheck=off \
               -mcpu=native \
+              -Isource \
+              -i \
               -of=rgb-encode-pow-probe \
               experiments/performance_release_gate/rgb_encode_pow_probe.d
 

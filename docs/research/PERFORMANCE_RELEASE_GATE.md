@@ -164,3 +164,24 @@ special-value classification/sign mismatch occurred.
 This evidence justifies a production implementation trial; it does not by
 itself weaken or replace the existing public sRGB transfer tolerances or CTFE
 contract.
+
+
+### Production integration result
+
+The subsequent production trial applied the validated reciprocal-power route
+only inside the private LDC runtime implementation of
+`LinearSRgb!T.toSRgb`.
+
+A public-API benchmark compiled the real `source/color/rgb.d` into the probe.
+Across 100,000 deterministic RGB colors, production `toSRgb` differed from
+the otherwise identical local Phobos implementation by at most 2 ULP in both
+scalar widths. Only 18 double components and 11 float components out of
+300,000 were above 1 ULP.
+
+Five balanced same-process rounds retained the expected performance effect:
+approximately 8.3x for double and 19.8x for float on the observed AMD EPYC 7763
+hosted runner.
+
+The result supports retaining the narrow LDC runtime optimization. DMD and CTFE
+continue to use Phobos, and the existing reference/special-value/round-trip
+contracts remain the correctness authority.
