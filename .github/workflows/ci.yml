@@ -69,8 +69,48 @@ jobs:
 
           static assert(mapped.inGamut);
 
+          enum toneSeed =
+              Oklchd(
+                  0.50,
+                  0.10,
+                  OklabHued.fromDegrees(210.0)
+              );
+
+          enum double[3] toneLightnesses =
+              [0.20, 0.50, 0.80];
+
+          enum double[3] toneChromas =
+              [0.04, 0.10, 0.06];
+
+          enum tones =
+              tonesAtLightnessAndChroma(
+                  toneSeed,
+                  toneLightnesses,
+                  toneChromas
+              );
+
+          static assert(tones.length == 3);
+          static assert(tones[0].l == 0.20);
+          static assert(tones[2].c == 0.06);
+
           void main()
           {
+              double[2] lightnesses =
+                  [0.25, 0.75];
+
+              double[2] chromas =
+                  [0.05, 0.15];
+
+              Oklchd[2] output;
+
+              assert(
+                  tryTonesAtLightnessAndChromaInto(
+                      toneSeed,
+                      lightnesses[],
+                      chromas[],
+                      output[]
+                  )
+              );
           }
           D
 
