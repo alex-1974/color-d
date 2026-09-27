@@ -168,11 +168,17 @@ if (is(T == float) || is(T == double))
  *
  * Returns:
  *     `true` when `abs(c) <= epsilon`.
+ *
+ * Preconditions:
+ *     `epsilon >= 0`. This is a programmer precondition; callers that need
+ *     recoverable validation must validate external input before calling.
  */
 
     bool isNearAchromatic(T epsilon) const
     @safe pure nothrow @nogc
     {
+        assert(epsilon >= cast(T)0);
+
         const T magnitude =
             c < cast(T)0
                 ? -c
