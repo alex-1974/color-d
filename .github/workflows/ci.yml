@@ -402,6 +402,26 @@ jobs:
               -of="$tmp/named-arguments.o" \
               "$GITHUB_WORKSPACE/tests/compat/named_arguments.d"
 
+      - name: Public API surface compatibility probes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          for probe in \
+              public_api_root_surface \
+              public_api_direct_modules
+          do
+              "$DC" \
+                  -c \
+                  -I"$GITHUB_WORKSPACE/source" \
+                  -i \
+                  -of="$tmp/$probe.o" \
+                  "$GITHUB_WORKSPACE/tests/compat/$probe.d"
+          done
+
       - name: TC-0001 DMD wrong-code canary
         if: matrix.compiler == 'dmd-2.113.0'
         shell: bash
