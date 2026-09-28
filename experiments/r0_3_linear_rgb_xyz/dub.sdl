@@ -1,7 +1,0 @@
-name "color-d-r0-3-linear-rgb-xyz"
-description "color-d R0.3: linear sRGB <-> XYZ D65"
-authors "Alexander"
-license "MIT"
-
-targetType "executable"
-sourcePaths "source"
