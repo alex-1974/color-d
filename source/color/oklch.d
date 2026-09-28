@@ -57,6 +57,64 @@ if (is(Unqual!T == float) || is(Unqual!T == double))
     return cast(U)degrees * cast(U)(PI / 180.0L);
 }
 
+
+private T oklabChromaMagnitude(T)(
+    T a,
+    T b
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    import std.math :
+        hypot,
+        sqrt;
+
+    /*
+     * Preserve the ordinary direct path and its established rounding.
+     *
+     * For finite extreme values, a*a + b*b can overflow or underflow even
+     * when the Euclidean magnitude itself is representable. Only those
+     * exceptional finite cases take Phobos' scaled hypot path.
+     *
+     * Non-finite inputs deliberately retain the former direct IEEE behavior
+     * rather than adopting hypot's different Inf/NaN precedence.
+     */
+    const T squared =
+        a * a +
+        b * b;
+
+    const T direct =
+        cast(T)sqrt(squared);
+
+    const bool finiteInputs =
+        a == a &&
+        b == b &&
+        a != T.infinity &&
+        a != -T.infinity &&
+        b != T.infinity &&
+        b != -T.infinity;
+
+    if (!finiteInputs)
+        return direct;
+
+    const bool nonZeroInput =
+        a != cast(T)0 ||
+        b != cast(T)0;
+
+    if (
+        squared == T.infinity ||
+        (
+            nonZeroInput &&
+            squared < T.min_normal
+        )
+    )
+    {
+        return hypot(a, b);
+    }
+
+    return direct;
+}
+
 /**
  * Hue value for the Oklab family.
  *
@@ -727,12 +785,12 @@ Oklch!T withHue(T)(
 Oklch!T toOklch(T)(Oklab!T color)
 @safe pure nothrow @nogc
 {
-    import std.math : atan2, sqrt;
+    import std.math : atan2;
 
     const T chroma =
-        cast(T)sqrt(
-            color.a * color.a +
-            color.b * color.b
+        oklabChromaMagnitude(
+            color.a,
+            color.b
         );
 
     // atan2(0, 0) must not define the public achromatic semantics.
