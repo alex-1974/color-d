@@ -116,7 +116,8 @@ Detailed experiments and long-form evidence are being separated into a
 dedicated research repository under #107. During that migration they remain in
 this repository for safety, but they are excluded from consumer archives.
 
-See [RESEARCH.md](RESEARCH.md) for the migration rule.
+The migration rule and detailed research provenance remain maintainer material
+in the production repository.
 
 Current public mathematical operations are value-based, `@nogc`, and do not
 perform hidden allocation. Batch tone construction writes into caller-owned
@@ -160,9 +161,8 @@ No step above performs implicit clipping, gamut mapping, alpha resolution, or
 color-space conversion. Application-specific theme and styling policy remains
 outside `color-d`.
 
-The same quick-start source is compiled and executed from
-[`tests/examples/readme_quickstart.d`](tests/examples/readme_quickstart.d) by
-Fast CI so this documented call path cannot silently drift.
+Fast CI compiles and executes the same quick-start path so this documented
+call sequence cannot silently drift.
 
 ## Research and evidence
 
@@ -179,7 +179,8 @@ The maintained production contract lives in the source/Ddoc, user
 documentation, tests, accepted ADRs, and release metadata. A consumer should
 not need research history in order to understand or use the library.
 
-See [RESEARCH.md](RESEARCH.md) for the repository roles and migration rule.
+Repository-level research provenance is intentionally separate from this
+consumer-facing README.
 
 ## Workspace role
 
@@ -224,16 +225,11 @@ For users:
 - [Architecture](docs/architecture.md)
 - [Performance](docs/performance.md)
 
-For maintainers:
+Maintainer architecture, ADRs, roadmap, release engineering, and research
+provenance live in the production GitHub repository and are intentionally not
+part of the consumer archive:
 
-- [Architecture decision records](docs/adr/)
-- [Technical specification](docs/spec/TECHNICAL_SPEC.md)
-- [Repository design principles](DESIGN_PRINCIPLES.md)
-- [Roadmap](ROADMAP.md)
-- [Research and evidence boundary](RESEARCH.md)
-
-Detailed research/evidence is repository material, not consumer-package
-documentation. See [RESEARCH.md](RESEARCH.md) for the current migration state.
+<https://github.com/alex-1974/color-d>
 
 ## Project status
 
@@ -242,15 +238,9 @@ production API** is complete as of 2026-09-26. The promoted production core now
 covers the accepted float/double value types, explicit conversion chain, sRGB
 transfer functions, strict sRGB gamut diagnostics and explicit hard clipping.
 
-The integrated R1 exit audit is recorded in
-[`docs/research/R1_CLOSEOUT.md`](docs/research/R1_CLOSEOUT.md).
-
-R2 alpha/interpolation production work is also complete and recorded in
-[`docs/research/R2_CLOSEOUT.md`](docs/research/R2_CLOSEOUT.md).
-
-R3 perceptual utilities are complete and recorded in
-[`docs/research/R3_CLOSEOUT.md`](docs/research/R3_CLOSEOUT.md). The accepted
-R1–R3 production feature scope for v0.1 is now closed.
+R1 mathematical core, R2 alpha/interpolation, and R3 perceptual utilities are
+complete. The accepted R1–R3 production feature scope for v0.1 is now closed.
+Detailed closeout evidence is maintainer material in the production repository.
 
 R4 real-consumer validation is the active phase. The public API remains
 pre-1.0 and consumer-correctable: feature scope is closed, but API corrections
@@ -297,8 +287,6 @@ Public API documentation, tests, CTFE coverage and documented `unittest`
 examples are developed together with the production API rather than postponed
 to release cleanup.
 
-See the [documentation index](docs/README.md), [ROADMAP.md](ROADMAP.md), and
-the development DDox API documentation linked at the top of this README.
-
-The public documentation publication model is described in
-[docs/pages-publication.md](docs/pages-publication.md).
+See the [documentation index](docs/README.md) and the development DDox API
+documentation linked at the top of this README. Release planning and
+publication engineering remain repository-only maintainer material.
