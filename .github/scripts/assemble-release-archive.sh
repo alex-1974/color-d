@@ -65,12 +65,17 @@ require_member()
 reject_prefix()
 {
     local path="$1"
+    local member
 
-    if grep -Eq "^$prefix$path(/|$)" "$list_file"
-    then
-        echo "Release archive unexpectedly contains: $path" >&2
-        exit 1
-    fi
+    while IFS= read -r member
+    do
+        case "$member" in
+            "$prefix$path"|"$prefix$path/"*)
+                echo "Release archive unexpectedly contains: $path" >&2
+                exit 1
+                ;;
+        esac
+    done < "$list_file"
 }
 
 require_member README.md
