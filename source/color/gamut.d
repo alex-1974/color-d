@@ -2143,3 +2143,350 @@ version (unittest)
     assert(clipped == LinearSRgbd(0.0, 0.4, 1.0));
     assert(clipped.inGamut);
 }
+
+
+@safe pure nothrow @nogc unittest
+{
+    import color.oklch :
+        OklabHuef,
+        OklabHued,
+        Oklchf,
+        Oklchd;
+
+    /*
+     * R4 huge-chroma / TC-0015 regression.
+     *
+     * The public contract is semantic: finite 0 < L < 1 input must map to a
+     * strict in-gamut linear-sRGB color. Internal Ray Trace path metadata and
+     * exact derived coordinates are not portable contracts because D permits
+     * floating-point intermediates to use greater precision (TC-0015).
+     *
+     * Exercise the actual private fallback pieces at CTFE and runtime. The
+     * direct fixed-L/fixed-hue endpoint must overflow for these deliberately
+     * huge but finite chromas; the scaled cubic direction must remain finite,
+     * intersect the unit cube, and allow the public mapper to recover an
+     * in-gamut color.
+     */
+    enum hugeD =
+        Oklchd(
+            0.50,
+            double.max * 0.75,
+            OklabHued.fromDegrees(25.0)
+        );
+
+    enum hugeDRadians =
+        hueRadians(hugeD);
+
+    enum hugeDCos =
+        cast(double)cos(hugeDRadians);
+
+    enum hugeDSin =
+        cast(double)sin(hugeDRadians);
+
+    enum hugeDAnchor =
+        oklabToLinearSRgb(
+            fixedHueOklab(
+                hugeD.l,
+                0.0,
+                hugeDCos,
+                hugeDSin
+            )
+        );
+
+    enum hugeDEndpoint =
+        oklabToLinearSRgb(
+            fixedHueOklab(
+                hugeD.l,
+                hugeD.c,
+                hugeDCos,
+                hugeDSin
+            )
+        );
+
+    static assert(
+        !isFiniteLinearSRgb(
+            hugeDEndpoint
+        )
+    );
+
+    enum hugeDDirection =
+        scaledHugeChromaRayDirection(
+            hugeD.l,
+            hugeD.c,
+            hugeDCos,
+            hugeDSin,
+            hugeDAnchor
+        );
+
+    static assert(
+        isFiniteLinearSRgb(
+            hugeDDirection
+        )
+    );
+
+    enum hugeDIntersection =
+        intersectUnitRgbCubeDirection(
+            hugeDAnchor,
+            hugeDDirection
+        );
+
+    static assert(
+        hugeDIntersection.found
+    );
+
+    enum hugeDMapped =
+        gamutMapRayTraceToLinearSRgb(
+            hugeD
+        );
+
+    static assert(
+        hugeDMapped.inGamut
+    );
+
+
+    enum hugeF =
+        Oklchf(
+            0.50f,
+            float.max * 0.75f,
+            OklabHuef.fromDegrees(25.0f)
+        );
+
+    enum hugeFRadians =
+        hueRadians(hugeF);
+
+    enum hugeFCos =
+        cast(float)cos(hugeFRadians);
+
+    enum hugeFSin =
+        cast(float)sin(hugeFRadians);
+
+    enum hugeFAnchor =
+        oklabToLinearSRgb(
+            fixedHueOklab(
+                hugeF.l,
+                0.0f,
+                hugeFCos,
+                hugeFSin
+            )
+        );
+
+    enum hugeFEndpoint =
+        oklabToLinearSRgb(
+            fixedHueOklab(
+                hugeF.l,
+                hugeF.c,
+                hugeFCos,
+                hugeFSin
+            )
+        );
+
+    static assert(
+        !isFiniteLinearSRgb(
+            hugeFEndpoint
+        )
+    );
+
+    enum hugeFDirection =
+        scaledHugeChromaRayDirection(
+            hugeF.l,
+            hugeF.c,
+            hugeFCos,
+            hugeFSin,
+            hugeFAnchor
+        );
+
+    static assert(
+        isFiniteLinearSRgb(
+            hugeFDirection
+        )
+    );
+
+    enum hugeFIntersection =
+        intersectUnitRgbCubeDirection(
+            hugeFAnchor,
+            hugeFDirection
+        );
+
+    static assert(
+        hugeFIntersection.found
+    );
+
+    enum hugeFMapped =
+        gamutMapRayTraceToLinearSRgb(
+            hugeF
+        );
+
+    static assert(
+        hugeFMapped.inGamut
+    );
+
+
+    // Fixed R0.13 TC-0015 probe. Do not freeze internal success/path metadata:
+    // only the public semantic postcondition is portable.
+    enum tc0015Input =
+        Oklchf(
+            0.88228511810302734375f,
+            0.343281686305999755859f,
+            OklabHuef.fromDegrees(
+                19.4710636138916015625f
+            )
+        );
+
+    enum tc0015Ctfe =
+        gamutMapRayTraceToLinearSRgb(
+            tc0015Input
+        );
+
+    static assert(
+        tc0015Ctfe.inGamut
+    );
+
+
+    // Repeat the same fallback mechanics at runtime. The test deliberately
+    // does not require CTFE/runtime bit identity.
+    const runtimeHugeD = hugeD;
+
+    const runtimeDRadians =
+        hueRadians(runtimeHugeD);
+
+    const runtimeDCos =
+        cast(double)cos(runtimeDRadians);
+
+    const runtimeDSin =
+        cast(double)sin(runtimeDRadians);
+
+    const runtimeDAnchor =
+        oklabToLinearSRgb(
+            fixedHueOklab(
+                runtimeHugeD.l,
+                0.0,
+                runtimeDCos,
+                runtimeDSin
+            )
+        );
+
+    const runtimeDEndpoint =
+        oklabToLinearSRgb(
+            fixedHueOklab(
+                runtimeHugeD.l,
+                runtimeHugeD.c,
+                runtimeDCos,
+                runtimeDSin
+            )
+        );
+
+    assert(
+        !isFiniteLinearSRgb(
+            runtimeDEndpoint
+        )
+    );
+
+    const runtimeDDirection =
+        scaledHugeChromaRayDirection(
+            runtimeHugeD.l,
+            runtimeHugeD.c,
+            runtimeDCos,
+            runtimeDSin,
+            runtimeDAnchor
+        );
+
+    assert(
+        isFiniteLinearSRgb(
+            runtimeDDirection
+        )
+    );
+
+    const runtimeDIntersection =
+        intersectUnitRgbCubeDirection(
+            runtimeDAnchor,
+            runtimeDDirection
+        );
+
+    assert(
+        runtimeDIntersection.found
+    );
+
+    assert(
+        gamutMapRayTraceToLinearSRgb(
+            runtimeHugeD
+        ).inGamut
+    );
+
+
+    const runtimeHugeF = hugeF;
+
+    const runtimeFRadians =
+        hueRadians(runtimeHugeF);
+
+    const runtimeFCos =
+        cast(float)cos(runtimeFRadians);
+
+    const runtimeFSin =
+        cast(float)sin(runtimeFRadians);
+
+    const runtimeFAnchor =
+        oklabToLinearSRgb(
+            fixedHueOklab(
+                runtimeHugeF.l,
+                0.0f,
+                runtimeFCos,
+                runtimeFSin
+            )
+        );
+
+    const runtimeFEndpoint =
+        oklabToLinearSRgb(
+            fixedHueOklab(
+                runtimeHugeF.l,
+                runtimeHugeF.c,
+                runtimeFCos,
+                runtimeFSin
+            )
+        );
+
+    assert(
+        !isFiniteLinearSRgb(
+            runtimeFEndpoint
+        )
+    );
+
+    const runtimeFDirection =
+        scaledHugeChromaRayDirection(
+            runtimeHugeF.l,
+            runtimeHugeF.c,
+            runtimeFCos,
+            runtimeFSin,
+            runtimeFAnchor
+        );
+
+    assert(
+        isFiniteLinearSRgb(
+            runtimeFDirection
+        )
+    );
+
+    const runtimeFIntersection =
+        intersectUnitRgbCubeDirection(
+            runtimeFAnchor,
+            runtimeFDirection
+        );
+
+    assert(
+        runtimeFIntersection.found
+    );
+
+    assert(
+        gamutMapRayTraceToLinearSRgb(
+            runtimeHugeF
+        ).inGamut
+    );
+
+    const tc0015Runtime =
+        gamutMapRayTraceToLinearSRgb(
+            tc0015Input
+        );
+
+    assert(
+        tc0015Runtime.inGamut
+    );
+}
