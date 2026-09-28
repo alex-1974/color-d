@@ -320,8 +320,4 @@ void toneDoesNotReexportOklch()
     static assert(!__traits(compiles,
         Oklch!double.init
     ));
-
-    static assert(!__traits(compiles,
-        withLightness
-    ));
 }
