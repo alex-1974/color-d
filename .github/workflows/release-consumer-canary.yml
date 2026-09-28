@@ -1,0 +1,74 @@
+name: Release consumer canary
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - ".github/scripts/run-real-consumer-gates.sh"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/release-consumer-canary.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-consumer-canary-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  consumer:
+    name: Consumer canary / ${{ matrix.compiler }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: dmd-2.113.0
+            consumer_build: debug
+          - compiler: ldc-1.43.0
+            consumer_build: release
+
+    steps:
+      - name: Checkout color-d candidate
+        uses: actions/checkout@v7
+
+      - name: Checkout validated imagery-d consumer
+        uses: actions/checkout@v7
+        with:
+          repository: alex-1974/imagery-d
+          ref: 3ead4239861da0da384936f035fa7b7e96cb14d6
+          path: consumer-workspace/imagery-d
+
+      - name: Checkout validated raster-d dependency
+        uses: actions/checkout@v7
+        with:
+          repository: alex-1974/raster-d
+          ref: c2e5932c1b2c0402832ac210411119f373f8cd30
+          path: consumer-workspace/raster-d
+
+      - name: Checkout validated Dunia consumer
+        uses: actions/checkout@v7
+        with:
+          repository: alex-1974/dunia
+          ref: 9f0a6c182b02fa75434ac09987d239156506271e
+          path: consumer-workspace/dunia
+
+      - name: Install D toolchain
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      - name: Toolchain versions
+        run: |
+          "$DC" --version
+          dub --version
+
+      - name: Run accepted real consumers
+        run: |
+          bash .github/scripts/run-real-consumer-gates.sh \
+              "$DC" \
+              "${{ matrix.consumer_build }}" \
+              "$GITHUB_WORKSPACE"
