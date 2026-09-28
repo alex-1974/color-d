@@ -42,15 +42,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          rm -rf pages-site
-          mkdir -p pages-site/dev
+          rm -rf release-docs
+          mkdir -p release-docs
 
-          cp -a docs/. pages-site/dev/
-          cp .github/pages/index.html pages-site/index.html
-          touch pages-site/.nojekyll
-
-          test -f pages-site/index.html
-          test -f pages-site/dev/index.html
+          bash .github/scripts/assemble-pages-site.sh \
+              docs \
+              release-docs \
+              pages-site \
+              .github/pages/index.html
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
