@@ -284,6 +284,8 @@ hardening may therefore proceed without reopening the v0.1 feature scope.
 Tracked by GitHub issue #14 and milestone
 `v0.1.0 — First public release`.
 
+**Status: HARDENING — v0.1.0 FEATURE FREEZE.**
+
 The v0.1.0 feature scope is frozen. Release hardening is stabilization of the
 already accepted R1–R3 scope, not a late feature-development phase. The freeze
 remains active through publication; see
