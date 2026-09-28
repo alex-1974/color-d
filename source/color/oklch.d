@@ -76,8 +76,10 @@ if (is(T == float) || is(T == double))
      * when the Euclidean magnitude itself is representable. Only those
      * exceptional finite cases take Phobos' scaled hypot path.
      *
-     * Non-finite inputs deliberately retain the former direct IEEE behavior
-     * rather than adopting hypot's different Inf/NaN precedence.
+     * NaN makes the squared sum NaN and therefore stays on the direct path.
+     * Infinite squared sums may use hypot; for inputs without NaN this retains
+     * the same visible infinity classification while also covering finite
+     * overflow.
      */
     const T squared =
         a * a +
@@ -86,26 +88,14 @@ if (is(T == float) || is(T == double))
     const T direct =
         cast(T)sqrt(squared);
 
-    const bool finiteInputs =
-        a == a &&
-        b == b &&
-        a != T.infinity &&
-        a != -T.infinity &&
-        b != T.infinity &&
-        b != -T.infinity;
-
-    if (!finiteInputs)
-        return direct;
-
-    const bool nonZeroInput =
-        a != cast(T)0 ||
-        b != cast(T)0;
-
     if (
         squared == T.infinity ||
         (
-            nonZeroInput &&
-            squared < T.min_normal
+            squared < T.min_normal &&
+            (
+                a != cast(T)0 ||
+                b != cast(T)0
+            )
         )
     )
     {
