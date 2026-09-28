@@ -357,12 +357,20 @@ jobs:
           done
 
           for forbidden in \
+              .gitattributes \
+              .gitignore \
               .github/ \
               AGENTS.md \
               CONTRIBUTING.md \
               DESIGN_PRINCIPLES.md \
               ROADMAP.md \
+              RESEARCH.md \
+              dscanner.ini \
+              docs/RESEARCH_DOCUMENTS.md \
+              docs/adr/ \
+              docs/pages-publication.md \
               docs/research/ \
+              docs/spec/ \
               experiments/ \
               tests/
           do
@@ -371,6 +379,16 @@ jobs:
                   exit 1
               fi
           done
+
+          archive_bytes="$(wc -c < "$tmp/color-d.tar")"
+          max_archive_bytes=$((1024 * 1024))
+
+          echo "consumer archive bytes=$archive_bytes"
+
+          if (( archive_bytes > max_archive_bytes )); then
+              echo "consumer archive exceeded the 1 MiB v0.1 package guard" >&2
+              exit 1
+          fi
 
       - name: Release publication dry-run
         if: matrix.compiler == 'dmd-2.113.0'
