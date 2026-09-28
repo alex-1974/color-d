@@ -172,6 +172,26 @@ Wcag2Measurement!T wcag2RelativeLuminance(T)(SRgb!T color)
 }
 
 
+/// Black and white define the endpoints of relative luminance.
+@safe pure nothrow @nogc unittest
+{
+    import color.rgb :
+        SRgbd;
+
+    const black =
+        SRgbd(0, 0, 0).wcag2RelativeLuminance;
+
+    const white =
+        SRgbd(1, 1, 1).wcag2RelativeLuminance;
+
+    assert(black.valid);
+    assert(black.value == 0);
+
+    assert(white.valid);
+    assert(white.value == 1);
+}
+
+
 /**
  * Measures WCAG 2 relative luminance from linear-light sRGB.
  *
@@ -243,6 +263,25 @@ Wcag2Measurement!T wcag2ContrastRatio(T)(
 }
 
 
+/// Black against white has the maximum WCAG 2 sRGB contrast ratio.
+@safe pure nothrow @nogc unittest
+{
+    import color.rgb :
+        SRgbd;
+
+    const contrast =
+        SRgbd(0, 0, 0).wcag2ContrastRatio(
+            SRgbd(1, 1, 1)
+        );
+
+    assert(contrast.valid);
+    assert(
+        contrast.value > 20.999999 &&
+        contrast.value < 21.000001
+    );
+}
+
+
 /**
  * Measures the WCAG 2 contrast ratio between two linear-light sRGB colors.
  *
@@ -284,7 +323,6 @@ Wcag2Measurement!T wcag2ContrastRatio(T)(
 }
 
 
-///
 @safe pure nothrow @nogc unittest
 {
     import color.rgb : SRgbd;
