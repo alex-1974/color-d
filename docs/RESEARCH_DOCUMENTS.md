@@ -109,3 +109,14 @@ A standalone design document may instead identify its research baseline:
 - Synthesizes the validated R0 evidence into the accepted v0.1 production
   scope, explicit deferrals, public module/import boundary, compiler policy and
   real-consumer stabilization gate.
+
+
+## R4 — v0.1.0 feature freeze
+
+- `docs/research/R4_FEATURE_FREEZE.md`
+- Freezes the accepted R1–R3 v0.1 feature scope while keeping defect fixes,
+  real-consumer-driven API corrections, validation, documentation, CI/release
+  hardening, security/toolchain adaptation and evidence-driven performance
+  fixes admissible.
+- Defines the explicit release-scope decision required to reopen feature scope
+  before v0.1.0 publication.
