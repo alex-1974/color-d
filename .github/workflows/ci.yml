@@ -372,6 +372,86 @@ jobs:
               fi
           done
 
+      - name: Release publication dry-run
+        if: matrix.compiler == 'dmd-2.113.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          bash .github/scripts/check-release-metadata.sh \
+              0.1.0 \
+              preflight \
+              "$GITHUB_WORKSPACE"
+
+          if bash .github/scripts/check-release-metadata.sh \
+              0.1 \
+              preflight \
+              "$GITHUB_WORKSPACE"
+          then
+              echo "Invalid release version unexpectedly passed" >&2
+              exit 1
+          fi
+
+          mkdir -p "$tmp/release-metadata"
+          cp README.md ROADMAP.md CHANGELOG.md LICENSE dub.sdl \
+              "$tmp/release-metadata/"
+
+          sed -i \
+              's/has not published v0.1.0 yet/has published v0.1.0/' \
+              "$tmp/release-metadata/README.md"
+
+          awk '
+              { print }
+              /^## Unreleased$/ {
+                  print ""
+                  print "## [0.1.0] - 2026-09-28"
+              }
+          ' "$tmp/release-metadata/CHANGELOG.md" \
+              > "$tmp/release-metadata/CHANGELOG.next"
+
+          mv \
+              "$tmp/release-metadata/CHANGELOG.next" \
+              "$tmp/release-metadata/CHANGELOG.md"
+
+          bash .github/scripts/check-release-metadata.sh \
+              0.1.0 \
+              release \
+              "$tmp/release-metadata"
+
+          mkdir -p "$tmp/artifacts-a"
+          mkdir -p "$tmp/artifacts-b"
+
+          bash .github/scripts/assemble-release-archive.sh \
+              0.1.0 \
+              "$tmp/artifacts-a" \
+              HEAD
+
+          bash .github/scripts/assemble-release-archive.sh \
+              0.1.0 \
+              "$tmp/artifacts-b" \
+              HEAD
+
+          for file in \
+              color-d-0.1.0.tar.gz \
+              color-d-0.1.0.metadata.txt \
+              SHA256SUMS
+          do
+              test -s "$tmp/artifacts-a/$file"
+              cmp "$tmp/artifacts-a/$file" "$tmp/artifacts-b/$file"
+          done
+
+          grep -Fq \
+              "commit=$(git rev-parse HEAD)" \
+              "$tmp/artifacts-a/color-d-0.1.0.metadata.txt"
+
+          (
+              cd "$tmp/artifacts-a"
+              sha256sum -c SHA256SUMS
+          )
+
       - name: Clean-package external DUB consumer
         shell: bash
         run: |
