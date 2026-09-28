@@ -81,7 +81,7 @@ case "$mode" in
     preflight)
         require_fixed '## Unreleased' CHANGELOG.md
         require_fixed "has not published v$version yet" README.md
-        require_fixed "v$version FEATURE FREEZE" ROADMAP.md
+        require_fixed "**Status: HARDENING — v$version FEATURE FREEZE.**" ROADMAP.md
         ;;
 
     release)
