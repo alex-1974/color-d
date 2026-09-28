@@ -89,6 +89,9 @@ version (unittest)
     private import color.xyz :
         XyzD65d;
 
+    private import std.math :
+        sqrt;
+
 
     // The operation is deliberately same-space and same-scalar.
     static assert(!__traits(compiles,
@@ -254,6 +257,167 @@ version (unittest)
             originF,
             Oklabf(tinyF, 0, 0)
         ) == tinyF
+    );
+
+
+    // Current-Phobos range audit:
+    //
+    // std.math.hypot(x, y, z) scales by the largest component. Exercise the
+    // three-component path close to the representable upper bound and in the
+    // subnormal range, rather than only one-axis controls.
+    enum nearMaxComponentD =
+        double.max / 2;
+
+    enum nearMaxNormD =
+        deltaEOK(
+            originD,
+            Oklabd(
+                nearMaxComponentD,
+                nearMaxComponentD,
+                nearMaxComponentD
+            )
+        );
+
+    enum nearMaxReferenceD =
+        cast(double)(
+            cast(real)nearMaxComponentD *
+            sqrt(real(3))
+        );
+
+    static assert(
+        nearMaxNormD < double.infinity
+    );
+
+    static assert(
+        nearMaxNormD ==
+        nearMaxReferenceD
+    );
+
+
+    enum nearMaxComponentF =
+        float.max / 2;
+
+    enum nearMaxNormF =
+        deltaEOK(
+            originF,
+            Oklabf(
+                nearMaxComponentF,
+                nearMaxComponentF,
+                nearMaxComponentF
+            )
+        );
+
+    enum nearMaxReferenceF =
+        cast(float)(
+            cast(real)nearMaxComponentF *
+            sqrt(real(3))
+        );
+
+    static assert(
+        nearMaxNormF < float.infinity
+    );
+
+    static assert(
+        nearMaxNormF ==
+        nearMaxReferenceF
+    );
+
+
+    enum minSubnormalD =
+        double.min_normal *
+        double.epsilon;
+
+    enum minSubnormalNormD =
+        deltaEOK(
+            originD,
+            Oklabd(
+                minSubnormalD,
+                minSubnormalD,
+                minSubnormalD
+            )
+        );
+
+    enum minSubnormalReferenceD =
+        cast(double)(
+            cast(real)minSubnormalD *
+            sqrt(real(3))
+        );
+
+    static assert(
+        minSubnormalNormD ==
+        minSubnormalReferenceD
+    );
+
+    static assert(
+        minSubnormalNormD >
+        cast(double)0
+    );
+
+
+    enum minSubnormalF =
+        float.min_normal *
+        float.epsilon;
+
+    enum minSubnormalNormF =
+        deltaEOK(
+            originF,
+            Oklabf(
+                minSubnormalF,
+                minSubnormalF,
+                minSubnormalF
+            )
+        );
+
+    enum minSubnormalReferenceF =
+        cast(float)(
+            cast(real)minSubnormalF *
+            sqrt(real(3))
+        );
+
+    static assert(
+        minSubnormalNormF ==
+        minSubnormalReferenceF
+    );
+
+    static assert(
+        minSubnormalNormF >
+        cast(float)0
+    );
+
+
+    // Finite endpoints can have a non-representable component difference.
+    // The mathematical distance is then also non-representable in T, so +Inf
+    // is the correct floating-point result rather than a repair or clamp.
+    static assert(
+        deltaEOK(
+            Oklabd(
+                double.max,
+                0,
+                0
+            ),
+            Oklabd(
+                -double.max,
+                0,
+                0
+            )
+        ) ==
+        double.infinity
+    );
+
+    static assert(
+        deltaEOK(
+            Oklabf(
+                float.max,
+                0,
+                0
+            ),
+            Oklabf(
+                -float.max,
+                0,
+                0
+            )
+        ) ==
+        float.infinity
     );
 
 
