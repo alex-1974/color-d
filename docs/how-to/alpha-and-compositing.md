@@ -39,7 +39,5 @@ const result = sourceOver(sourcePremultiplied, destinationPremultiplied);
 
 Encoded sRGB is not accepted as if it were linear-light compositing data.
 Image-level masks, NoData, channel binding, and layer orchestration remain
-consumer responsibilities.
-
-For the image boundary, see
-[`research/IMAGERY_D_BOUNDARY.md`](../research/IMAGERY_D_BOUNDARY.md).
+consumer responsibilities. They are not alpha channels and color-d does not
+merge those concepts.
