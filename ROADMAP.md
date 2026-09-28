@@ -255,11 +255,19 @@ promoted surface.
 
 **Status: ACTIVE — v0.1.0 FEATURE FREEZE.**
 
-The accepted R1–R3 production feature scope is frozen for v0.1.0. R4 remains active to validate that frozen surface through real consumers and may still justify defect fixes or pre-1.0 API corrections. It does not automatically reopen feature scope.
+The accepted R1–R3 production feature scope is frozen for v0.1.0. R4 remains
+active to validate that frozen surface through real consumers and may still
+justify defect fixes or pre-1.0 API corrections. It does not automatically
+reopen feature scope.
 
-Allowed work during the freeze is limited to consumer-driven corrections, defect fixes, validation/tests, documentation, CI/package/release hardening, security/toolchain adaptation, and evidence-driven performance fixes. New feature families or speculative convenience APIs are deferred unless an explicit release-scope decision reopens the freeze.
+Allowed work during the freeze is limited to consumer-driven corrections,
+defect fixes, validation/tests, documentation, CI/package/release hardening,
+security/toolchain adaptation, and evidence-driven performance fixes. New
+feature families or speculative convenience APIs are deferred unless an
+explicit release-scope decision reopens the freeze.
 
-The durable freeze policy and exception process are recorded in [`docs/research/R4_FEATURE_FREEZE.md`](docs/research/R4_FEATURE_FREEZE.md).
+The durable freeze policy and exception process are recorded in
+[`docs/research/R4_FEATURE_FREEZE.md`](docs/research/R4_FEATURE_FREEZE.md).
 
 Consumer validation is tracked separately for the two initial real consumers:
 
@@ -278,7 +286,10 @@ deliberately documented.
 Tracked by GitHub issue #14 and milestone
 `v0.1.0 — First public release`.
 
-The v0.1.0 feature scope is frozen. Release hardening is stabilization of the already accepted R1–R3 scope, not a late feature-development phase. The freeze remains active through publication; see [`docs/research/R4_FEATURE_FREEZE.md`](docs/research/R4_FEATURE_FREEZE.md).
+The v0.1.0 feature scope is frozen. Release hardening is stabilization of the
+already accepted R1–R3 scope, not a late feature-development phase. The freeze
+remains active through publication; see
+[`docs/research/R4_FEATURE_FREEZE.md`](docs/research/R4_FEATURE_FREEZE.md).
 
 Release hardening follows completion of the accepted R1–R3 production scope
 and both R4 consumer-validation paths.
