@@ -308,19 +308,7 @@ static assert(!__traits(compiles,
     interpolateFiniteSchedule(0.0, 1.0, 0.5)
 ));
 static assert(!__traits(compiles,
-    tonesAtLightnessAndChromaIntoExact(
-        Oklchd(
-            0.5,
-            0.1,
-            OklabHued.fromDegrees(30.0)
-        ),
-        [0.2, 0.8],
-        [0.1, 0.1],
-        [
-            Oklchd.init,
-            Oklchd.init
-        ]
-    )
+    &tonesAtLightnessAndChromaIntoExact!double
 ));
 
 /*
