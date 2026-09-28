@@ -1,9 +1,12 @@
 # R4 — v0.1.0 feature freeze
 
 **Status:** ACTIVE RELEASE POLICY  
+**Research baseline:** R1–R3 production closeout and pre-R4 hardening #46  
+**Document revision:** 1.0  
+**Date:** 2026-09-28  
 **Effective:** when this policy is integrated into `develop`  
 **Release target:** `v0.1.0`  
-**Tracking:** #14
+**GitHub:** #14
 
 ## 1. Decision
 
