@@ -1,14 +1,25 @@
 # Consumer package / release archive boundary.
 #
-# Keep source, README, LICENSE, CHANGELOG, DUB metadata, and user-facing docs.
-# Exclude repository coordination, CI, and research/evidence material from
-# generated source archives where git archive/export-ignore is honored.
+# The release is a consumer product, not a copy of the GitHub repository.
+# Keep production source, package metadata, the licence/changelog, README, and
+# concise user-facing documentation. Repository coordination, engineering
+# history, research/evidence, tests, CI and local tooling stay out.
 
+/.gitattributes export-ignore
+/.gitignore export-ignore
 /.github export-ignore
 /AGENTS.md export-ignore
 /CONTRIBUTING.md export-ignore
 /DESIGN_PRINCIPLES.md export-ignore
 /ROADMAP.md export-ignore
+/RESEARCH.md export-ignore
+/dscanner.ini export-ignore
+
+/docs/RESEARCH_DOCUMENTS.md export-ignore
+/docs/adr export-ignore
+/docs/pages-publication.md export-ignore
 /docs/research export-ignore
+/docs/spec export-ignore
+
 /experiments export-ignore
 /tests export-ignore
