@@ -305,3 +305,51 @@ The retained probe is
 against current production by the advisory performance workflow; the historical
 baseline comparison remains in PR #90 evidence rather than as a permanent
 hard-coded CI dependency.
+
+
+## R4 follow-up — Oklab to OKLCH extreme chroma hardening
+
+The public special-value audit found a portability defect in Cartesian Oklab
+to OKLCH conversion. Chroma was evaluated as
+`sqrt(a*a + b*b)`. For representable Euclidean magnitudes near the scalar
+limits, LDC 1.43 runtime evaluated the products at the nominal scalar width and
+therefore produced avoidable overflow or underflow:
+
+- `a = b = T.max / 2`: runtime chroma became `+Inf`;
+- `a = T.min_normal, b = 0`: runtime chroma became `0`.
+
+DMD 2.113 runtime and CTFE did not reproduce those failures because the
+relevant intermediates were evaluated with greater precision. That difference
+is consistent with the TC-0015 rule that intermediate floating-point precision
+is not a portable contract.
+
+Production now retains the former direct
+`sqrt(a*a + b*b)` evaluation for the ordinary path and falls back to scaled
+two-argument `std.math.hypot` only when the squared magnitude has overflowed
+to infinity or entered the subnormal/underflow region for a nonzero input.
+NaN remains on the direct path, and ordinary rounding is therefore unchanged.
+
+The retained public consumer regression is
+`tests/numerical/special_value_semantics.d`. It checks the public root API in
+both scalar widths and both supported compiler families for signed-zero,
+subnormal, NaN and infinity semantics.
+
+The retained performance probe is
+`experiments/performance_release_gate/oklch_chroma_probe.d`. On the final
+LDC 1.43 release run:
+
+- 262,144 deterministic ordinary `double` inputs: 0 bit mismatches against
+  the former path;
+- 262,144 deterministic ordinary `float` inputs: 0 bit mismatches against
+  the former path;
+- `double` near-max chroma changed from `+Inf` to approximately
+  `1.2711610061536462e+308`;
+- `float` near-max chroma changed from `+Inf` to approximately
+  `2.40615944767628e+38`;
+- minimum-normal one-axis chroma changed from `0` to exactly
+  `T.min_normal` in both scalar widths;
+- ordinary median cost was approximately 0.996x the former path for
+  `double` and 1.010x for `float` on the observed hosted runner.
+
+The final timing difference is within ordinary hosted-runner noise while the
+range defect is removed. No compiler-specific production path is required.
