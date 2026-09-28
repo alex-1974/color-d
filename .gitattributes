@@ -16,6 +16,7 @@
 /dscanner.ini export-ignore
 
 /docs/RESEARCH_DOCUMENTS.md export-ignore
+/docs/maintainer export-ignore
 /docs/adr export-ignore
 /docs/pages-publication.md export-ignore
 /docs/research export-ignore
