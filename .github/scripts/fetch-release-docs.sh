@@ -41,6 +41,9 @@ rm -rf "$output_dir"
 mkdir -p "$output_dir"
 output_dir="$(cd "$output_dir" && pwd)"
 
+tmp_root="$(mktemp -d)"
+trap 'rm -rf "$tmp_root"' EXIT
+
 mapfile -t tags < <(
     gh release list \
         --repo "$repo" \
@@ -59,33 +62,25 @@ do
 
     version="${tag#v}"
     asset="color-d-$version.ddox.tar.gz"
-    tmp="$(mktemp -d)"
+    asset_dir="$tmp_root/$tag"
 
-    cleanup_tmp()
-    {
-        rm -rf "$tmp"
-    }
-
-    trap cleanup_tmp RETURN
+    mkdir -p "$asset_dir"
 
     gh release download "$tag" \
         --repo "$repo" \
         --pattern "$asset" \
-        --dir "$tmp"
+        --dir "$asset_dir"
 
-    test -s "$tmp/$asset"
+    test -s "$asset_dir/$asset"
 
     mkdir -p "$output_dir/$tag"
-    tar -xzf "$tmp/$asset" -C "$output_dir/$tag"
+    tar -xzf "$asset_dir/$asset" -C "$output_dir/$tag"
 
     if [[ ! -s "$output_dir/$tag/index.html" ]]
     then
         echo "Release DDox asset has no index.html: $tag" >&2
         exit 1
     fi
-
-    rm -rf "$tmp"
-    trap - RETURN
 
     echo "release docs fetched: $tag"
 done
