@@ -168,12 +168,11 @@ Public APIs should remain `@safe` where reasonably possible. New
 
 Research is not automatically production scope.
 
-The target repository model separates detailed experiments/evidence from the
-production repository; see [RESEARCH.md](RESEARCH.md) and #107. During the
-migration, historical evidence remains under `docs/research/` and
-`experiments/`, but it is excluded from consumer archives.
+Detailed experiments/evidence are maintained in the
+[color-d-research](https://github.com/alex-1974/color-d-research) companion
+repository; see [RESEARCH.md](RESEARCH.md) for the verified split provenance.
 
-Do not delete research material from this repository until the external copy
-and provenance have been verified. Promotion into the public API still requires
-an explicit production decision, maintained tests, and user-facing
-documentation.
+Promotion from research into the public API still requires an explicit
+production decision, maintained tests, and user-facing documentation. Do not
+copy experimental code mechanically into production merely because it exists
+in the research repository.
