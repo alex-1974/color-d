@@ -301,6 +301,22 @@ jobs:
           "$tmp/probe" ordinary 0.125 0.25 0.5
           "$tmp/probe" extended -0.25 0.5 1.25
 
+      - name: Public special-value semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of="$tmp/special-values" \
+              "$GITHUB_WORKSPACE/tests/numerical/special_value_semantics.d"
+
+          "$tmp/special-values"
+
       - name: README quick-start consumer smoke
         shell: bash
         run: |
