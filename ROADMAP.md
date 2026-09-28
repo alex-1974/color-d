@@ -180,8 +180,9 @@ Tracked by GitHub issue #3.
 **Status: COMPLETE — 2026-09-26.**
 
 R1 promoted accepted R0 research into deliberate production modules and API.
-The integrated exit audit is recorded in
-[`docs/research/R1_CLOSEOUT.md`](docs/research/R1_CLOSEOUT.md).
+The production contract is the maintained source/Ddoc, tests, accepted ADRs,
+and the scope recorded below. Historical closeout evidence remains research
+material; see [RESEARCH.md](RESEARCH.md).
 
 Research experiment code remains evidence, not production code to copy
 mechanically.
@@ -209,8 +210,9 @@ Status: **COMPLETE**
 
 Tracked by GitHub issue #11.
 
-Production closeout:
-[`docs/research/R2_CLOSEOUT.md`](docs/research/R2_CLOSEOUT.md).
+The production contract is the maintained source/Ddoc, tests, accepted ADRs,
+and the scope recorded below. Historical R2 closeout evidence remains research
+material; see [RESEARCH.md](RESEARCH.md).
 
 Accepted v0.1 scope:
 
@@ -241,8 +243,9 @@ Completed production slices:
 - R3.6 — static-cardinality and runtime caller-owned raw tone-family batch
   forms.
 
-The integrated closeout is recorded in
-[`docs/research/R3_CLOSEOUT.md`](docs/research/R3_CLOSEOUT.md).
+The production contract is the maintained source/Ddoc, tests, accepted ADRs,
+and the scope recorded below. Historical R3 closeout evidence remains research
+material; see [RESEARCH.md](RESEARCH.md).
 
 The gamut-mapping API has no default mapper; algorithm selection remains
 explicit.
@@ -266,7 +269,7 @@ feature families or speculative convenience APIs are deferred unless an
 explicit release-scope decision reopens the freeze.
 
 The durable freeze policy and exception process are recorded in
-[`docs/research/R4_FEATURE_FREEZE.md`](docs/research/R4_FEATURE_FREEZE.md).
+[`docs/maintainer/v0.1-feature-freeze.md`](docs/maintainer/v0.1-feature-freeze.md).
 
 Consumer validation completed through two independent real consumers:
 
@@ -289,7 +292,7 @@ Tracked by GitHub issue #14 and milestone
 The v0.1.0 feature scope is frozen. Release hardening is stabilization of the
 already accepted R1–R3 scope, not a late feature-development phase. The freeze
 remains active through publication; see
-[`docs/research/R4_FEATURE_FREEZE.md`](docs/research/R4_FEATURE_FREEZE.md).
+[`docs/maintainer/v0.1-feature-freeze.md`](docs/maintainer/v0.1-feature-freeze.md).
 
 Release hardening follows completion of the accepted R1–R3 production scope
 and both R4 consumer-validation paths.
