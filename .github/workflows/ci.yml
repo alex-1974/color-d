@@ -452,6 +452,94 @@ jobs:
               sha256sum -c SHA256SUMS
           )
 
+      - name: Pages release-layout dry-run
+        if: matrix.compiler == 'dmd-2.113.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          mkdir -p "$tmp/dev-docs"
+          mkdir -p "$tmp/no-releases"
+
+          printf '%s\n' '<html>development-docs</html>' \
+              > "$tmp/dev-docs/index.html"
+
+          bash .github/scripts/assemble-pages-site.sh \
+              "$tmp/dev-docs" \
+              "$tmp/no-releases" \
+              "$tmp/pre-release-site" \
+              .github/pages/index.html
+
+          cmp \
+              .github/pages/index.html \
+              "$tmp/pre-release-site/index.html"
+
+          grep -Fq \
+              'development-docs' \
+              "$tmp/pre-release-site/dev/index.html"
+
+          mkdir -p "$tmp/releases/v0.1.0"
+          mkdir -p "$tmp/releases/v0.10.0"
+
+          printf '%s\n' '<html>stable-0.1.0</html>' \
+              > "$tmp/releases/v0.1.0/index.html"
+
+          printf '%s\n' '<html>stable-0.10.0</html>' \
+              > "$tmp/releases/v0.10.0/index.html"
+
+          printf '%s\n' 'old-version' \
+              > "$tmp/releases/v0.1.0/version-marker.txt"
+
+          printf '%s\n' 'latest-version' \
+              > "$tmp/releases/v0.10.0/version-marker.txt"
+
+          bash .github/scripts/assemble-pages-site.sh \
+              "$tmp/dev-docs" \
+              "$tmp/releases" \
+              "$tmp/released-site" \
+              .github/pages/index.html
+
+          grep -Fq \
+              'stable-0.10.0' \
+              "$tmp/released-site/index.html"
+
+          grep -Fq \
+              'stable-0.1.0' \
+              "$tmp/released-site/v0.1.0/index.html"
+
+          grep -Fq \
+              'stable-0.10.0' \
+              "$tmp/released-site/v0.10.0/index.html"
+
+          grep -Fq \
+              'development-docs' \
+              "$tmp/released-site/dev/index.html"
+
+          grep -Fq \
+              'latest-version' \
+              "$tmp/released-site/version-marker.txt"
+
+          grep -Fq \
+              'old-version' \
+              "$tmp/released-site/v0.1.0/version-marker.txt"
+
+          mkdir -p "$tmp/invalid-releases/v0.1"
+          printf '%s\n' '<html>invalid</html>' \
+              > "$tmp/invalid-releases/v0.1/index.html"
+
+          if bash .github/scripts/assemble-pages-site.sh \
+              "$tmp/dev-docs" \
+              "$tmp/invalid-releases" \
+              "$tmp/invalid-site" \
+              .github/pages/index.html
+          then
+              echo "Invalid versioned documentation directory unexpectedly passed" >&2
+              exit 1
+          fi
+
       - name: Clean-package external DUB consumer
         shell: bash
         run: |
