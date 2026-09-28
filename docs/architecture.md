@@ -59,7 +59,6 @@ Conversions do not imply clipping or gamut mapping. Interpolation does not
 select another space. WCAG measurement does not decide application
 accessibility thresholds. Tone primitives do not assign semantic palette roles.
 
-The accepted promotion boundary is recorded in
-[`research/R0_14_PROMOTION_GATE.md`](research/R0_14_PROMOTION_GATE.md), and
-the image boundary in
-[`research/IMAGERY_D_BOUNDARY.md`](research/IMAGERY_D_BOUNDARY.md).
+These boundaries are part of the maintained library architecture. Detailed
+promotion and consumer-boundary evidence is maintainer material in the
+production repository, not a prerequisite for using the package.
