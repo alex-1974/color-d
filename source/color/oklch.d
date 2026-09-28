@@ -57,6 +57,54 @@ if (is(Unqual!T == float) || is(Unqual!T == double))
     return cast(U)degrees * cast(U)(PI / 180.0L);
 }
 
+
+private T oklabChromaMagnitude(T)(
+    T a,
+    T b
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    import std.math :
+        hypot,
+        sqrt;
+
+    /*
+     * Preserve the ordinary direct path and its established rounding.
+     *
+     * For finite extreme values, a*a + b*b can overflow or underflow even
+     * when the Euclidean magnitude itself is representable. Only those
+     * exceptional finite cases take Phobos' scaled hypot path.
+     *
+     * NaN makes the squared sum NaN and therefore stays on the direct path.
+     * Infinite squared sums may use hypot; for inputs without NaN this retains
+     * the same visible infinity classification while also covering finite
+     * overflow.
+     */
+    const T squared =
+        a * a +
+        b * b;
+
+    const T direct =
+        cast(T)sqrt(squared);
+
+    if (
+        squared == T.infinity ||
+        (
+            squared < T.min_normal &&
+            (
+                a != cast(T)0 ||
+                b != cast(T)0
+            )
+        )
+    )
+    {
+        return hypot(a, b);
+    }
+
+    return direct;
+}
+
 /**
  * Hue value for the Oklab family.
  *
@@ -710,7 +758,10 @@ Oklch!T withHue(T)(
  * Converts Cartesian Oklab to its cylindrical OKLCH representation.
  *
  * Non-achromatic results use non-negative chroma and hue from 0 degrees
- * inclusive to 360 degrees exclusive.
+ * inclusive to 360 degrees exclusive. Chroma uses an overflow/underflow-safe
+ * Euclidean magnitude fallback when the direct squared magnitude leaves the
+ * ordinary finite range, so representable extreme finite magnitudes are not
+ * lost merely through intermediate squaring.
  * Exactly achromatic Oklab uses the deterministic numeric representation
  * `C = 0, h = 0°`.
  *
@@ -727,12 +778,12 @@ Oklch!T withHue(T)(
 Oklch!T toOklch(T)(Oklab!T color)
 @safe pure nothrow @nogc
 {
-    import std.math : atan2, sqrt;
+    import std.math : atan2;
 
     const T chroma =
-        cast(T)sqrt(
-            color.a * color.a +
-            color.b * color.b
+        oklabChromaMagnitude(
+            color.a,
+            color.b
         );
 
     // atan2(0, 0) must not define the public achromatic semantics.

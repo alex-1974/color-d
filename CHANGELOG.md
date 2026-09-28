@@ -25,6 +25,9 @@ under **Unreleased**.
 
 ### Changed
 
+- Oklab → OKLCH chroma now preserves representable extreme finite magnitudes
+  that could previously overflow to infinity or underflow to zero in runtime
+  scalar arithmetic, while retaining the former ordinary-path rounding;
 - XYZ D65 → Oklab now preserves representable finite results for extreme finite
   XYZ inputs that would otherwise overflow the direct LMS intermediate;
 - XYZ D65 → linear-sRGB now avoids the validated extreme finite
