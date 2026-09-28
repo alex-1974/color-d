@@ -51,6 +51,27 @@ void acceptedRootAndUfcsSurface()
             OklabHued.fromDegrees(40.0)
         );
 
+    const storedHue =
+        lch.h.rawDegrees;
+
+    const positiveHue =
+        lch.h.positiveDegrees;
+
+    const signedHue =
+        lch.h.signedDegrees;
+
+    const hueRadians =
+        lch.h.radians;
+
+    const bool achromatic =
+        lch.isAchromatic;
+
+    const bool nearAchromatic =
+        lch.isNearAchromatic(0.20);
+
+    const canonical =
+        lch.canonicalized;
+
     const labBack =
         lch.toOklab;
 
@@ -81,8 +102,14 @@ void acceptedRootAndUfcsSurface()
             0.5
         );
 
+    const bool straightAlphaValid =
+        straight.isValidAlpha;
+
     const premultiplied =
         straight.premultiply;
+
+    const bool premultipliedAlphaValid =
+        premultiplied.isValidAlpha;
 
     const straightBack =
         premultiplied.unpremultiply;
@@ -122,6 +149,12 @@ void acceptedRootAndUfcsSurface()
         encoded.wcag2ContrastRatio(
             SRgbd(1.0, 1.0, 1.0)
         );
+
+    const luminanceValue =
+        luminance.value;
+
+    const contrastValue =
+        contrast.value;
 
     const difference =
         lab.deltaEOK(
@@ -171,6 +204,17 @@ void acceptedRootAndUfcsSurface()
         alphaLch.gamutMapRayTraceToLinearSRgb;
 
     // Keep all values live enough for compile-time semantic checking.
+    assert(storedHue == storedHue || storedHue != storedHue);
+    assert(positiveHue == positiveHue || positiveHue != positiveHue);
+    assert(signedHue == signedHue || signedHue != signedHue);
+    assert(hueRadians == hueRadians || hueRadians != hueRadians);
+    assert(achromatic || !achromatic);
+    assert(nearAchromatic || !nearAchromatic);
+    assert(canonical.l == canonical.l || canonical.l != canonical.l);
+    assert(straightAlphaValid);
+    assert(premultipliedAlphaValid);
+    assert(luminanceValue == luminanceValue || luminanceValue != luminanceValue);
+    assert(contrastValue == contrastValue || contrastValue != contrastValue);
     assert(gamutState || !gamutState);
     assert(clipped.r == clipped.r || clipped.r != clipped.r);
     assert(localMapped.r == localMapped.r || localMapped.r != localMapped.r);
@@ -264,7 +308,19 @@ static assert(!__traits(compiles,
     interpolateFiniteSchedule(0.0, 1.0, 0.5)
 ));
 static assert(!__traits(compiles,
-    tonesAtLightnessAndChromaIntoExact
+    tonesAtLightnessAndChromaIntoExact(
+        Oklchd(
+            0.5,
+            0.1,
+            OklabHued.fromDegrees(30.0)
+        ),
+        [0.2, 0.8],
+        [0.1, 0.1],
+        [
+            Oklchd.init,
+            Oklchd.init
+        ]
+    )
 ));
 
 /*
