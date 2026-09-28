@@ -20,5 +20,7 @@ Tests state what kind of numerical promise they are protecting. Internal
 algorithm thresholds and application policy cannot silently become public
 accuracy tolerances.
 
-The detailed accepted policy is preserved in
-[`../../experiments/r0_13_numerical_tolerance_reference/POLICY.md`](../../experiments/r0_13_numerical_tolerance_reference/POLICY.md).
+The maintained user- and release-facing numerical policy is documented in
+[`../accuracy-and-validation.md`](../accuracy-and-validation.md). Detailed
+historical experiments and raw evidence remain research material and are not
+required to apply this ADR.
