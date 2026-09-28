@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-LINK_RE = re.compile(r"!?(?:\\[[^\\]]*\\])\\(([^)]+)\\)")
+LINK_RE = re.compile(r"!?(?:\[[^\]]*\])\(([^)]+)\)")
 
 
 def strip_fenced_code(text: str) -> str:
@@ -25,7 +25,7 @@ def strip_fenced_code(text: str) -> str:
         if not in_fence:
             lines.append(line)
 
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 
 def destination(raw: str) -> str:
