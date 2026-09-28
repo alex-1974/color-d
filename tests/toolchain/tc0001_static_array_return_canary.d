@@ -1,30 +1,20 @@
-// Production toolchain canary for workspace issue TC-0001.
-//
-// DMD 2.113.0 still miscompiles this minimal by-value return shape on the
-// validated Linux x86-64 toolchain, while the supported LDC line passes it.
-// The full reduction history and control matrix remain research evidence.
-// This copy exists so production CI does not depend on experiments/.
-//
-// If this program starts returning 0 under the supported DMD, re-evaluate the
-// color-d workaround before removing either the workaround or this canary.
-
-module tc0001_static_array_return_canary;
+module repro_min_return;
 
 import std.stdio : writefln;
 
-private struct Sample
+struct S
 {
     float a;
     float b;
     float c;
 }
 
-private Sample[1][1] makeSample()
+S[1][1] make()
 {
-    Sample[1][1] result;
+    S[1][1] result;
 
     result[0][0] =
-        Sample(
+        S(
             0.5f,
             0.0f,
             725.0f
@@ -36,7 +26,7 @@ private Sample[1][1] makeSample()
 int main()
 {
     const auto value =
-        makeSample();
+        make();
 
     const bool ok =
         value[0][0].a == 0.5f &&
@@ -44,7 +34,7 @@ int main()
         value[0][0].c == 725.0f;
 
     writefln(
-        "TC-0001 nested static-array return: %s a=%.17e b=%.17e c=%.17e",
+        "return float[1][1]: %s a=%.17e b=%.17e c=%.17e",
         ok ? "PASS" : "FAIL",
         cast(double)value[0][0].a,
         cast(double)value[0][0].b,
