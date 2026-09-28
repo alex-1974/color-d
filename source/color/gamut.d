@@ -1131,6 +1131,27 @@ LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
 }
 
 
+/// Local MINDE is the reference-oriented perceptual mapping choice.
+@safe pure nothrow @nogc unittest
+{
+    import color.oklch :
+        OklabHued,
+        Oklchd;
+
+    const vivid =
+        Oklchd(
+            0.70,
+            0.30,
+            OklabHued.fromDegrees(40.0)
+        );
+
+    const mapped =
+        vivid.gamutMapLocalMindeToLinearSRgb;
+
+    assert(mapped.inGamut);
+}
+
+
 /**
  * Perceptually maps an OKLCH color into linear sRGB using Ray Trace.
  *
@@ -1199,6 +1220,27 @@ LinearSRgb!T gamutMapRayTraceToLinearSRgb(T)(
 }
 
 
+/// Ray Trace is the bounded-cost perceptual mapping choice.
+@safe pure nothrow @nogc unittest
+{
+    import color.oklch :
+        OklabHued,
+        Oklchd;
+
+    const vivid =
+        Oklchd(
+            0.70,
+            0.30,
+            OklabHued.fromDegrees(40.0)
+        );
+
+    const mapped =
+        vivid.gamutMapRayTraceToLinearSRgb;
+
+    assert(mapped.inGamut);
+}
+
+
 /**
  * Maps a straight-alpha OKLCH color using Local MINDE.
  *
@@ -1253,26 +1295,31 @@ Alpha!(LinearSRgb!T) gamutMapRayTraceToLinearSRgb(T)(
 }
 
 
-/// Explicit per-color perceptual mapping requires an algorithm choice.
+/// Straight alpha is carried through mapping unchanged.
 @safe pure nothrow @nogc unittest
 {
+    import color.alpha :
+        Alpha;
+
     import color.oklch :
         OklabHued,
         Oklchd;
 
-    const input =
-        Oklchd(
-            0.96476,
-            0.24503,
-            OklabHued.fromDegrees(
-                110.23
-            )
+    const selected =
+        Alpha!Oklchd(
+            Oklchd(
+                0.70,
+                0.30,
+                OklabHued.fromDegrees(40.0)
+            ),
+            0.40
         );
 
     const mapped =
-        input.gamutMapRayTraceToLinearSRgb();
+        selected.gamutMapRayTraceToLinearSRgb;
 
-    assert(mapped.inGamut);
+    assert(mapped.alpha == 0.40);
+    assert(mapped.color.inGamut);
 }
 
 
