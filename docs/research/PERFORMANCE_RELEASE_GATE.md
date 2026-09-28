@@ -353,3 +353,77 @@ LDC 1.43 release run:
 
 The final timing difference is within ordinary hosted-runner noise while the
 range defect is removed. No compiler-specific production path is required.
+
+
+## R4 closeout — current integrated production rerun
+
+After the R4 numerical, API, packaging and test/CI hardening passes, the full
+retained advisory performance workflow was re-run against `develop` baseline
+`ae75e9e2129485239813a21693796a3c342cf978`.
+
+The rerun changed no production implementation and used the retained LDC 1.43
+release configuration:
+
+```text
+-O3 -release -boundscheck=off -mcpu=native
+```
+
+No fast-math mode was enabled.
+
+### Result summary
+
+All retained performance jobs passed their numerical/semantic preflight.
+
+- **sRGB encode:** the LDC runtime power path retained the established large
+  same-process advantage. Median LLVM/Phobos component ratios were about
+  8.43x for `double` and 18.67x for `float`; the real public production
+  conversion retained about 8.43x and 18.04x speed ratios against the local
+  Phobos comparator. Public production comparison remained within the retained
+  2-ULP observed maximum.
+- **Ray Trace cube intersection:** one million cases per scalar had zero exact
+  mismatches. `double` was effectively neutral (median default/forced ratio
+  about 1.00), while `float` still measured about 1.76x default/forced, so
+  the explicit inline hint remains justified by a supported public scalar.
+- **XYZ D65 -> linear-sRGB:** the retained extreme grid still reduced avoidable
+  non-finite results from 42 to zero for both scalar widths. The `double`
+  refactor retained improved wider-reference error and measured about 0.969x
+  the former path; `float` remained bit-identical over two million ordinary
+  samples and measured about 1.027x the former path.
+- **Oklab extreme-finite fallback:** one million ordinary cases per scalar
+  remained identical to the ordinary baseline and extreme closure passed.
+  Median production/baseline cost was about 1.009x for `double` and 1.023x
+  for `float`.
+- **Oklab -> OKLCH chroma:** 262,144 ordinary cases per scalar remained
+  bit-identical to the former direct path, while the retained extreme cases
+  continued to produce representable finite values instead of avoidable
+  `Inf`/zero. On the current Intel Xeon Platinum 8573C hosted runner the
+  ordinary production/former ratio was about 1.034x for `double` and 1.029x
+  for `float`. A prior final integration run of the same code/probe on AMD
+  EPYC 7763 measured about 1.008x and 1.017x respectively. This machine-local
+  variation, combined with unchanged ordinary bits and a known correctness
+  guard, does not identify an unexplained code-generation regression.
+- **Local MINDE / Ray Trace production:** all ordinary out-of-gamut, in-gamut
+  and finite huge-chroma validation failures remained zero. All retained
+  output hashes matched prior evidence exactly. The relative algorithmic shape
+  was unchanged: Ray Trace remained substantially cheaper than Local MINDE for
+  out-of-gamut work and orders of magnitude cheaper for huge-chroma inputs.
+
+### Code-generation decision
+
+The audit rule required optimized LDC/LLVM inspection only when measurement
+raised a concrete unexplained question.
+
+This rerun raised none:
+
+- no semantic/reference/hash mismatch appeared;
+- no retained optimization lost its measured reason for existence;
+- no fallback frequency or algorithmic shape changed unexpectedly;
+- the only roughly 3% ordinary comparator gap was the already understood
+  OKLCH correctness guard and varied materially across hosted CPU models.
+
+Accordingly, no new assembly/LLVM-IR inspection is justified at R4 closeout.
+This is a deliberate evidence-based decision, not an assertion that generated
+code can never be improved.
+
+The detailed rerun record is
+`experiments/performance_release_gate/R4_CURRENT_PRODUCTION_RERUN.md`.
