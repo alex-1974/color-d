@@ -403,8 +403,17 @@ jobs:
               's/has not published v0.1.0 yet/has published v0.1.0/' \
               "$tmp/release-metadata/README.md"
 
-          sed -i \
-              '/^## Unreleased$/a\\\n## [0.1.0] - 2026-09-28' \
+          awk '
+              { print }
+              /^## Unreleased$/ {
+                  print ""
+                  print "## [0.1.0] - 2026-09-28"
+              }
+          ' "$tmp/release-metadata/CHANGELOG.md" \
+              > "$tmp/release-metadata/CHANGELOG.next"
+
+          mv \
+              "$tmp/release-metadata/CHANGELOG.next" \
               "$tmp/release-metadata/CHANGELOG.md"
 
           bash .github/scripts/check-release-metadata.sh \
@@ -412,23 +421,34 @@ jobs:
               release \
               "$tmp/release-metadata"
 
-          mkdir -p "$tmp/artifacts"
+          mkdir -p "$tmp/artifacts-a"
+          mkdir -p "$tmp/artifacts-b"
 
           bash .github/scripts/assemble-release-archive.sh \
               0.1.0 \
-              "$tmp/artifacts" \
+              "$tmp/artifacts-a" \
               HEAD
 
-          test -s "$tmp/artifacts/color-d-0.1.0.tar.gz"
-          test -s "$tmp/artifacts/color-d-0.1.0.metadata.txt"
-          test -s "$tmp/artifacts/SHA256SUMS"
+          bash .github/scripts/assemble-release-archive.sh \
+              0.1.0 \
+              "$tmp/artifacts-b" \
+              HEAD
+
+          for file in \
+              color-d-0.1.0.tar.gz \
+              color-d-0.1.0.metadata.txt \
+              SHA256SUMS
+          do
+              test -s "$tmp/artifacts-a/$file"
+              cmp "$tmp/artifacts-a/$file" "$tmp/artifacts-b/$file"
+          done
 
           grep -Fq \
               "commit=$(git rev-parse HEAD)" \
-              "$tmp/artifacts/color-d-0.1.0.metadata.txt"
+              "$tmp/artifacts-a/color-d-0.1.0.metadata.txt"
 
           (
-              cd "$tmp/artifacts"
+              cd "$tmp/artifacts-a"
               sha256sum -c SHA256SUMS
           )
 
