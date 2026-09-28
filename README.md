@@ -59,6 +59,46 @@ The public API is still pre-1.0 and consumer-correctable during R4. Source
 compatibility may therefore change before v0.1.0 when real consumer integration
 demonstrates a materially better contract.
 
+## Installation with DUB
+
+`color-d` has not published v0.1.0 yet, so there is currently no released
+registry version to depend on. Pre-release consumers should make the source
+they consume explicit.
+
+For a local workspace checkout, use a path dependency:
+
+```sdl
+dependency "color-d" path="../color-d"
+```
+
+Adjust the path to the checked-out repository. This is the same dependency
+shape exercised by the clean-package external DUB consumer in Fast CI.
+
+For an external reproducible pre-release build, pin an exact reviewed Git
+commit rather than a moving branch:
+
+```sdl
+dependency "color-d" \
+    repository="git+https://github.com/alex-1974/color-d.git" \
+    version="<commit-sha>"
+```
+
+Replace `<commit-sha>` with the exact color-d commit your project has
+validated. DUB repository dependencies use the `version` field as the Git
+commitish; a fixed commit avoids silently following later pre-1.0 API
+corrections.
+
+After v0.1.0 is deliberately released and its DUB-registry publication is
+verified, the normal released dependency will be:
+
+```sdl
+dependency "color-d" version="~>0.1.0"
+```
+
+At that point `dub add color-d` may be used to add the latest registry
+release. Until then, do not treat an unpublished registry version as part of
+the supported installation contract.
+
 Current public mathematical operations are value-based, `@nogc`, and do not
 perform hidden allocation. Batch tone construction writes into caller-owned
 storage. The library creates no worker threads and owns no scheduler; callers
