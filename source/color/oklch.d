@@ -872,6 +872,38 @@ Oklab!T toOklab(T)(Oklch!T color)
 
 @safe pure nothrow @nogc unittest
 {
+    // Runtime companion to the CTFE/toolchain canary below. The public
+    // conversion must preserve an axis-aligned minimum subnormal magnitude.
+    double smallestPositiveD = 0x1p-1074;
+    float smallestPositiveF = 0x1p-149f;
+
+    const smallestPolarD =
+        Oklabd(
+            0.5,
+            smallestPositiveD,
+            0.0
+        ).toOklch;
+
+    const smallestPolarF =
+        Oklabf(
+            0.5f,
+            smallestPositiveF,
+            0.0f
+        ).toOklch;
+
+    assert(
+        smallestPolarD.c ==
+            smallestPositiveD
+    );
+
+    assert(
+        smallestPolarF.c ==
+            smallestPositiveF
+    );
+}
+
+@safe pure nothrow @nogc unittest
+{
     const hue390 = OklabHued.fromDegrees(390.0);
     const hueNegative = OklabHued.fromDegrees(-30.0);
 
@@ -1002,6 +1034,38 @@ version (unittest)
     static assert(!tinyChroma.isAchromatic);
     static assert(tinyChroma.isNearAchromatic(1e-9));
     static assert(!tinyChroma.isNearAchromatic(1e-11));
+
+    // REGRESSION / TOOLCHAIN CANARY:
+    // Phobos 2.111 two-argument hypot mishandled sufficiently tiny operands.
+    // color-d does not support that frontend generation, but the public
+    // Oklab -> OKLCH path deliberately exercises the exact smallest-positive
+    // binary64 case so the current supported matrix cannot regress silently.
+    enum smallestPositiveD = 0x1p-1074;
+    enum smallestPositiveF = 0x1p-149f;
+
+    enum smallestPolarD =
+        Oklabd(
+            0.5,
+            smallestPositiveD,
+            0.0
+        ).toOklch;
+
+    enum smallestPolarF =
+        Oklabf(
+            0.5f,
+            smallestPositiveF,
+            0.0f
+        ).toOklch;
+
+    static assert(
+        smallestPolarD.c ==
+            smallestPositiveD
+    );
+
+    static assert(
+        smallestPolarF.c ==
+            smallestPositiveF
+    );
 
     // REFERENCE: primary Cartesian axes define the canonical hue quadrants.
     enum axis0 = Oklabd(0.5, 0.2, 0.0).toOklch;
