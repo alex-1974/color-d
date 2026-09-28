@@ -47,8 +47,5 @@ const clipped = linear.clip;
 ```
 
 Local MINDE is the perceptual/reference-oriented mapper; Ray Trace is the
-bounded-cost mapper. Neither is the library-wide default.
-
-The accepted gamut semantics originate in the R0.8 work documented in
-[`research/R0_8_GAMUT_SEMANTICS.md`](../research/R0_8_GAMUT_SEMANTICS.md),
-which evaluated the corresponding CSS Color 4 algorithms.
+bounded-cost mapper. Neither is the library-wide default. Their public Ddoc
+states the standards provenance and exact caller-visible contract.

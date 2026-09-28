@@ -26,9 +26,10 @@ including:
 - XYZ D65 → linear-sRGB extreme-finite hardening, including scalar-specific
   ordinary-path cost and reference-accuracy evidence.
 
-The main performance evidence is summarized in
-[`research/PERFORMANCE_RELEASE_GATE.md`](research/PERFORMANCE_RELEASE_GATE.md)
-with executable probes under `../experiments/performance_release_gate/`.
+Performance claims are backed by retained release-gate measurements and
+executable probes in the production/research engineering history. Raw benchmark
+drivers and detailed audit evidence are intentionally not shipped in the
+consumer package.
 
 ## Comparison policy
 

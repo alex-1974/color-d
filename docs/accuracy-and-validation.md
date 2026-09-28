@@ -103,7 +103,7 @@ corpora. They do not claim exhaustive proof over all finite IEEE values.
 
 ## Evidence
 
-The durable numerical policy is
-[`../experiments/r0_13_numerical_tolerance_reference/POLICY.md`](../experiments/r0_13_numerical_tolerance_reference/POLICY.md).
-Research inputs and measured results remain under `docs/research/` and
-`experiments/`.
+This page states the maintained numerical policy that package users may rely
+on. Detailed experiment drivers, raw measurements, compiler probes, and
+historical research notes are maintainer evidence and are intentionally not
+shipped in the consumer package.

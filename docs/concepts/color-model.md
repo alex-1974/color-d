@@ -39,5 +39,5 @@ remain representable while a color stays in polar form.
 separate representation and is restricted to the linear-light sRGB
 compositing boundary.
 
-The accepted design is summarized in
-[`research/R0_14_PROMOTION_GATE.md`](../research/R0_14_PROMOTION_GATE.md).
+This separation is part of the maintained public color model rather than a
+consumer-configurable policy.

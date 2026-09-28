@@ -68,7 +68,8 @@ evidence where practical.
 
 ## Documentation standard
 
-Documentation is part of the public API.
+Documentation is part of the public API. The detailed maintainer checklist is in
+[docs/maintainer/documentation-style.md](docs/maintainer/documentation-style.md).
 
 Write for the reader who needs to solve a color problem, not for the author who
 already knows the implementation. The style should follow the practical

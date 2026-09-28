@@ -48,7 +48,19 @@ git -C "$repo_root" archive \
     gzip -n > "$archive_path"
 
 list_file="$(mktemp)"
-trap 'rm -f "$list_file"' EXIT
+verify_dir=""
+
+cleanup()
+{
+    rm -f "$list_file"
+
+    if [[ -n "$verify_dir" ]]
+    then
+        rm -rf "$verify_dir"
+    fi
+}
+
+trap cleanup EXIT
 
 tar -tzf "$archive_path" > "$list_file"
 
@@ -95,12 +107,20 @@ reject_prefix ROADMAP.md
 reject_prefix RESEARCH.md
 reject_prefix dscanner.ini
 reject_prefix docs/RESEARCH_DOCUMENTS.md
+reject_prefix docs/maintainer
 reject_prefix docs/adr
 reject_prefix docs/pages-publication.md
 reject_prefix docs/research
 reject_prefix docs/spec
 reject_prefix experiments
 reject_prefix tests
+
+verify_dir="$(mktemp -d)"
+
+tar -xzf "$archive_path" -C "$verify_dir"
+
+python3 "$repo_root/.github/scripts/check-consumer-doc-links.py" \
+    "$verify_dir/color-d-$version"
 
 archive_bytes="$(gzip -cd "$archive_path" | wc -c)"
 max_archive_bytes=$((1024 * 1024))
@@ -132,4 +152,5 @@ echo "release archive assembly: PASS"
 echo "  version=$version"
 echo "  commit=$commit"
 echo "  archive=$archive_path"
+echo "  uncompressed_bytes=$archive_bytes"
 echo "  checksums=$checksums_path"
