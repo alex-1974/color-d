@@ -1,6 +1,6 @@
 # Research repository split
 
-**Status:** PREPARATION — no production research deletion authorized yet  
+**Status:** COMPLETE — verified split performed 2026-09-28  
 **Tracking:** #107  
 **Reference model:** `quantities-d` / `quantities-d-research`
 
@@ -47,8 +47,18 @@ Measured on `color-d/develop` before this preparation branch:
 - projected production tree after the split: about 87 files / 534,344 tracked
   bytes.
 
-These values are a planning baseline, not the migration proof. The actual
-migration must pin its exact source commit and regenerate the manifest.
+The verified migration used:
+
+- source commit:
+  `f5ff3dab97c65e6f45e4c0ed192c3143a946c6bc`;
+- exact destination research snapshot:
+  `5296ffb16d1a619b658c1296f9d8bd0d1d597c83`;
+- files: 132;
+- bytes: 1,577,331.
+
+The source and exact destination snapshot matched on relative path, file mode,
+byte size, and Git blob identity with zero mismatches. The independent
+SHA-256 workflow in `color-d-research` also passed before production deletion.
 
 ## Production material that remains
 
@@ -108,9 +118,15 @@ Follow the proven quantities-d approach:
 The old color-d history therefore remains available, while new release tags and
 normal DUB downloads use the lean production tree.
 
-## Current authorization boundary
+## Completed state
 
-This preparation document does not authorize deleting research files.
+The external copy/provenance gate passed before the production deletion branch
+was created.
 
-The external copy/provenance gate in #107 remains authoritative. Until it
-passes, the historical research corpus stays in color-d.
+Detailed research now lives at:
+
+https://github.com/alex-1974/color-d-research
+
+The production repository retains only the compact contracts described above.
+Historical `color-d` commits remain unchanged and continue to preserve the
+original pre-split tree.
