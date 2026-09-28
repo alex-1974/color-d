@@ -22,6 +22,8 @@ import std.math :
 import std.stdio :
     writefln,
     writeln;
+import std.traits :
+    Unqual;
 
 
 private struct Lcg
@@ -46,20 +48,27 @@ private struct Lcg
 }
 
 
-private T normalizePositiveDegrees(T)(T degrees)
+private Unqual!T normalizePositiveDegrees(T)(T degrees)
+if (
+    is(Unqual!T == float) ||
+    is(Unqual!T == double)
+)
 {
-    T result =
-        degrees %
-        cast(T)360;
+    alias U =
+        Unqual!T;
 
-    if (result < cast(T)0)
-        result += cast(T)360;
+    U result =
+        cast(U)degrees %
+        cast(U)360;
 
-    if (result >= cast(T)360)
-        result -= cast(T)360;
+    if (result < cast(U)0)
+        result += cast(U)360;
 
-    if (result == cast(T)0)
-        return cast(T)0;
+    if (result >= cast(U)360)
+        result -= cast(U)360;
+
+    if (result == cast(U)0)
+        return cast(U)0;
 
     return result;
 }
@@ -112,20 +121,40 @@ private Oklch!T formerToOklch(T)(
 
 
 private bool finite(T)(T value)
+if (
+    is(Unqual!T == float) ||
+    is(Unqual!T == double)
+)
 {
+    alias U =
+        Unqual!T;
+
+    const U scalar =
+        cast(U)value;
+
     return
-        value == value &&
-        value != T.infinity &&
-        value != -T.infinity;
+        scalar == scalar &&
+        scalar != U.infinity &&
+        scalar != -U.infinity;
 }
 
 
 private ulong componentBits(T)(T value)
+if (
+    is(Unqual!T == float) ||
+    is(Unqual!T == double)
+)
 {
-    static if (is(T == float))
-        return cast(ulong)bitCast!uint(value);
+    alias U =
+        Unqual!T;
+
+    U scalar =
+        cast(U)value;
+
+    static if (is(U == float))
+        return cast(ulong)bitCast!uint(scalar);
     else
-        return bitCast!ulong(value);
+        return bitCast!ulong(scalar);
 }
 
 
@@ -230,10 +259,10 @@ private bool validateOrdinary(T)(
 
     foreach (value; values)
     {
-        const production =
+        auto production =
             value.toOklch;
 
-        const former =
+        auto former =
             formerToOklch(value);
 
         hashColor(
