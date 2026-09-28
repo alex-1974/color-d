@@ -247,7 +247,7 @@ jobs:
           compile_fail "$tmp/unsupported_scalar_negative.d" "$tmp/unsupported_scalar_negative.o"
           compile_fail "$tmp/tone_batch_length_negative.d" "$tmp/tone_batch_length_negative.o"
 
-      - name: External DUB consumer
+      - name: Clean-package external DUB consumer
         shell: bash
         run: |
           set -euo pipefail
@@ -255,32 +255,48 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
 
-          mkdir -p "$tmp/source"
+          mkdir -p "$tmp/package"
+          mkdir -p "$tmp/consumer/source"
 
-          cat > "$tmp/dub.json" <<JSON
+          git archive --format=tar HEAD |
+              tar -xf - -C "$tmp/package"
+
+          cat > "$tmp/consumer/dub.json" <<JSON
           {
             "name": "color-d-release-consumer",
             "targetType": "executable",
             "dependencies": {
               "color-d": {
-                "path": "$GITHUB_WORKSPACE"
+                "path": "$tmp/package"
               }
             }
           }
           JSON
 
-          cat > "$tmp/source/app.d" <<'D'
+          cat > "$tmp/consumer/source/app.d" <<'D'
           import color;
 
           void main()
           {
+              const encoded =
+                  SRgbd(
+                      0.82,
+                      0.25,
+                      0.12
+                  );
+
+              const perceptual =
+                  encoded
+                  .toLinear
+                  .toXyzD65
+                  .toOklab
+                  .toOklch;
+
               const mapped =
-                  Oklchd(
-                      0.70,
-                      0.30,
-                      OklabHued.fromDegrees(40.0)
-                  )
-                  .gamutMapRayTraceToLinearSRgb();
+                  perceptual
+                  .withLightness(0.70)
+                  .withChroma(0.16)
+                  .gamutMapRayTraceToLinearSRgb;
 
               assert(mapped.inGamut);
 
@@ -293,12 +309,8 @@ jobs:
               Oklchd[3] tones;
 
               assert(
-                  tryTonesAtLightnessAndChromaInto(
-                      Oklchd(
-                          0.50,
-                          0.10,
-                          OklabHued.fromDegrees(210.0)
-                      ),
+                  perceptual
+                  .tryTonesAtLightnessAndChromaInto(
                       lightnesses[],
                       chromas[],
                       tones[]
@@ -311,6 +323,7 @@ jobs:
           D
 
           (
-              cd "$tmp"
+              cd "$tmp/consumer"
               dub build --compiler="$DC" --build=release
+              ./color-d-release-consumer
           )
