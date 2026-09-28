@@ -392,12 +392,24 @@ jobs:
 
       - name: Release publication dry-run
         if: matrix.compiler == 'dmd-2.113.0'
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
 
           tmp="$(mktemp -d)"
-          trap 'rm -rf "$tmp"' EXIT
+          annotated_tag="v9999.9999.9999"
+          lightweight_tag="v9999.9999.9998"
+
+          cleanup()
+          {
+              git tag -d "$annotated_tag" >/dev/null 2>&1 || true
+              git tag -d "$lightweight_tag" >/dev/null 2>&1 || true
+              rm -rf "$tmp"
+          }
+
+          trap cleanup EXIT
 
           bash .github/scripts/check-release-metadata.sh \
               0.1.0 \
@@ -421,6 +433,10 @@ jobs:
               's/has not published v0.1.0 yet/has published v0.1.0/' \
               "$tmp/release-metadata/README.md"
 
+          sed -i \
+              's/\*\*Status: ACTIVE — v0\.1\.0 FEATURE FREEZE\.\*\*/**Status: COMPLETE — v0.1.0 RELEASED.**/' \
+              "$tmp/release-metadata/ROADMAP.md"
+
           awk '
               { print }
               /^## Unreleased$/ {
@@ -439,6 +455,14 @@ jobs:
               release \
               "$tmp/release-metadata"
 
+          python3 .github/scripts/extract-release-notes.py \
+              "$tmp/release-metadata/CHANGELOG.md" \
+              0.1.0 \
+              "$tmp/release-notes.md"
+
+          grep -Fq '### Added' "$tmp/release-notes.md"
+          grep -Fq '### Deferred' "$tmp/release-notes.md"
+
           mkdir -p "$tmp/artifacts-a"
           mkdir -p "$tmp/artifacts-b"
 
@@ -452,10 +476,20 @@ jobs:
               "$tmp/artifacts-b" \
               HEAD
 
+          bash .github/scripts/assemble-ddox-archive.sh \
+              0.1.0 \
+              docs \
+              "$tmp/artifacts-a"
+
+          bash .github/scripts/assemble-ddox-archive.sh \
+              0.1.0 \
+              docs \
+              "$tmp/artifacts-b"
+
           for file in \
               color-d-0.1.0.tar.gz \
               color-d-0.1.0.metadata.txt \
-              SHA256SUMS
+              color-d-0.1.0.ddox.tar.gz
           do
               test -s "$tmp/artifacts-a/$file"
               cmp "$tmp/artifacts-a/$file" "$tmp/artifacts-b/$file"
@@ -467,8 +501,41 @@ jobs:
 
           (
               cd "$tmp/artifacts-a"
+
+              sha256sum \
+                  color-d-0.1.0.tar.gz \
+                  color-d-0.1.0.metadata.txt \
+                  color-d-0.1.0.ddox.tar.gz \
+                  > SHA256SUMS
+
               sha256sum -c SHA256SUMS
           )
+
+          git -c user.name=color-d-ci \
+              -c user.email=ci@example.invalid \
+              tag -a "$annotated_tag" -m "release dry-run tag" HEAD
+
+          bash .github/scripts/verify-release-tag.sh \
+              "$annotated_tag" \
+              HEAD
+
+          git tag -d "$annotated_tag"
+
+          git tag "$lightweight_tag" HEAD
+
+          if bash .github/scripts/verify-release-tag.sh \
+              "$lightweight_tag" \
+              HEAD
+          then
+              echo "Lightweight release tag unexpectedly passed" >&2
+              exit 1
+          fi
+
+          git tag -d "$lightweight_tag"
+
+          bash .github/scripts/fetch-release-docs.sh \
+              "$GITHUB_REPOSITORY" \
+              "$tmp/fetched-release-docs"
 
       - name: Pages release-layout dry-run
         if: matrix.compiler == 'dmd-2.113.0'
