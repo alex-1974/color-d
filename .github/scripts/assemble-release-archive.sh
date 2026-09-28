@@ -102,6 +102,15 @@ reject_prefix docs/spec
 reject_prefix experiments
 reject_prefix tests
 
+archive_bytes="$(gzip -cd "$archive_path" | wc -c)"
+max_archive_bytes=$((1024 * 1024))
+
+if (( archive_bytes > max_archive_bytes ))
+then
+    echo "Release archive exceeded the 1 MiB v0.1 package guard: $archive_bytes bytes" >&2
+    exit 1
+fi
+
 archive_sha="$(sha256sum "$archive_path" | awk '{print $1}')"
 
 cat > "$metadata_path" <<EOF
@@ -109,6 +118,7 @@ package=color-d
 version=$version
 commit=$commit
 archive=$archive_name
+archive_uncompressed_bytes=$archive_bytes
 archive_sha256=$archive_sha
 EOF
 
