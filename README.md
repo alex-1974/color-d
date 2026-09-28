@@ -114,12 +114,14 @@ The **GitHub production repository** additionally contains the material needed
 to maintain and release the library: tests, CI, contribution files, accepted
 architecture decisions, and release engineering.
 
-Detailed experiments and long-form evidence are being separated into a
-dedicated research repository under #107. During that migration they remain in
-this repository for safety, but they are excluded from consumer archives.
+Detailed experiments and long-form evidence live in the dedicated
+[color-d-research](https://github.com/alex-1974/color-d-research) companion
+repository. The verified split keeps the production repository and normal DUB
+tag downloads lean while preserving the complete research corpus and its
+provenance.
 
-The migration rule and detailed research provenance remain maintainer material
-in the production repository.
+The migration record and compact research pointer remain maintainer material in
+the production repository.
 
 Current public mathematical operations are value-based, `@nogc`, and do not
 perform hidden allocation. Batch tone construction writes into caller-owned
@@ -172,17 +174,16 @@ The public library is the maintained result of the R0–R4 research programme;
 the research programme itself is **not** part of the consumer package.
 
 Detailed experiments, compiler probes, benchmark drivers, rejected approaches,
-and long-form evidence are being separated from the production repository under
-the migration tracked by #107. Until that migration is verified, the historical
-material remains in this repository under `docs/research/` and
-`experiments/`, but both paths are excluded from release archives.
+and long-form evidence live in
+[color-d-research](https://github.com/alex-1974/color-d-research). They are not
+part of the production repository or consumer package.
 
 The maintained production contract lives in the source/Ddoc, user
 documentation, tests, accepted ADRs, and release metadata. A consumer should
 not need research history in order to understand or use the library.
 
-Repository-level research provenance is intentionally separate from this
-consumer-facing README.
+Repository-level research provenance is summarized in
+[RESEARCH.md](RESEARCH.md).
 
 ## Workspace role
 
