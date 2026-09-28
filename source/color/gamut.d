@@ -2143,3 +2143,186 @@ version (unittest)
     assert(clipped == LinearSRgbd(0.0, 0.4, 1.0));
     assert(clipped.inGamut);
 }
+
+
+version (unittest)
+{
+    /*
+     * R4 huge-chroma fallback verifier.
+     *
+     * Keep this test-only helper next to the production private helpers so it
+     * exercises the actual conversion, scaled-direction and cube-intersection
+     * implementation rather than a copied audit algorithm.
+     */
+    private bool verifyHugeRayTraceFallback(T)(
+        Oklch!T input
+    )
+    @safe pure nothrow @nogc
+    if (is(T == float) || is(T == double))
+    {
+        const T radians =
+            hueRadians(input);
+
+        const T cosHue =
+            cast(T)cos(radians);
+
+        const T sinHue =
+            cast(T)sin(radians);
+
+        const LinearSRgb!T anchor =
+            oklabToLinearSRgb(
+                fixedHueOklab(
+                    input.l,
+                    cast(T)0,
+                    cosHue,
+                    sinHue
+                )
+            );
+
+        const LinearSRgb!T endpoint =
+            oklabToLinearSRgb(
+                fixedHueOklab(
+                    input.l,
+                    input.c,
+                    cosHue,
+                    sinHue
+                )
+            );
+
+        // This fixture is specifically a first-ray endpoint-overflow case.
+        if (isFiniteLinearSRgb(endpoint))
+            return false;
+
+        const LinearSRgb!T direction =
+            scaledHugeChromaRayDirection(
+                input.l,
+                input.c,
+                cosHue,
+                sinHue,
+                anchor
+            );
+
+        if (!isFiniteLinearSRgb(direction))
+            return false;
+
+        const auto intersection =
+            intersectUnitRgbCubeDirection(
+                anchor,
+                direction
+            );
+
+        if (!intersection.found)
+            return false;
+
+        return
+            gamutMapRayTraceToLinearSRgb(
+                input
+            ).inGamut;
+    }
+}
+
+
+@safe pure nothrow @nogc unittest
+{
+    import color.oklch :
+        OklabHue,
+        Oklch;
+
+    /*
+     * The public contract is semantic: finite 0 < L < 1 input maps to a
+     * strict in-gamut linear-sRGB color. Internal Ray Trace path metadata and
+     * exact derived coordinates are not portable contracts because D permits
+     * floating-point intermediates to use greater precision (TC-0015).
+     *
+     * These two inputs force the ordinary fixed-L/fixed-hue RGB endpoint
+     * outside the scalar range. The scaled cubic fallback must remain finite
+     * and find the unit cube in both CTFE and runtime, for both public scalar
+     * widths.
+     */
+    enum hugeD =
+        Oklch!double(
+            0.50,
+            double.max * 0.75,
+            OklabHue!double.fromDegrees(
+                25.0
+            )
+        );
+
+    enum hugeF =
+        Oklch!float(
+            0.50f,
+            float.max * 0.75f,
+            OklabHue!float.fromDegrees(
+                25.0f
+            )
+        );
+
+    static assert(
+        verifyHugeRayTraceFallback(
+            hugeD
+        )
+    );
+
+    static assert(
+        verifyHugeRayTraceFallback(
+            hugeF
+        )
+    );
+
+
+    /*
+     * Fixed R0.13 TC-0015 probe. DMD runtime historically took different
+     * internal success/path metadata from DMD CTFE/LDC for the corresponding
+     * research implementation while the mapped color remained valid.
+     *
+     * Freeze only the public semantic postcondition, not path metadata or
+     * CTFE/runtime bit identity.
+     */
+    enum tc0015Input =
+        Oklch!float(
+            0.88228511810302734375f,
+            0.343281686305999755859f,
+            OklabHue!float.fromDegrees(
+                19.4710636138916015625f
+            )
+        );
+
+    enum tc0015Ctfe =
+        gamutMapRayTraceToLinearSRgb(
+            tc0015Input
+        );
+
+    static assert(
+        tc0015Ctfe.inGamut
+    );
+
+
+    // Mutable locals exercise the ordinary unittest/runtime call path. No
+    // equality with the CTFE coordinates is required.
+    Oklch!double runtimeHugeD =
+        hugeD;
+
+    Oklch!float runtimeHugeF =
+        hugeF;
+
+    assert(
+        verifyHugeRayTraceFallback(
+            runtimeHugeD
+        )
+    );
+
+    assert(
+        verifyHugeRayTraceFallback(
+            runtimeHugeF
+        )
+    );
+
+    Oklch!float tc0015RuntimeInput =
+        tc0015Input;
+
+    assert(
+        gamutMapRayTraceToLinearSRgb(
+            tc0015RuntimeInput
+        ).inGamut
+    );
+}
