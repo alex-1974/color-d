@@ -306,9 +306,14 @@ The final gate covers:
 Public Ddoc, tests and executable examples are not deferred to this phase;
 they evolve with the production APIs that introduce them.
 
-## Later
+## Post-v0.1 candidate backlog
 
-Only with concrete consumer requirements:
+The following are **deferred candidates**, not committed roadmap items and not
+part of the v0.1.0 release scope.
+
+They may be reconsidered only when concrete consumer requirements justify
+their cost and library-boundary impact. Their order below is not a priority
+ranking, and inclusion in this list does not imply a planned release version.
 
 - `SRgb8` / `SRgba8`
 - HSL / HSV
