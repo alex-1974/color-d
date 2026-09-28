@@ -33,6 +33,19 @@ if (is(T == float) || is(T == double))
     T b;
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    // Encoded sRGB is the normal form for CSS/image-style channel values.
+    // Decode it before operations that require linear light.
+    const encoded = SRgbd(0.50, 0.25, 0.0);
+    const linear = encoded.toLinear;
+
+    assert(linear.r < encoded.r);
+    assert(linear.g < encoded.g);
+    assert(linear.b == 0.0);
+}
+
 /**
  * Linear-light sRGB color value.
  *
@@ -57,6 +70,19 @@ if (is(T == float) || is(T == double))
 
     /// Blue linear-light component.
     T b;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    // Linear-light values are the correct domain for light mixing and
+    // compositing. Encode only when a consumer needs encoded sRGB.
+    const linear = LinearSRgbd(0.25, 0.50, 1.0);
+    const encoded = linear.toSRgb;
+
+    assert(encoded.r > linear.r);
+    assert(encoded.g > linear.g);
+    assert(encoded.b == 1.0);
 }
 
 /// Encoded sRGB with `float` components.
