@@ -758,7 +758,10 @@ Oklch!T withHue(T)(
  * Converts Cartesian Oklab to its cylindrical OKLCH representation.
  *
  * Non-achromatic results use non-negative chroma and hue from 0 degrees
- * inclusive to 360 degrees exclusive.
+ * inclusive to 360 degrees exclusive. Chroma uses an overflow/underflow-safe
+ * Euclidean magnitude fallback when the direct squared magnitude leaves the
+ * ordinary finite range, so representable extreme finite magnitudes are not
+ * lost merely through intermediate squaring.
  * Exactly achromatic Oklab uses the deterministic numeric representation
  * `C = 0, h = 0°`.
  *
