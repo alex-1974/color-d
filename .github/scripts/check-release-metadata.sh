@@ -68,7 +68,11 @@ require_file dub.sdl
 require_fixed 'name "color-d"' dub.sdl
 require_fixed 'targetType "library"' dub.sdl
 require_fixed 'homepage "https://alex-1974.github.io/color-d/"' dub.sdl
+require_fixed 'authors "Alexander"' dub.sdl
+require_fixed 'copyright "Copyright (c) 2026 Alexander"' dub.sdl
 require_fixed 'license "MIT"' dub.sdl
+require_fixed 'Copyright (c) 2026 Alexander' LICENSE
+require_fixed 'Permission is hereby granted, free of charge' LICENSE
 require_fixed '| DMD | 2.113.0 on Ubuntu 24.04 x86-64 |' README.md
 require_fixed '| LDC | 1.43.0 on Ubuntu 24.04 x86-64 |' README.md
 require_fixed "v$version — First public release" ROADMAP.md
@@ -96,6 +100,7 @@ case "$mode" in
         fi
 
         require_fixed "dependency \"color-d\" version=\"~>$version\"" README.md
+        require_fixed "**Status: COMPLETE — v$version RELEASED.**" ROADMAP.md
         ;;
 esac
 
