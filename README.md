@@ -99,6 +99,25 @@ At that point `dub add color-d` may be used to add the latest registry
 release. Until then, do not treat an unpublished registry version as part of
 the supported installation contract.
 
+## Release package, repository, and research
+
+These are deliberately different products.
+
+The **consumer release** contains the library source, DUB metadata, licence,
+README/CHANGELOG, and concise user-facing documentation. It excludes tests, CI,
+repository tooling, ADR/spec material, detailed research, experiments, and
+benchmark evidence.
+
+The **GitHub production repository** additionally contains the material needed
+to maintain and release the library: tests, CI, contribution files, accepted
+architecture decisions, and release engineering.
+
+Detailed experiments and long-form evidence are being separated into a
+dedicated research repository under #107. During that migration they remain in
+this repository for safety, but they are excluded from consumer archives.
+
+See [RESEARCH.md](RESEARCH.md) for the migration rule.
+
 Current public mathematical operations are value-based, `@nogc`, and do not
 perform hidden allocation. Batch tone construction writes into caller-owned
 storage. The library creates no worker threads and owns no scheduler; callers
