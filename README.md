@@ -99,6 +99,25 @@ At that point `dub add color-d` may be used to add the latest registry
 release. Until then, do not treat an unpublished registry version as part of
 the supported installation contract.
 
+## Release package, repository, and research
+
+These are deliberately different products.
+
+The **consumer release** contains the library source, DUB metadata, licence,
+README/CHANGELOG, and concise user-facing documentation. It excludes tests, CI,
+repository tooling, ADR/spec material, detailed research, experiments, and
+benchmark evidence.
+
+The **GitHub production repository** additionally contains the material needed
+to maintain and release the library: tests, CI, contribution files, accepted
+architecture decisions, and release engineering.
+
+Detailed experiments and long-form evidence are being separated into a
+dedicated research repository under #107. During that migration they remain in
+this repository for safety, but they are excluded from consumer archives.
+
+See [RESEARCH.md](RESEARCH.md) for the migration rule.
+
 Current public mathematical operations are value-based, `@nogc`, and do not
 perform hidden allocation. Batch tone construction writes into caller-owned
 storage. The library creates no worker threads and owns no scheduler; callers
@@ -145,67 +164,22 @@ The same quick-start source is compiled and executed from
 [`tests/examples/readme_quickstart.d`](tests/examples/readme_quickstart.d) by
 Fast CI so this documented call path cannot silently drift.
 
-## Validated research
+## Research and evidence
 
-The initial architecture has been exercised through executable research
-spikes:
+The public library is the maintained result of the R0–R4 research programme;
+the research programme itself is **not** part of the consumer package.
 
-| Stage | Topic | Status |
-|---|---|---|
-| R0.1 | Type model and CTFE | PASS |
-| R0.2 | sRGB <-> linear sRGB | PASS |
-| R0.3 | linear sRGB <-> XYZ D65 | PASS |
-| R0.4 | XYZ D65 <-> Oklab | PASS |
-| R0.5 | Oklab <-> OKLCH and hue semantics | PASS |
-| R0.6 | Alpha, premultiplied alpha and linear-light source-over | PASS |
-| R0.7 | Interpolation and OKLCH hue-path semantics | PASS |
-| R0.8 | Gamut detection, clipping and perceptual gamut mapping | PASS |
-| R0.9 | WCAG-2 relative luminance and contrast semantics | PASS |
-| R0.10 | Oklab `deltaEOK` semantics and numerical robustness | PASS |
-| R0.11 | OKLCH tone-scale semantics, CTFE and representation | PASS |
-| R0.12 | Compile-time palette construction and validation | PASS |
-| R0.13 | Numerical tolerance and reference policy | PASS |
-| R0.14 | v0.1 scope and R0→R1 promotion decision | ACCEPTED |
+Detailed experiments, compiler probes, benchmark drivers, rejected approaches,
+and long-form evidence are being separated from the production repository under
+the migration tracked by #107. Until that migration is verified, the historical
+material remains in this repository under `docs/research/` and
+`experiments/`, but both paths are excluded from release archives.
 
-The currently validated computational chain is:
+The maintained production contract lives in the source/Ddoc, user
+documentation, tests, accepted ADRs, and release metadata. A consumer should
+not need research history in order to understand or use the library.
 
-```text
-SRgb!T
-    ⇅
-LinearSRgb!T
-    ⇅
-XyzD65!T
-    ⇅
-Oklab!T
-    ⇅
-Oklch!T
-```
-
-The research spikes validate, among other things:
-
-- distinct statically typed color spaces;
-- generic `float` and `double` computation;
-- compact value layouts;
-- allocation-free scalar conversion mathematics;
-- CTFE across the tested conversion chain;
-- preservation of extended/out-of-gamut intermediate values;
-- explicit OKLCH hue semantics;
-- raw/unbounded hue storage with explicit normalization.
-
-Detailed executable results are available under
-[`experiments/`](experiments/).
-
-In particular:
-
-- [`R0.4 XYZ D65 / Oklab results`](experiments/r0_4_xyz_oklab/RESULTS.md)
-- [`R0.5 OKLCH / hue semantics results`](experiments/r0_5_oklch_semantics/RESULTS.md)
-- [`R0.6 alpha / compositing results`](experiments/r0_6_alpha_semantics/RESULTS.md)
-- [`R0.7 interpolation results`](experiments/r0_7_interpolation_semantics/RESULTS.md)
-- [`R0.8 gamut-semantics results`](experiments/r0_8_gamut_semantics/RESULTS.md)
-- [`R0.9 luminance / contrast results`](experiments/r0_9_luminance_contrast/RESULTS.md)
-- [`R0.10 deltaEOK results`](experiments/r0_10_delta_e_ok/RESULTS.md)
-- [`R0.11 tone-scale results`](experiments/r0_11_tone_scales/RESULTS.md)
-- [`R0.14 promotion gate`](docs/research/R0_14_PROMOTION_GATE.md)
+See [RESEARCH.md](RESEARCH.md) for the repository roles and migration rule.
 
 ## Workspace role
 
@@ -250,14 +224,16 @@ For users:
 - [Architecture](docs/architecture.md)
 - [Performance](docs/performance.md)
 
-For engineering rationale and evidence:
+For maintainers:
 
 - [Architecture decision records](docs/adr/)
 - [Technical specification](docs/spec/TECHNICAL_SPEC.md)
-- [Research documents](docs/research/)
-- [Executable experiments](experiments/)
 - [Repository design principles](DESIGN_PRINCIPLES.md)
 - [Roadmap](ROADMAP.md)
+- [Research and evidence boundary](RESEARCH.md)
+
+Detailed research/evidence is repository material, not consumer-package
+documentation. See [RESEARCH.md](RESEARCH.md) for the current migration state.
 
 ## Project status
 

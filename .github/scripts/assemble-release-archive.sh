@@ -85,14 +85,31 @@ require_member dub.sdl
 require_member source/color/package.d
 require_member docs/README.md
 
+reject_prefix .gitattributes
+reject_prefix .gitignore
 reject_prefix .github
 reject_prefix AGENTS.md
 reject_prefix CONTRIBUTING.md
 reject_prefix DESIGN_PRINCIPLES.md
 reject_prefix ROADMAP.md
+reject_prefix RESEARCH.md
+reject_prefix dscanner.ini
+reject_prefix docs/RESEARCH_DOCUMENTS.md
+reject_prefix docs/adr
+reject_prefix docs/pages-publication.md
 reject_prefix docs/research
+reject_prefix docs/spec
 reject_prefix experiments
 reject_prefix tests
+
+archive_bytes="$(gzip -cd "$archive_path" | wc -c)"
+max_archive_bytes=$((1024 * 1024))
+
+if (( archive_bytes > max_archive_bytes ))
+then
+    echo "Release archive exceeded the 1 MiB v0.1 package guard: $archive_bytes bytes" >&2
+    exit 1
+fi
 
 archive_sha="$(sha256sum "$archive_path" | awk '{print $1}')"
 
@@ -101,6 +118,7 @@ package=color-d
 version=$version
 commit=$commit
 archive=$archive_name
+archive_uncompressed_bytes=$archive_bytes
 archive_sha256=$archive_sha
 EOF
 

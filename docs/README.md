@@ -19,10 +19,15 @@ Start here:
 - [Documentation publication](pages-publication.md)
 - [Architecture decision records](adr/)
 
-The material under [`research/`](research/) and [`../experiments/`](../experiments/)
-is engineering evidence: it explains why the implementation is trusted and how
-decisions were validated. It is not a substitute for the user-oriented guides
-above.
+The user documentation above is intentionally self-contained. A reader should
+not need research logs to discover how to use the library.
 
-The research-derived technical specification remains available at
-[`spec/TECHNICAL_SPEC.md`](spec/TECHNICAL_SPEC.md).
+Detailed research/evidence is engineering material, not consumer-package
+documentation. Historical material is still present in this repository during
+the migration tracked by #107, but it is export-ignored and is being separated
+from the production repository. See [../RESEARCH.md](../RESEARCH.md) for the
+repository roles and migration rule.
+
+Accepted architectural decisions and the technical specification remain
+maintainer material in the GitHub repository; they are not shipped as part of
+the lean consumer archive.
