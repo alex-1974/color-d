@@ -372,6 +372,66 @@ jobs:
               fi
           done
 
+      - name: Release publication dry-run
+        if: matrix.compiler == 'dmd-2.113.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          bash .github/scripts/check-release-metadata.sh \
+              0.1.0 \
+              preflight \
+              "$GITHUB_WORKSPACE"
+
+          if bash .github/scripts/check-release-metadata.sh \
+              0.1 \
+              preflight \
+              "$GITHUB_WORKSPACE"
+          then
+              echo "Invalid release version unexpectedly passed" >&2
+              exit 1
+          fi
+
+          mkdir -p "$tmp/release-metadata"
+          cp README.md ROADMAP.md CHANGELOG.md LICENSE dub.sdl \
+              "$tmp/release-metadata/"
+
+          sed -i \
+              's/has not published v0.1.0 yet/has published v0.1.0/' \
+              "$tmp/release-metadata/README.md"
+
+          sed -i \
+              '/^## Unreleased$/a\\\n## [0.1.0] - 2026-09-28' \
+              "$tmp/release-metadata/CHANGELOG.md"
+
+          bash .github/scripts/check-release-metadata.sh \
+              0.1.0 \
+              release \
+              "$tmp/release-metadata"
+
+          mkdir -p "$tmp/artifacts"
+
+          bash .github/scripts/assemble-release-archive.sh \
+              0.1.0 \
+              "$tmp/artifacts" \
+              HEAD
+
+          test -s "$tmp/artifacts/color-d-0.1.0.tar.gz"
+          test -s "$tmp/artifacts/color-d-0.1.0.metadata.txt"
+          test -s "$tmp/artifacts/SHA256SUMS"
+
+          grep -Fq \
+              "commit=$(git rev-parse HEAD)" \
+              "$tmp/artifacts/color-d-0.1.0.metadata.txt"
+
+          (
+              cd "$tmp/artifacts"
+              sha256sum -c SHA256SUMS
+          )
+
       - name: Clean-package external DUB consumer
         shell: bash
         run: |
