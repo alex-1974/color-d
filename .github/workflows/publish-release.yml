@@ -1,0 +1,259 @@
+name: Publish release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-tag:
+    name: Validate release tag
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Fetch main release line
+        run: git fetch origin main:refs/remotes/origin/main --force
+
+      - name: Verify annotated tag and main commit
+        run: |
+          bash .github/scripts/verify-release-tag.sh \
+              "$GITHUB_REF_NAME" \
+              origin/main
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Verify release metadata
+        run: |
+          bash .github/scripts/check-release-metadata.sh \
+              "${GITHUB_REF_NAME#v}" \
+              release \
+              "$GITHUB_WORKSPACE"
+
+  qualify:
+    name: Final release / ${{ matrix.compiler }}
+    needs: validate-tag
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - dmd-2.113.0
+          - ldc-1.43.0
+
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install D toolchain
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      - name: Toolchain versions
+        run: |
+          "$DC" --version
+          dub --version
+
+      - name: Verify release metadata
+        run: |
+          bash .github/scripts/check-release-metadata.sh \
+              "${{ needs.validate-tag.outputs.version }}" \
+              release \
+              "$GITHUB_WORKSPACE"
+
+      - name: Debug unittests
+        run: dub test --compiler="$DC" --build=debug --force
+
+      - name: Release unittests
+        run: dub test --compiler="$DC" --build=release --force
+
+      - name: Verify real consumer archive
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ needs.validate-tag.outputs.version }}"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          mkdir -p "$tmp/artifacts"
+          mkdir -p "$tmp/package"
+          mkdir -p "$tmp/consumer/source"
+
+          bash .github/scripts/assemble-release-archive.sh \
+              "$version" \
+              "$tmp/artifacts" \
+              "$GITHUB_REF_NAME"
+
+          tar -xzf \
+              "$tmp/artifacts/color-d-$version.tar.gz" \
+              -C "$tmp/package"
+
+          package_root="$tmp/package/color-d-$version"
+
+          cat > "$tmp/consumer/dub.json" <<JSON
+          {
+            "name": "color-d-tag-release-consumer",
+            "targetType": "executable",
+            "dependencies": {
+              "color-d": {
+                "path": "$package_root"
+              }
+            }
+          }
+          JSON
+
+          cp tests/examples/readme_quickstart.d \
+              "$tmp/consumer/source/app.d"
+
+          (
+              cd "$tmp/consumer"
+              dub build --compiler="$DC" --build=release
+              ./color-d-tag-release-consumer
+          )
+
+  publish-release:
+    name: Publish GitHub release assets
+    needs:
+      - validate-tag
+      - qualify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Fetch main release line
+        run: git fetch origin main:refs/remotes/origin/main --force
+
+      - name: Install DMD
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: dmd-2.113.0
+
+      - name: Re-verify release tag and metadata
+        run: |
+          set -euo pipefail
+
+          bash .github/scripts/verify-release-tag.sh \
+              "$GITHUB_REF_NAME" \
+              origin/main
+
+          bash .github/scripts/check-release-metadata.sh \
+              "${{ needs.validate-tag.outputs.version }}" \
+              release \
+              "$GITHUB_WORKSPACE"
+
+      - name: Build release DDox
+        run: dub build --compiler="$DC" --build=ddox --force
+
+      - name: Assemble release artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ needs.validate-tag.outputs.version }}"
+
+          rm -rf release-artifacts
+          mkdir -p release-artifacts
+
+          bash .github/scripts/assemble-release-archive.sh \
+              "$version" \
+              release-artifacts \
+              "$GITHUB_REF_NAME"
+
+          bash .github/scripts/assemble-ddox-archive.sh \
+              "$version" \
+              docs \
+              release-artifacts
+
+          python3 .github/scripts/extract-release-notes.py \
+              CHANGELOG.md \
+              "$version" \
+              release-artifacts/release-notes.md
+
+          (
+              cd release-artifacts
+
+              sha256sum \
+                  "color-d-$version.tar.gz" \
+                  "color-d-$version.metadata.txt" \
+                  "color-d-$version.ddox.tar.gz" \
+                  > SHA256SUMS
+
+              sha256sum -c SHA256SUMS
+          )
+
+      - name: Create or resume GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="$GITHUB_REF_NAME"
+          version="${{ needs.validate-tag.outputs.version }}"
+          notes="release-artifacts/release-notes.md"
+
+          assets=(
+              "release-artifacts/color-d-$version.tar.gz"
+              "release-artifacts/color-d-$version.metadata.txt"
+              "release-artifacts/color-d-$version.ddox.tar.gz"
+              "release-artifacts/SHA256SUMS"
+          )
+
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1
+          then
+              gh release edit "$tag" \
+                  --repo "$GITHUB_REPOSITORY" \
+                  --title "$tag" \
+                  --notes-file "$notes"
+
+              gh release upload "$tag" \
+                  --repo "$GITHUB_REPOSITORY" \
+                  --clobber \
+                  "${assets[@]}"
+          else
+              gh release create "$tag" \
+                  --repo "$GITHUB_REPOSITORY" \
+                  --verify-tag \
+                  --title "$tag" \
+                  --notes-file "$notes" \
+                  "${assets[@]}"
+          fi
+
+  pages:
+    name: Publish stable and development documentation
+    needs: publish-release
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/docs-pages.yml
