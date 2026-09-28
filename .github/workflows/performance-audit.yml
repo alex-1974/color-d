@@ -10,7 +10,7 @@ on:
       - "source/color/oklch.d"
       - "source/color/xyz.d"
       - "source/color/gamut.d"
-      - "experiments/performance_release_gate/**"
+      - "tests/performance/**"
       - ".github/workflows/performance-audit.yml"
   workflow_dispatch:
 
@@ -49,7 +49,7 @@ jobs:
               -Isource \
               -i \
               -of=rgb-encode-pow-probe \
-              experiments/performance_release_gate/rgb_encode_pow_probe.d
+              tests/performance/rgb_encode_pow_probe.d
 
       - name: Run focused release probe
         run: ./rgb-encode-pow-probe
@@ -83,7 +83,7 @@ jobs:
               -boundscheck=off \
               -mcpu=native \
               -of=gamut-inline-probe \
-              experiments/performance_release_gate/gamut_inline_probe.d
+              tests/performance/gamut_inline_probe.d
 
       - name: Run focused release probe
         run: ./gamut-inline-probe
@@ -120,7 +120,7 @@ jobs:
               -Isource \
               -i \
               -of=oklch-chroma-probe \
-              experiments/performance_release_gate/oklch_chroma_probe.d
+              tests/performance/oklch_chroma_probe.d
 
       - name: Run focused release probe
         run: ./oklch-chroma-probe
@@ -157,7 +157,7 @@ jobs:
               -Isource \
               -i \
               -of=oklab-extreme-fallback-probe \
-              experiments/performance_release_gate/oklab_extreme_fallback_probe.d
+              tests/performance/oklab_extreme_fallback_probe.d
 
       - name: Run focused release probe
         run: ./oklab-extreme-fallback-probe
@@ -194,7 +194,7 @@ jobs:
               -Isource \
               -i \
               -of=xyz-linear-rgb-production-probe \
-              experiments/performance_release_gate/xyz_linear_rgb_production_probe.d
+              tests/performance/xyz_linear_rgb_production_probe.d
 
       - name: Run focused release probe
         run: ./xyz-linear-rgb-production-probe
@@ -231,7 +231,7 @@ jobs:
               -Isource \
               -i \
               -of=gamut-production-probe \
-              experiments/performance_release_gate/gamut_production_probe.d
+              tests/performance/gamut_production_probe.d
 
       - name: Run focused release probe
         run: ./gamut-production-probe
