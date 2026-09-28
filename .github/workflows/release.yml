@@ -24,9 +24,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler:
-          - dmd-2.113.0
-          - ldc-1.43.0
+        include:
+          - compiler: dmd-2.113.0
+            consumer_build: debug
+          - compiler: ldc-1.43.0
+            consumer_build: release
 
     steps:
       - name: Checkout
@@ -247,6 +249,27 @@ jobs:
           compile_fail "$tmp/unsupported_scalar_negative.d" "$tmp/unsupported_scalar_negative.o"
           compile_fail "$tmp/tone_batch_length_negative.d" "$tmp/tone_batch_length_negative.o"
 
+      - name: Checkout validated imagery-d consumer
+        uses: actions/checkout@v7
+        with:
+          repository: alex-1974/imagery-d
+          ref: 3ead4239861da0da384936f035fa7b7e96cb14d6
+          path: consumer-workspace/imagery-d
+
+      - name: Checkout validated raster-d dependency
+        uses: actions/checkout@v7
+        with:
+          repository: alex-1974/raster-d
+          ref: c2e5932c1b2c0402832ac210411119f373f8cd30
+          path: consumer-workspace/raster-d
+
+      - name: Checkout validated Dunia consumer
+        uses: actions/checkout@v7
+        with:
+          repository: alex-1974/dunia
+          ref: 9f0a6c182b02fa75434ac09987d239156506271e
+          path: consumer-workspace/dunia
+
       - name: Clean-package external DUB consumer
         shell: bash
         run: |
@@ -327,3 +350,11 @@ jobs:
               dub build --compiler="$DC" --build=release
               ./color-d-release-consumer
           )
+
+      - name: Accepted real consumer gates
+        shell: bash
+        run: |
+          bash .github/scripts/run-real-consumer-gates.sh \
+              "$DC" \
+              "${{ matrix.consumer_build }}" \
+              "$GITHUB_WORKSPACE"
