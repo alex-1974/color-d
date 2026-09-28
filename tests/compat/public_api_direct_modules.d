@@ -297,5 +297,14 @@ static assert(!__traits(compiles,
     color.tone.Oklch!double.init
 ));
 static assert(!__traits(compiles,
-    color.tone.withLightness
+    color.tone.withLightness(
+        color.oklch.Oklchd(
+            0.5,
+            0.1,
+            color.oklch.OklabHued.fromDegrees(
+                30.0
+            )
+        ),
+        0.7
+    )
 ));
