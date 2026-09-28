@@ -434,7 +434,7 @@ jobs:
               "$tmp/release-metadata/README.md"
 
           sed -i \
-              's/\*\*Status: ACTIVE — v0\.1\.0 FEATURE FREEZE\.\*\*/**Status: COMPLETE — v0.1.0 RELEASED.**/' \
+              's/\*\*Status: HARDENING — v0\.1\.0 FEATURE FREEZE\.\*\*/**Status: COMPLETE — v0.1.0 RELEASED.**/' \
               "$tmp/release-metadata/ROADMAP.md"
 
           awk '

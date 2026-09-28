@@ -55,9 +55,11 @@ No older minimum D frontend is currently promised. Passing on an older compiler
 does not by itself establish supported compatibility. DMD and LDC are both
 correctness targets; LDC is the current release-performance reference compiler.
 
-The public API is still pre-1.0 and consumer-correctable during R4. Source
-compatibility may therefore change before v0.1.0 when real consumer integration
-demonstrates a materially better contract.
+The public API is still pre-1.0. R4 real-consumer validation is complete and
+did not demonstrate an API correction requirement. Until v0.1.0 is published,
+the accepted feature scope remains frozen and changes are limited to release
+hardening, reproduced defect fixes, validation/documentation, and confirmed
+toolchain or performance corrections.
 
 ## Installation with DUB
 
@@ -242,10 +244,17 @@ R1 mathematical core, R2 alpha/interpolation, and R3 perceptual utilities are
 complete. The accepted R1–R3 production feature scope for v0.1 is now closed.
 Detailed closeout evidence is maintainer material in the production repository.
 
-R4 real-consumer validation is the active phase. The public API remains
-pre-1.0 and consumer-correctable: feature scope is closed, but API corrections
-remain allowed where imagery-d or the OSM editor theme/style layer exposes
-real integration friction.
+R4 real-consumer validation is complete. Both initial independent consumers
+used the public API successfully without requiring a provider-side API
+correction:
+
+- `imagery-d` validated typed encoded/linear sRGB transfer inside a real
+  region/layout-neutral image-processing path;
+- Dunia, the OSM editor application, validated CTFE/runtime theme construction,
+  explicit gamut policy, WCAG contrast, `deltaEOK`, and runtime selection
+  among precomputed candidates.
+
+The v0.1 feature scope remains frozen through release hardening and publication.
 
 The accepted v0.1 production scope is intentionally smaller than the early
 candidate list. In particular, `SRgb8` / `SRgba8` and HSL/HSV are deferred
@@ -271,17 +280,17 @@ v0.1.0 release hardening and publication
 ```
 
 R1--R3 have promoted the accepted validated R0 semantics into deliberate
-production modules. R4 consumer validation remains mandatory before release
-stabilization, and the pre-1.0 API may still be corrected when real consumer
-use reveals friction.
+production modules. R4 consumer validation is complete, so v0.1 is now in release hardening and
+publication. No feature-scope reopening or API correction was required by the
+accepted consumer evidence.
 
-Initial R4 consumers are:
+Validated R4 consumers are:
 
 - `imagery-d`;
-- the OSM editor theme/style layer.
+- Dunia's editor theme/style layer.
 
-No public API is stable yet. Pre-1.0 API corrections remain expected where
-production implementation or real consumers demonstrate a better design.
+No public API is stable yet. Until v0.1.0 is published, only release-hardening
+changes and evidence-backed corrections to the accepted contract are in scope.
 
 Public API documentation, tests, CTFE coverage and documented `unittest`
 examples are developed together with the production API rather than postponed

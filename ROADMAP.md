@@ -253,12 +253,11 @@ promoted surface.
 
 ## R4 — First consumer integration
 
-**Status: ACTIVE — v0.1.0 FEATURE FREEZE.**
+**Status: COMPLETE — 2026-09-28. v0.1.0 FEATURE FREEZE REMAINS ACTIVE.**
 
-The accepted R1–R3 production feature scope is frozen for v0.1.0. R4 remains
-active to validate that frozen surface through real consumers and may still
-justify defect fixes or pre-1.0 API corrections. It does not automatically
-reopen feature scope.
+The accepted R1–R3 production feature scope remains frozen for v0.1.0. R4
+validated that frozen surface through two real consumers. Neither consumer
+demonstrated a need to reopen feature scope or correct the public API.
 
 Allowed work during the freeze is limited to consumer-driven corrections,
 defect fixes, validation/tests, documentation, CI/package/release hardening,
@@ -269,22 +268,23 @@ explicit release-scope decision reopens the freeze.
 The durable freeze policy and exception process are recorded in
 [`docs/research/R4_FEATURE_FREEZE.md`](docs/research/R4_FEATURE_FREEZE.md).
 
-Consumer validation is tracked separately for the two initial real consumers:
+Consumer validation completed through two independent real consumers:
 
-- #4 — `imagery-d`;
-- #13 — OSM editor theme/style layer.
+- #4 — `imagery-d`: encoded/linear sRGB transfer inside real region-based
+  image processing, including layout/ROI and allocation-free integration;
+- #13 — Dunia editor theme/style: CTFE/runtime theme construction, explicit
+  gamut mapping, WCAG contrast, `deltaEOK`, and runtime background-dependent
+  selection from prepared candidates.
 
-The exact consumer paths must come from real application requirements rather
-than synthetic API demonstrations.
-
-Public API stabilization begins only after real consumer usage has exercised
-the production surface and discovered friction has been resolved or
-deliberately documented.
+Both consumer gates closed without a provider-side API correction. Release
+hardening may therefore proceed without reopening the v0.1 feature scope.
 
 ## v0.1.0 — Release hardening and publication
 
 Tracked by GitHub issue #14 and milestone
 `v0.1.0 — First public release`.
+
+**Status: HARDENING — v0.1.0 FEATURE FREEZE.**
 
 The v0.1.0 feature scope is frozen. Release hardening is stabilization of the
 already accepted R1–R3 scope, not a late feature-development phase. The freeze
