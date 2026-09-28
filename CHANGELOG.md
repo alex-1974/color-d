@@ -38,8 +38,9 @@ under **Unreleased**.
   internal XYZ-to-linear-sRGB hot path while the public XYZ conversion keeps
   its extreme-finite fallback, recovering the pre-hardening mapping cost
   without changing retained mapper outputs;
-- current public feature scope is closed for v0.1 and is in R4 real-consumer
-  validation;
+- current public feature scope is closed for v0.1; R4 real-consumer validation
+  completed successfully with `imagery-d` and the Dunia editor/theme consumer,
+  with no provider-side API correction required;
 - the tested pre-1.0 toolchain matrix is DMD 2.113.0 and LDC 1.43.0 on
   Ubuntu 24.04 x86-64;
 - no older minimum D frontend is currently promised.
