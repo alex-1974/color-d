@@ -700,7 +700,7 @@ jobs:
 
           "$DC" \
               -of="$tmp/tc0001" \
-              "$GITHUB_WORKSPACE/experiments/r0_12_palette_ctfe/compiler_bug/repro_min_return.d"
+              "$GITHUB_WORKSPACE/tests/toolchain/tc0001_static_array_return_canary.d"
 
           set +e
           "$tmp/tc0001" > "$tmp/output.txt" 2>&1
