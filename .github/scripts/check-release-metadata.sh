@@ -69,8 +69,8 @@ require_fixed 'name "color-d"' dub.sdl
 require_fixed 'targetType "library"' dub.sdl
 require_fixed 'homepage "https://alex-1974.github.io/color-d/"' dub.sdl
 require_fixed 'license "MIT"' dub.sdl
-require_fixed 'DMD 2.113.0' README.md
-require_fixed 'LDC 1.43.0' README.md
+require_fixed '| DMD | 2.113.0 on Ubuntu 24.04 x86-64 |' README.md
+require_fixed '| LDC | 1.43.0 on Ubuntu 24.04 x86-64 |' README.md
 require_fixed "v$version — First public release" ROADMAP.md
 
 case "$mode" in
