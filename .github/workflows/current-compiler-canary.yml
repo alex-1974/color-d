@@ -1,0 +1,84 @@
+name: Current compiler canary
+
+on:
+  schedule:
+    - cron: "23 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: current-compiler-canary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  current:
+    name: Canary / ${{ matrix.compiler }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - dmd
+          - ldc
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v7
+        with:
+          ref: develop
+
+      - name: Install latest stable D compiler
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      - name: Resolved toolchain versions
+        run: |
+          "$DC" --version
+          dub --version
+
+      - name: Debug unittests
+        run: dub test --compiler="$DC" --build=debug --force
+
+      - name: Release unittests
+        run: dub test --compiler="$DC" --build=release --force
+
+      - name: Public API compile contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          for probe in \
+              named_arguments \
+              public_api_root_surface \
+              public_api_direct_modules
+          do
+              "$DC" \
+                  -c \
+                  -I"$GITHUB_WORKSPACE/source" \
+                  -i \
+                  -of="$tmp/$probe.o" \
+                  "$GITHUB_WORKSPACE/tests/compat/$probe.d"
+          done
+
+      - name: Public special-value semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of="$tmp/special-values" \
+              "$GITHUB_WORKSPACE/tests/numerical/special_value_semantics.d"
+
+          "$tmp/special-values"
