@@ -2145,189 +2145,144 @@ version (unittest)
 }
 
 
+version (unittest)
+{
+    /*
+     * R4 huge-chroma fallback verifier.
+     *
+     * Keep this test-only helper next to the production private helpers so it
+     * exercises the actual conversion, scaled-direction and cube-intersection
+     * implementation rather than a copied audit algorithm.
+     */
+    private bool verifyHugeRayTraceFallback(T)(
+        Oklch!T input
+    )
+    @safe pure nothrow @nogc
+    if (is(T == float) || is(T == double))
+    {
+        const T radians =
+            hueRadians(input);
+
+        const T cosHue =
+            cast(T)cos(radians);
+
+        const T sinHue =
+            cast(T)sin(radians);
+
+        const LinearSRgb!T anchor =
+            oklabToLinearSRgb(
+                fixedHueOklab(
+                    input.l,
+                    cast(T)0,
+                    cosHue,
+                    sinHue
+                )
+            );
+
+        const LinearSRgb!T endpoint =
+            oklabToLinearSRgb(
+                fixedHueOklab(
+                    input.l,
+                    input.c,
+                    cosHue,
+                    sinHue
+                )
+            );
+
+        // This fixture is specifically a first-ray endpoint-overflow case.
+        if (isFiniteLinearSRgb(endpoint))
+            return false;
+
+        const LinearSRgb!T direction =
+            scaledHugeChromaRayDirection(
+                input.l,
+                input.c,
+                cosHue,
+                sinHue,
+                anchor
+            );
+
+        if (!isFiniteLinearSRgb(direction))
+            return false;
+
+        const auto intersection =
+            intersectUnitRgbCubeDirection(
+                anchor,
+                direction
+            );
+
+        if (!intersection.found)
+            return false;
+
+        return
+            gamutMapRayTraceToLinearSRgb(
+                input
+            ).inGamut;
+    }
+}
+
+
 @safe pure nothrow @nogc unittest
 {
     import color.oklch :
-        OklabHuef,
-        OklabHued,
-        Oklchf,
-        Oklchd;
+        OklabHue,
+        Oklch;
 
     /*
-     * R4 huge-chroma / TC-0015 regression.
-     *
-     * The public contract is semantic: finite 0 < L < 1 input must map to a
+     * The public contract is semantic: finite 0 < L < 1 input maps to a
      * strict in-gamut linear-sRGB color. Internal Ray Trace path metadata and
      * exact derived coordinates are not portable contracts because D permits
      * floating-point intermediates to use greater precision (TC-0015).
      *
-     * Exercise the actual private fallback pieces at CTFE and runtime. The
-     * direct fixed-L/fixed-hue endpoint must overflow for these deliberately
-     * huge but finite chromas; the scaled cubic direction must remain finite,
-     * intersect the unit cube, and allow the public mapper to recover an
-     * in-gamut color.
+     * These two inputs force the ordinary fixed-L/fixed-hue RGB endpoint
+     * outside the scalar range. The scaled cubic fallback must remain finite
+     * and find the unit cube in both CTFE and runtime, for both public scalar
+     * widths.
      */
     enum hugeD =
-        Oklchd(
+        Oklch!double(
             0.50,
             double.max * 0.75,
-            OklabHued.fromDegrees(25.0)
-        );
-
-    enum hugeDRadians =
-        hueRadians(hugeD);
-
-    enum hugeDCos =
-        cast(double)cos(hugeDRadians);
-
-    enum hugeDSin =
-        cast(double)sin(hugeDRadians);
-
-    enum hugeDAnchor =
-        oklabToLinearSRgb(
-            fixedHueOklab(
-                hugeD.l,
-                0.0,
-                hugeDCos,
-                hugeDSin
+            OklabHue!double.fromDegrees(
+                25.0
             )
         );
-
-    enum hugeDEndpoint =
-        oklabToLinearSRgb(
-            fixedHueOklab(
-                hugeD.l,
-                hugeD.c,
-                hugeDCos,
-                hugeDSin
-            )
-        );
-
-    static assert(
-        !isFiniteLinearSRgb(
-            hugeDEndpoint
-        )
-    );
-
-    enum hugeDDirection =
-        scaledHugeChromaRayDirection(
-            hugeD.l,
-            hugeD.c,
-            hugeDCos,
-            hugeDSin,
-            hugeDAnchor
-        );
-
-    static assert(
-        isFiniteLinearSRgb(
-            hugeDDirection
-        )
-    );
-
-    enum hugeDIntersection =
-        intersectUnitRgbCubeDirection(
-            hugeDAnchor,
-            hugeDDirection
-        );
-
-    static assert(
-        hugeDIntersection.found
-    );
-
-    enum hugeDMapped =
-        gamutMapRayTraceToLinearSRgb(
-            hugeD
-        );
-
-    static assert(
-        hugeDMapped.inGamut
-    );
-
 
     enum hugeF =
-        Oklchf(
+        Oklch!float(
             0.50f,
             float.max * 0.75f,
-            OklabHuef.fromDegrees(25.0f)
-        );
-
-    enum hugeFRadians =
-        hueRadians(hugeF);
-
-    enum hugeFCos =
-        cast(float)cos(hugeFRadians);
-
-    enum hugeFSin =
-        cast(float)sin(hugeFRadians);
-
-    enum hugeFAnchor =
-        oklabToLinearSRgb(
-            fixedHueOklab(
-                hugeF.l,
-                0.0f,
-                hugeFCos,
-                hugeFSin
-            )
-        );
-
-    enum hugeFEndpoint =
-        oklabToLinearSRgb(
-            fixedHueOklab(
-                hugeF.l,
-                hugeF.c,
-                hugeFCos,
-                hugeFSin
+            OklabHue!float.fromDegrees(
+                25.0f
             )
         );
 
     static assert(
-        !isFiniteLinearSRgb(
-            hugeFEndpoint
+        verifyHugeRayTraceFallback(
+            hugeD
         )
     );
 
-    enum hugeFDirection =
-        scaledHugeChromaRayDirection(
-            hugeF.l,
-            hugeF.c,
-            hugeFCos,
-            hugeFSin,
-            hugeFAnchor
-        );
-
     static assert(
-        isFiniteLinearSRgb(
-            hugeFDirection
-        )
-    );
-
-    enum hugeFIntersection =
-        intersectUnitRgbCubeDirection(
-            hugeFAnchor,
-            hugeFDirection
-        );
-
-    static assert(
-        hugeFIntersection.found
-    );
-
-    enum hugeFMapped =
-        gamutMapRayTraceToLinearSRgb(
+        verifyHugeRayTraceFallback(
             hugeF
-        );
-
-    static assert(
-        hugeFMapped.inGamut
+        )
     );
 
 
-    // Fixed R0.13 TC-0015 probe. Do not freeze internal success/path metadata:
-    // only the public semantic postcondition is portable.
+    /*
+     * Fixed R0.13 TC-0015 probe. DMD runtime historically took different
+     * internal success/path metadata from DMD CTFE/LDC for the corresponding
+     * research implementation while the mapped color remained valid.
+     *
+     * Freeze only the public semantic postcondition, not path metadata or
+     * CTFE/runtime bit identity.
+     */
     enum tc0015Input =
-        Oklchf(
+        Oklch!float(
             0.88228511810302734375f,
             0.343281686305999755859f,
-            OklabHuef.fromDegrees(
+            OklabHue!float.fromDegrees(
                 19.4710636138916015625f
             )
         );
@@ -2342,151 +2297,32 @@ version (unittest)
     );
 
 
-    // Repeat the same fallback mechanics at runtime. The test deliberately
-    // does not require CTFE/runtime bit identity.
-    const runtimeHugeD = hugeD;
+    // Mutable locals exercise the ordinary unittest/runtime call path. No
+    // equality with the CTFE coordinates is required.
+    Oklch!double runtimeHugeD =
+        hugeD;
 
-    const runtimeDRadians =
-        hueRadians(runtimeHugeD);
-
-    const runtimeDCos =
-        cast(double)cos(runtimeDRadians);
-
-    const runtimeDSin =
-        cast(double)sin(runtimeDRadians);
-
-    const runtimeDAnchor =
-        oklabToLinearSRgb(
-            fixedHueOklab(
-                runtimeHugeD.l,
-                0.0,
-                runtimeDCos,
-                runtimeDSin
-            )
-        );
-
-    const runtimeDEndpoint =
-        oklabToLinearSRgb(
-            fixedHueOklab(
-                runtimeHugeD.l,
-                runtimeHugeD.c,
-                runtimeDCos,
-                runtimeDSin
-            )
-        );
+    Oklch!float runtimeHugeF =
+        hugeF;
 
     assert(
-        !isFiniteLinearSRgb(
-            runtimeDEndpoint
-        )
-    );
-
-    const runtimeDDirection =
-        scaledHugeChromaRayDirection(
-            runtimeHugeD.l,
-            runtimeHugeD.c,
-            runtimeDCos,
-            runtimeDSin,
-            runtimeDAnchor
-        );
-
-    assert(
-        isFiniteLinearSRgb(
-            runtimeDDirection
-        )
-    );
-
-    const runtimeDIntersection =
-        intersectUnitRgbCubeDirection(
-            runtimeDAnchor,
-            runtimeDDirection
-        );
-
-    assert(
-        runtimeDIntersection.found
-    );
-
-    assert(
-        gamutMapRayTraceToLinearSRgb(
+        verifyHugeRayTraceFallback(
             runtimeHugeD
-        ).inGamut
-    );
-
-
-    const runtimeHugeF = hugeF;
-
-    const runtimeFRadians =
-        hueRadians(runtimeHugeF);
-
-    const runtimeFCos =
-        cast(float)cos(runtimeFRadians);
-
-    const runtimeFSin =
-        cast(float)sin(runtimeFRadians);
-
-    const runtimeFAnchor =
-        oklabToLinearSRgb(
-            fixedHueOklab(
-                runtimeHugeF.l,
-                0.0f,
-                runtimeFCos,
-                runtimeFSin
-            )
-        );
-
-    const runtimeFEndpoint =
-        oklabToLinearSRgb(
-            fixedHueOklab(
-                runtimeHugeF.l,
-                runtimeHugeF.c,
-                runtimeFCos,
-                runtimeFSin
-            )
-        );
-
-    assert(
-        !isFiniteLinearSRgb(
-            runtimeFEndpoint
         )
     );
 
-    const runtimeFDirection =
-        scaledHugeChromaRayDirection(
-            runtimeHugeF.l,
-            runtimeHugeF.c,
-            runtimeFCos,
-            runtimeFSin,
-            runtimeFAnchor
-        );
-
     assert(
-        isFiniteLinearSRgb(
-            runtimeFDirection
-        )
-    );
-
-    const runtimeFIntersection =
-        intersectUnitRgbCubeDirection(
-            runtimeFAnchor,
-            runtimeFDirection
-        );
-
-    assert(
-        runtimeFIntersection.found
-    );
-
-    assert(
-        gamutMapRayTraceToLinearSRgb(
+        verifyHugeRayTraceFallback(
             runtimeHugeF
-        ).inGamut
+        )
     );
 
-    const tc0015Runtime =
-        gamutMapRayTraceToLinearSRgb(
-            tc0015Input
-        );
+    Oklch!float tc0015RuntimeInput =
+        tc0015Input;
 
     assert(
-        tc0015Runtime.inGamut
+        gamutMapRayTraceToLinearSRgb(
+            tc0015RuntimeInput
+        ).inGamut
     );
 }
