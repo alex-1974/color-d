@@ -48,6 +48,19 @@ git -C "$repo_root" archive \
     gzip -n > "$archive_path"
 
 list_file="$(mktemp)"
+verify_dir=""
+
+cleanup()
+{
+    rm -f "$list_file"
+
+    if [[ -n "$verify_dir" ]]
+    then
+        rm -rf "$verify_dir"
+    fi
+}
+
+trap cleanup EXIT
 
 tar -tzf "$archive_path" > "$list_file"
 
@@ -103,7 +116,6 @@ reject_prefix experiments
 reject_prefix tests
 
 verify_dir="$(mktemp -d)"
-trap 'rm -f "$list_file"; rm -rf "$verify_dir"' EXIT
 
 tar -xzf "$archive_path" -C "$verify_dir"
 
