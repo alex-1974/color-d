@@ -223,88 +223,105 @@ void acceptedDirectModuleSurface()
 }
 
 /*
- * Supported direct modules must not become accidental transitive facades.
- * Dependency types/functions remain owned by their documented modules.
+ * Normal direct imports must not re-export their implementation dependencies
+ * into the caller's unqualified namespace. D permits explicit module
+ * qualification for names known through an imported module; that technical
+ * reachability is not the public-import contract being tested here.
+ *
+ * Local imports keep each check isolated while the top-level static imports
+ * above remain qualified-only.
  */
-static assert(!__traits(compiles,
-    color.xyz.SRgbd(
-        0.1,
-        0.2,
-        0.3
-    )
-));
-static assert(!__traits(compiles,
-    color.oklab.XyzD65d(
-        0.1,
-        0.2,
-        0.3
-    )
-));
-static assert(!__traits(compiles,
-    color.oklch.Oklabd(
-        0.5,
-        0.1,
-        0.0
-    )
-));
-static assert(!__traits(compiles,
-    color.alpha.Oklchd(
-        0.5,
-        0.1,
-        color.oklch.OklabHued.fromDegrees(
-            30.0
-        )
-    )
-));
-static assert(!__traits(compiles,
-    color.composite.Premultiplied!(
-        color.rgb.LinearSRgbd
-    ).init
-));
-static assert(!__traits(compiles,
-    color.interpolate.Oklchd(
-        0.5,
-        0.1,
-        color.oklch.OklabHued.fromDegrees(
-            30.0
-        )
-    )
-));
-static assert(!__traits(compiles,
-    color.gamut.Oklchd(
-        0.5,
-        0.1,
-        color.oklch.OklabHued.fromDegrees(
-            30.0
-        )
-    )
-));
-static assert(!__traits(compiles,
-    color.wcag.SRgbd(
-        0.1,
-        0.2,
-        0.3
-    )
-));
-static assert(!__traits(compiles,
-    color.difference.Oklabd(
-        0.5,
-        0.1,
-        0.0
-    )
-));
-static assert(!__traits(compiles,
-    color.tone.Oklch!double.init
-));
-static assert(!__traits(compiles,
-    color.tone.withLightness(
-        color.oklch.Oklchd(
-            0.5,
-            0.1,
-            color.oklch.OklabHued.fromDegrees(
-                30.0
-            )
-        ),
-        0.7
-    )
-));
+void xyzDoesNotReexportRgb()
+{
+    import color.xyz;
+
+    static assert(!__traits(compiles,
+        LinearSRgbd.init
+    ));
+}
+
+void oklabDoesNotReexportXyz()
+{
+    import color.oklab;
+
+    static assert(!__traits(compiles,
+        XyzD65d.init
+    ));
+}
+
+void oklchDoesNotReexportOklab()
+{
+    import color.oklch;
+
+    static assert(!__traits(compiles,
+        Oklabd.init
+    ));
+}
+
+void alphaDoesNotReexportColorDependencies()
+{
+    import color.alpha;
+
+    static assert(!__traits(compiles,
+        Oklchd.init
+    ));
+}
+
+void compositeDoesNotReexportAlpha()
+{
+    import color.composite;
+    import color.rgb;
+
+    static assert(!__traits(compiles,
+        Premultiplied!LinearSRgbd.init
+    ));
+}
+
+void interpolateDoesNotReexportColorDependencies()
+{
+    import color.interpolate;
+
+    static assert(!__traits(compiles,
+        Oklch!double.init
+    ));
+}
+
+void gamutDoesNotReexportColorDependencies()
+{
+    import color.gamut;
+
+    static assert(!__traits(compiles,
+        Oklch!double.init
+    ));
+}
+
+void wcagDoesNotReexportRgb()
+{
+    import color.wcag;
+
+    static assert(!__traits(compiles,
+        SRgb!double.init
+    ));
+}
+
+void differenceDoesNotReexportOklab()
+{
+    import color.difference;
+
+    static assert(!__traits(compiles,
+        Oklabd.init
+    ));
+}
+
+void toneDoesNotReexportOklch()
+{
+    import color.tone;
+
+    static assert(!__traits(compiles,
+        Oklch!double.init
+    ));
+
+    static assert(!__traits(compiles,
+        withLightness
+    ));
+}
