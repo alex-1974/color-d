@@ -827,7 +827,7 @@ Oklch!T withHue(T)(
  * Converts Cartesian Oklab to lightness, chroma, and hue.
  *
  * Use this when chroma or hue is easier to work with directly. Non-achromatic
- * results have non-negative chroma and hue in [0°, 360°). Exactly achromatic
+ * results have non-negative chroma and hue from 0° inclusive to 360° exclusive. Exactly achromatic
  * Oklab is represented as `C = 0, h = 0°`. Extreme finite components are
  * handled without avoidable loss from intermediate magnitude calculations.
  *
