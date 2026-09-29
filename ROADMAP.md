@@ -1,19 +1,31 @@
 # color-d Roadmap
 
-## Current release target
+## Current release work
 
-The current planned first public release is:
+**v0.1.0 — First public release** was published on 2026-09-29 and is complete.
+The R0–R4 sections below are retained as the historical development and
+validation path that produced that release; they are not current package
+release targets.
+
+The current maintenance target is:
 
 ```text
-v0.1.0 — First public release
+v0.1.1 — Documentation and Maintenance
 ```
 
-GitHub milestone `v0.1.0` is the concrete release target.
+v0.1.1 is deliberately limited to documentation quality, executable public
+examples, source rationale, contract evidence, repository cleanup, and
+compatible toolchain/quality-gate maintenance. It does not add a new color
+space, storage family, palette/theme policy abstraction, or intentionally
+change public numerical semantics.
 
-The R0–R4 names below describe development phases and promotion/validation
-gates leading to that release. They are not separate package releases.
+Detailed v0.1.1 work is tracked by GitHub milestone `v0.1.1` and its issues.
+Deferred feature families remain candidates only; they are not promises for
+v0.1.1 or a later release.
 
-Current sequence:
+## Historical v0.1.0 development path
+
+The first public release followed this sequence:
 
 ```text
 R0  research and architecture closeout
@@ -25,14 +37,8 @@ R3  perceptual utilities
  ↓
 R4  real consumer validation
  ↓
-v0.1.0 release hardening and publication
+v0.1.0 release hardening and publication — COMPLETE
 ```
-
-R2 and R3 may overlap where there is no technical dependency.
-
-Detailed work, decisions and release gates are tracked in GitHub issues.
-This roadmap records the durable direction and sequencing rather than
-duplicating issue-level task lists.
 
 ## R0 — Research and architecture
 

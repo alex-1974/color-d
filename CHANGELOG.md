@@ -2,12 +2,26 @@
 
 All notable user-visible changes to `color-d` are recorded here.
 
-The project is pre-1.0. Until the first published release, changes accumulate
-under **Unreleased**.
+The project is pre-1.0. Changes planned for the next release accumulate under
+**Unreleased**.
 
 ## Unreleased
 
-No unreleased user-visible changes are recorded after v0.1.0.
+### Changed
+
+- preparing v0.1.1 as a documentation and maintenance release with no intended
+  public numerical-semantic or feature-family expansion;
+- strengthened the documentation contract so every public callable has a
+  directly associated executable documented-`unittest` example in source;
+- rewrote public API reference text around caller intent, inputs, results, and
+  visible semantics while keeping implementation rationale in source comments;
+- expanded compile-time contract evidence across public overloads for
+  `@safe`, `pure`, `nothrow`, and `@nogc` use;
+- added a rendered-DDox site validation gate for stable pages and local links;
+- clarified non-obvious numerical, compiler, and performance rationale in
+  production source comments without changing implementation behavior;
+- refreshed repository documentation for the released, DUB-resolvable v0.1.0
+  state and the v0.1.1 maintenance scope.
 
 ## [0.1.0] - 2026-09-29
 
