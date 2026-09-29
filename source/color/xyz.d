@@ -1,10 +1,9 @@
 /++
- CIE XYZ D65 values and linear-sRGB/XYZ conversions.
+ CIE XYZ values referenced to D65 and conversions to and from linear-light sRGB.
 
- XYZ values are mathematical tristimulus coordinates. Conversion is explicit
- and does not intentionally clip extended values. As with ordinary IEEE
- arithmetic, extreme finite magnitudes may overflow intermediate matrix terms;
- route-specific finite-closure guarantees are documented on the conversion.
+ Use XYZ D65 as the connection space between linear-light sRGB and color spaces
+ built on D65 tristimulus values. Conversions are explicit and do not clip or
+ gamut-map extended values.
 +/
 module color.xyz;
 
@@ -15,13 +14,13 @@ private import color.rgb :
     SRgbf;
 
 /**
- * CIE XYZ color value using the D65 reference white.
+ * Stores CIE XYZ tristimulus values referenced to D65.
  *
- * `T` must be `float` or `double`. XYZ components are mathematical values and
- * are not implicitly clamped to a display-gamut range.
+ * Use this type when a conversion or calculation needs XYZ D65 coordinates.
+ * `T` must be `float` or `double`. Construction stores components
+ * unchanged and does not clamp them to a display gamut.
  *
- * The natural floating-point `.init` state contains NaNs and is therefore a
- * detectably invalid/uninitialized semantic color.
+ * The natural `.init` value contains NaNs and is not a usable color.
  */
 
 struct XyzD65(T)
@@ -198,10 +197,10 @@ if (is(T == float) || is(T == double))
 /**
  * Converts linear-light sRGB to CIE XYZ D65.
  *
- * Extended values are transformed without gamut clipping. The validated
- * extreme-finite audit found no avoidable non-finite result for this forward
- * matrix on its deterministic float/double grid; this is validation evidence,
- * not a promise that every finite IEEE input has a finite output.
+ * Use this conversion when an operation needs XYZ D65 coordinates. Extended
+ * values are transformed without gamut clipping. As with ordinary
+ * floating-point matrix arithmetic, extreme magnitudes can produce non-finite
+ * results.
  *
  * Params:
  *     rgb = Linear-light sRGB value to convert.
@@ -251,19 +250,11 @@ XyzD65!T toXyzD65(T)(LinearSRgb!T rgb)
 /**
  * Converts CIE XYZ D65 to linear-light sRGB.
  *
- * Extended values are transformed without gamut clipping.
- *
- * For `double`, an algebraically equivalent dominant-factor evaluation avoids
- * the validated intermediate-overflow pattern and improves the measured mean
- * and maximum error against a wider reference on the ordinary audit corpus.
- * Because the operation order changes, ordinary `double` results are not
- * promised to be bit-identical to the unfactored matrix, and subnormal results
- * can differ by a few ULPs.
- *
- * For `float`, the direct matrix remains the ordinary path. If that path
- * produces a non-finite result from finite XYZ input, a scale-equivalent
- * fallback evaluates the same matrix in a normalized range. Ordinary `float`
- * results therefore retain the direct-path rounding behavior.
+ * Use this conversion when XYZ D65 data must enter linear-light sRGB
+ * calculations. Extended values are transformed without gamut clipping.
+ * Finite extreme inputs are handled defensively to avoid avoidable
+ * intermediate overflow; the result is not promised to be bit-identical to a
+ * particular matrix-evaluation order.
  *
  * Params:
  *     xyz = CIE XYZ D65 value to convert.
