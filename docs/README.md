@@ -3,6 +3,9 @@
 This directory contains the documentation that a package user needs to
 understand and use color-d. It is shipped with the consumer archive.
 
+The current released package is `v0.1.0`; current `develop` documentation also
+contains documentation and maintenance improvements planned for `v0.1.1`.
+
 ## Start here
 
 If this is your first time using color-d, follow this path:
