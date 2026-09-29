@@ -60,7 +60,7 @@ Prefer verbs over abstract nouns:
 
 Every public module needs a short module-level explanation of its role.
 
-A non-trivial public declaration should normally provide:
+A public callable should provide the caller-visible contract needed to use it correctly. A non-trivial public declaration should normally provide:
 
 - one clear summary sentence;
 - caller-visible semantics before implementation detail;
@@ -105,9 +105,11 @@ The second statement belongs in code comments, regression tests, an ADR, or
 research evidence unless the mechanism itself changes caller-visible
 behavior.
 
-## 6. DDox examples are executable teaching code
+## 6. Every public callable has an executable DDox example
 
-Use a documented `unittest` immediately after the declaration it teaches:
+Every public function, method, constructor, property, and other callable declaration must have its own documented `unittest` immediately after the declaration it teaches. This is a v0.1.1 documentation contract: examples are part of the public reference, not optional coverage shared implicitly across a callable family.
+
+Use:
 
 ```d
 ///
@@ -123,6 +125,8 @@ Use a documented `unittest` immediately after the declaration it teaches:
 The leading `///` is deliberate. Ddoc/DDox associates the documented
 `unittest` with the preceding declaration, while normal test execution
 compiles and runs the same code.
+
+Each callable gets its own example even when several overloads or related functions look similar. Keep each example focused enough that this stronger coverage improves the reference instead of turning DDox into a regression-test dump.
 
 A DDox example should:
 
@@ -149,8 +153,7 @@ Ordinary `unittest` blocks remain the right place for:
 
 Do not prefix those tests with `///` merely to increase example count.
 
-A module with ten public callables does not need ten examples if two examples
-teach the whole family well.
+A module with ten public callables therefore has at least ten documented examples: one attached to each callable. The examples may be deliberately small and parallel when the declarations form a family, but each must still show why and how that callable is used.
 
 ## 8. Place examples directly after the declaration they document
 
@@ -214,7 +217,8 @@ For a public API or documentation PR, ask:
 - Is hidden clipping, gamut mapping, allocation, or conversion explicitly
   absent when callers could otherwise assume it?
 - Are failure and `.init` semantics stated where non-obvious?
-- Is the DDox example attached to the correct declaration?
+- Does every public callable have its own DDox example?
+- Is each DDox example attached to the correct declaration?
 - Does the example use only public API?
 - Is the example smaller than the regression test for the same feature?
 - Do all consumer-documentation relative links resolve in the exported package?
