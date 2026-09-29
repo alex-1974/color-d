@@ -371,6 +371,20 @@ if (is(T == float) || is(T == double))
     }
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const color = Oklchd(
+        0.55,
+        0.12,
+        OklabHued.fromDegrees(250.0)
+    );
+
+    assert(color.l == 0.55);
+    assert(color.c == 0.12);
+    assert(color.h.rawDegrees == 250.0);
+}
+
 /// Oklab-family hue with `float` storage.
 alias OklabHuef = OklabHue!float;
 
