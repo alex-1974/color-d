@@ -1,28 +1,31 @@
+/++
+ Reference alpha compositing operations.
+
+ Source-over compositing operates on premultiplied linear-light sRGB so encoded-light and straight-alpha values cannot be passed accidentally.
++/
 module color.composite;
 
 private import color.alpha : Premultiplied;
 private import color.rgb : LinearSRgb;
 
 /**
- * Compose a premultiplied linear-light source over a destination.
+ * Composes a premultiplied linear-light source over a destination.
  *
- * Both operands are premultiplied linear-light sRGB values. The first argument
- * is the source and the second is the destination.
+ * Both operands are premultiplied linear-light sRGB values. The operation
+ * performs Porter-Duff source-over arithmetic only; it does not validate or
+ * clamp alpha, clip RGB, gamut-map, convert color spaces, or infer a background.
  *
- * Porter-Duff source-over is evaluated as:
+ * Params:
+ *     source = Premultiplied foreground color.
+ *     destination = Premultiplied background color.
  *
- * $(PRE
- * out.rgb   = source.rgb +
- *             destination.rgb * (1 - source.alpha)
+ * Returns:
+ *     The premultiplied source-over result.
  *
- * out.alpha = source.alpha +
- *             destination.alpha * (1 - source.alpha)
- * )
- *
- * The operation performs only this arithmetic. It does not validate or clamp
- * alpha, clip RGB, perform gamut mapping, convert color spaces, or infer a
- * background. Extended-range linear RGB therefore remains representable.
+ * Standards:
+ *     Porter-Duff source-over compositing.
  */
+
 Premultiplied!(LinearSRgb!T) sourceOver(T)(
     Premultiplied!(LinearSRgb!T) source,
     Premultiplied!(LinearSRgb!T) destination

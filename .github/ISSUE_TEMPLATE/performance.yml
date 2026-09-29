@@ -1,0 +1,26 @@
+name: Performance
+description: Report or investigate a measurable performance concern.
+title: ""
+labels: ["type: performance"]
+body:
+  - type: textarea
+    id: workload
+    attributes:
+      label: Workload and semantics
+      description: Define the operation and equivalent observable work.
+    validations:
+      required: true
+  - type: textarea
+    id: measurement
+    attributes:
+      label: Measurement
+      description: Compiler, flags, hardware, warm-up, iterations, median/spread, baseline.
+    validations:
+      required: true
+  - type: textarea
+    id: correctness
+    attributes:
+      label: Numerical/semantic preflight
+      description: How was equivalent correctness established?
+    validations:
+      required: true

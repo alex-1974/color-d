@@ -1,0 +1,887 @@
+name: Fast CI
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fast-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    name: Fast / ${{ matrix.compiler }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - dmd-2.113.0
+          - ldc-1.43.0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install D toolchain
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      - name: Toolchain versions
+        run: |
+          "$DC" --version
+          dub --version
+
+      - name: Debug unittests
+        run: dub test --compiler="$DC" --build=debug --force
+
+      - name: DDox documentation smoke
+        if: matrix.compiler == 'dmd-2.113.0'
+        run: dub build --compiler="$DC" --build=ddox --force
+
+      - name: Release unittests
+        run: dub test --compiler="$DC" --build=release --force
+
+      - name: Extreme finite interpolation runtime probe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          cat > "$tmp/probe.d" <<'D'
+          import color;
+          import std.conv : to;
+          import std.stdio : writeln;
+
+          int main(string[] args)
+          {
+              if (args.length != 3)
+                  return 2;
+
+              const double scaleD =
+                  args[1].to!double;
+
+              const double largeD =
+                  scaleD * double.max;
+
+              const resultD =
+                  interpolate(
+                      LinearSRgbd(
+                          largeD,
+                          -largeD,
+                          largeD
+                      ),
+                      LinearSRgbd(
+                          -largeD,
+                          largeD,
+                          -largeD
+                      ),
+                      0.5
+                  );
+
+              const float scaleF =
+                  args[2].to!float;
+
+              const float largeF =
+                  scaleF * float.max;
+
+              const resultF =
+                  interpolate(
+                      Oklabf(
+                          largeF,
+                          -largeF,
+                          largeF
+                      ),
+                      Oklabf(
+                          -largeF,
+                          largeF,
+                          -largeF
+                      ),
+                      0.5f
+                  );
+
+              writeln(
+                  "double midpoint: ",
+                  resultD.r,
+                  " ",
+                  resultD.g,
+                  " ",
+                  resultD.b
+              );
+
+              writeln(
+                  "float midpoint: ",
+                  resultF.l,
+                  " ",
+                  resultF.a,
+                  " ",
+                  resultF.b
+              );
+
+              if (
+                  resultD.r != 0.0 ||
+                  resultD.g != 0.0 ||
+                  resultD.b != 0.0
+              )
+              {
+                  return 1;
+              }
+
+              if (
+                  resultF.l != 0.0f ||
+                  resultF.a != 0.0f ||
+                  resultF.b != 0.0f
+              )
+              {
+                  return 1;
+              }
+
+              return 0;
+          }
+          D
+
+          "$DC"               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/probe"               "$tmp/probe.d"
+
+          "$tmp/probe" 0.75 0.75
+
+      - name: Oklab CTFE/runtime parity probe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          cat > "$tmp/probe.d" <<'D'
+          import color;
+          import std.conv : to;
+          import std.math : fabs;
+          import std.stdio : writeln;
+
+          enum ordinaryExpectedD =
+              XyzD65d(
+                  0.125,
+                  0.25,
+                  0.5
+              )
+              .toOklab;
+
+          enum extendedExpectedD =
+              XyzD65d(
+                  -0.25,
+                  0.5,
+                  1.25
+              )
+              .toOklab;
+
+          enum ordinaryExpectedF =
+              XyzD65f(
+                  0.125f,
+                  0.25f,
+                  0.5f
+              )
+              .toOklab;
+
+          enum extendedExpectedF =
+              XyzD65f(
+                  -0.25f,
+                  0.5f,
+                  1.25f
+              )
+              .toOklab;
+
+          bool close(T)(
+              T actual,
+              T expected,
+              T tolerance
+          )
+          {
+              return
+                  fabs(
+                      cast(real)actual -
+                      cast(real)expected
+                  ) <= cast(real)tolerance;
+          }
+
+          int main(string[] args)
+          {
+              if (args.length != 5)
+                  return 2;
+
+              const bool extended =
+                  args[1] == "extended";
+
+              const double xD = args[2].to!double;
+              const double yD = args[3].to!double;
+              const double zD = args[4].to!double;
+
+              const actualD =
+                  XyzD65d(xD, yD, zD).toOklab;
+
+              const expectedD =
+                  extended
+                      ? extendedExpectedD
+                      : ordinaryExpectedD;
+
+              writeln(
+                  "double diff: ",
+                  fabs(actualD.l - expectedD.l),
+                  " ",
+                  fabs(actualD.a - expectedD.a),
+                  " ",
+                  fabs(actualD.b - expectedD.b)
+              );
+
+              if (
+                  !close(actualD.l, expectedD.l, 5e-14) ||
+                  !close(actualD.a, expectedD.a, 5e-14) ||
+                  !close(actualD.b, expectedD.b, 5e-14)
+              )
+              {
+                  return 1;
+              }
+
+              const float xF = args[2].to!float;
+              const float yF = args[3].to!float;
+              const float zF = args[4].to!float;
+
+              const actualF =
+                  XyzD65f(xF, yF, zF).toOklab;
+
+              const expectedF =
+                  extended
+                      ? extendedExpectedF
+                      : ordinaryExpectedF;
+
+              writeln(
+                  "float diff: ",
+                  fabs(
+                      cast(double)actualF.l -
+                      cast(double)expectedF.l
+                  ),
+                  " ",
+                  fabs(
+                      cast(double)actualF.a -
+                      cast(double)expectedF.a
+                  ),
+                  " ",
+                  fabs(
+                      cast(double)actualF.b -
+                      cast(double)expectedF.b
+                  )
+              );
+
+              if (
+                  !close(actualF.l, expectedF.l, 3e-6f) ||
+                  !close(actualF.a, expectedF.a, 3e-6f) ||
+                  !close(actualF.b, expectedF.b, 3e-6f)
+              )
+              {
+                  return 1;
+              }
+
+              return 0;
+          }
+          D
+
+          "$DC"               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/probe"               "$tmp/probe.d"
+
+          "$tmp/probe" ordinary 0.125 0.25 0.5
+          "$tmp/probe" extended -0.25 0.5 1.25
+
+      - name: Public special-value semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of="$tmp/special-values" \
+              "$GITHUB_WORKSPACE/tests/numerical/special_value_semantics.d"
+
+          "$tmp/special-values"
+
+      - name: README quick-start consumer smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of="$tmp/readme-quickstart" \
+              "$GITHUB_WORKSPACE/tests/examples/readme_quickstart.d"
+
+          "$tmp/readme-quickstart"
+
+      - name: Consumer archive boundary smoke
+        if: matrix.compiler == 'dmd-2.113.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          git archive --format=tar HEAD > "$tmp/color-d.tar"
+          tar -tf "$tmp/color-d.tar" > "$tmp/files.txt"
+
+          for required in \
+              README.md \
+              LICENSE \
+              CHANGELOG.md \
+              dub.sdl \
+              source/color/package.d \
+              docs/tutorial/getting-started.md
+          do
+              grep -Fx "$required" "$tmp/files.txt"
+          done
+
+          for forbidden in \
+              .gitattributes \
+              .gitignore \
+              .github/ \
+              AGENTS.md \
+              CONTRIBUTING.md \
+              DESIGN_PRINCIPLES.md \
+              ROADMAP.md \
+              RESEARCH.md \
+              dscanner.ini \
+              docs/adr/ \
+              docs/pages-publication.md \
+              tests/
+          do
+              if grep -Fq "$forbidden" "$tmp/files.txt"; then
+                  echo "repository-only path leaked into consumer archive: $forbidden" >&2
+                  exit 1
+              fi
+          done
+
+          archive_bytes="$(wc -c < "$tmp/color-d.tar")"
+          max_archive_bytes=$((1024 * 1024))
+
+          echo "consumer archive bytes=$archive_bytes"
+
+          if (( archive_bytes > max_archive_bytes )); then
+              echo "consumer archive exceeded the 1 MiB v0.1 package guard" >&2
+              exit 1
+          fi
+
+      - name: Release publication dry-run
+        if: matrix.compiler == 'dmd-2.113.0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          annotated_tag="v9999.9999.9999"
+          lightweight_tag="v9999.9999.9998"
+
+          cleanup()
+          {
+              git tag -d "$annotated_tag" >/dev/null 2>&1 || true
+              git tag -d "$lightweight_tag" >/dev/null 2>&1 || true
+              rm -rf "$tmp"
+          }
+
+          trap cleanup EXIT
+
+          bash .github/scripts/check-release-metadata.sh \
+              0.1.0 \
+              preflight \
+              "$GITHUB_WORKSPACE"
+
+          if bash .github/scripts/check-release-metadata.sh \
+              0.1 \
+              preflight \
+              "$GITHUB_WORKSPACE"
+          then
+              echo "Invalid release version unexpectedly passed" >&2
+              exit 1
+          fi
+
+          mkdir -p "$tmp/release-metadata"
+          cp README.md ROADMAP.md CHANGELOG.md LICENSE dub.sdl \
+              "$tmp/release-metadata/"
+
+          sed -i \
+              's/has not published v0.1.0 yet/has published v0.1.0/' \
+              "$tmp/release-metadata/README.md"
+
+          sed -i \
+              's/\*\*Status: HARDENING — v0\.1\.0 FEATURE FREEZE\.\*\*/**Status: COMPLETE — v0.1.0 RELEASED.**/' \
+              "$tmp/release-metadata/ROADMAP.md"
+
+          awk '
+              { print }
+              /^## Unreleased$/ {
+                  print ""
+                  print "## [0.1.0] - 2026-09-28"
+              }
+          ' "$tmp/release-metadata/CHANGELOG.md" \
+              > "$tmp/release-metadata/CHANGELOG.next"
+
+          mv \
+              "$tmp/release-metadata/CHANGELOG.next" \
+              "$tmp/release-metadata/CHANGELOG.md"
+
+          bash .github/scripts/check-release-metadata.sh \
+              0.1.0 \
+              release \
+              "$tmp/release-metadata"
+
+          python3 .github/scripts/extract-release-notes.py \
+              "$tmp/release-metadata/CHANGELOG.md" \
+              0.1.0 \
+              "$tmp/release-notes.md"
+
+          grep -Fq '### Added' "$tmp/release-notes.md"
+          grep -Fq '### Deferred' "$tmp/release-notes.md"
+
+          mkdir -p "$tmp/artifacts-a"
+          mkdir -p "$tmp/artifacts-b"
+
+          bash .github/scripts/assemble-release-archive.sh \
+              0.1.0 \
+              "$tmp/artifacts-a" \
+              HEAD
+
+          bash .github/scripts/assemble-release-archive.sh \
+              0.1.0 \
+              "$tmp/artifacts-b" \
+              HEAD
+
+          bash .github/scripts/assemble-ddox-archive.sh \
+              0.1.0 \
+              docs \
+              "$tmp/artifacts-a"
+
+          bash .github/scripts/assemble-ddox-archive.sh \
+              0.1.0 \
+              docs \
+              "$tmp/artifacts-b"
+
+          for file in \
+              color-d-0.1.0.tar.gz \
+              color-d-0.1.0.metadata.txt \
+              color-d-0.1.0.ddox.tar.gz
+          do
+              test -s "$tmp/artifacts-a/$file"
+              cmp "$tmp/artifacts-a/$file" "$tmp/artifacts-b/$file"
+          done
+
+          grep -Fq \
+              "commit=$(git rev-parse HEAD)" \
+              "$tmp/artifacts-a/color-d-0.1.0.metadata.txt"
+
+          (
+              cd "$tmp/artifacts-a"
+
+              sha256sum \
+                  color-d-0.1.0.tar.gz \
+                  color-d-0.1.0.metadata.txt \
+                  color-d-0.1.0.ddox.tar.gz \
+                  > SHA256SUMS
+
+              sha256sum -c SHA256SUMS
+          )
+
+          git -c user.name=color-d-ci \
+              -c user.email=ci@example.invalid \
+              tag -a "$annotated_tag" -m "release dry-run tag" HEAD
+
+          bash .github/scripts/verify-release-tag.sh \
+              "$annotated_tag" \
+              HEAD
+
+          git tag -d "$annotated_tag"
+
+          git tag "$lightweight_tag" HEAD
+
+          if bash .github/scripts/verify-release-tag.sh \
+              "$lightweight_tag" \
+              HEAD
+          then
+              echo "Lightweight release tag unexpectedly passed" >&2
+              exit 1
+          fi
+
+          git tag -d "$lightweight_tag"
+
+          bash .github/scripts/fetch-release-docs.sh \
+              "$GITHUB_REPOSITORY" \
+              "$tmp/fetched-release-docs"
+
+      - name: Pages release-layout dry-run
+        if: matrix.compiler == 'dmd-2.113.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          mkdir -p "$tmp/dev-docs"
+          mkdir -p "$tmp/no-releases"
+
+          printf '%s\n' '<html>development-docs</html>' \
+              > "$tmp/dev-docs/index.html"
+
+          bash .github/scripts/assemble-pages-site.sh \
+              "$tmp/dev-docs" \
+              "$tmp/no-releases" \
+              "$tmp/pre-release-site" \
+              .github/pages/index.html
+
+          cmp \
+              .github/pages/index.html \
+              "$tmp/pre-release-site/index.html"
+
+          grep -Fq \
+              'development-docs' \
+              "$tmp/pre-release-site/dev/index.html"
+
+          mkdir -p "$tmp/releases/v0.1.0"
+          mkdir -p "$tmp/releases/v0.10.0"
+
+          printf '%s\n' '<html>stable-0.1.0</html>' \
+              > "$tmp/releases/v0.1.0/index.html"
+
+          printf '%s\n' '<html>stable-0.10.0</html>' \
+              > "$tmp/releases/v0.10.0/index.html"
+
+          printf '%s\n' 'old-version' \
+              > "$tmp/releases/v0.1.0/version-marker.txt"
+
+          printf '%s\n' 'latest-version' \
+              > "$tmp/releases/v0.10.0/version-marker.txt"
+
+          bash .github/scripts/assemble-pages-site.sh \
+              "$tmp/dev-docs" \
+              "$tmp/releases" \
+              "$tmp/released-site" \
+              .github/pages/index.html
+
+          grep -Fq \
+              'stable-0.10.0' \
+              "$tmp/released-site/index.html"
+
+          grep -Fq \
+              'stable-0.1.0' \
+              "$tmp/released-site/v0.1.0/index.html"
+
+          grep -Fq \
+              'stable-0.10.0' \
+              "$tmp/released-site/v0.10.0/index.html"
+
+          grep -Fq \
+              'development-docs' \
+              "$tmp/released-site/dev/index.html"
+
+          grep -Fq \
+              'latest-version' \
+              "$tmp/released-site/version-marker.txt"
+
+          grep -Fq \
+              'old-version' \
+              "$tmp/released-site/v0.1.0/version-marker.txt"
+
+          mkdir -p "$tmp/invalid-releases/v0.1"
+          printf '%s\n' '<html>invalid</html>' \
+              > "$tmp/invalid-releases/v0.1/index.html"
+
+          if bash .github/scripts/assemble-pages-site.sh \
+              "$tmp/dev-docs" \
+              "$tmp/invalid-releases" \
+              "$tmp/invalid-site" \
+              .github/pages/index.html
+          then
+              echo "Invalid versioned documentation directory unexpectedly passed" >&2
+              exit 1
+          fi
+
+      - name: Clean-package external DUB consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          mkdir -p "$tmp/package"
+          mkdir -p "$tmp/consumer/source"
+
+          git archive --format=tar HEAD |
+              tar -xf - -C "$tmp/package"
+
+          cat > "$tmp/consumer/dub.json" <<JSON
+          {
+            "name": "color-d-clean-package-consumer",
+            "targetType": "executable",
+            "dependencies": {
+              "color-d": {
+                "path": "$tmp/package"
+              }
+            }
+          }
+          JSON
+
+          cat > "$tmp/consumer/source/app.d" <<'D'
+          import color;
+
+          void main()
+          {
+              const encoded =
+                  SRgbd(
+                      0.82,
+                      0.25,
+                      0.12
+                  );
+
+              const perceptual =
+                  encoded
+                  .toLinear
+                  .toXyzD65
+                  .toOklab
+                  .toOklch;
+
+              const mapped =
+                  perceptual
+                  .withLightness(0.70)
+                  .withChroma(0.16)
+                  .gamutMapRayTraceToLinearSRgb;
+
+              assert(mapped.inGamut);
+
+              double[3] lightnesses =
+                  [0.20, 0.50, 0.80];
+
+              double[3] chromas =
+                  [0.04, 0.10, 0.06];
+
+              Oklchd[3] tones;
+
+              assert(
+                  perceptual
+                  .tryTonesAtLightnessAndChromaInto(
+                      lightnesses[],
+                      chromas[],
+                      tones[]
+                  )
+              );
+
+              assert(tones[2].l == 0.80);
+              assert(tones[2].c == 0.06);
+          }
+          D
+
+          (
+              cd "$tmp/consumer"
+              dub build --compiler="$DC" --build=release
+              ./color-d-clean-package-consumer
+          )
+
+      - name: Linear schedule qualifier probe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -c \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of="$tmp/linear-schedule-qualifiers.o" \
+              "$GITHUB_WORKSPACE/tests/compat/linear_schedule_qualifier_probe.d"
+
+      - name: Named-argument compatibility probe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -c \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of="$tmp/named-arguments.o" \
+              "$GITHUB_WORKSPACE/tests/compat/named_arguments.d"
+
+      - name: Public API surface compatibility probes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          for probe in \
+              public_api_root_surface \
+              public_api_direct_modules
+          do
+              "$DC" \
+                  -c \
+                  -I"$GITHUB_WORKSPACE/source" \
+                  -i \
+                  -of="$tmp/$probe.o" \
+                  "$GITHUB_WORKSPACE/tests/compat/$probe.d"
+          done
+
+      - name: TC-0001 DMD wrong-code canary
+        if: matrix.compiler == 'dmd-2.113.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -of="$tmp/tc0001" \
+              "$GITHUB_WORKSPACE/tests/toolchain/tc0001_static_array_return_canary.d"
+
+          set +e
+          "$tmp/tc0001" > "$tmp/output.txt" 2>&1
+          status=$?
+          set -e
+
+          cat "$tmp/output.txt"
+
+          case "$status" in
+              0)
+                  echo "::notice::TC-0001 canary now passes; re-evaluate and remove the workaround if the supported compiler has fixed the defect."
+                  ;;
+              1)
+                  echo "::warning::TC-0001 still reproduces on the supported DMD; retain the ref-output/ref-const-input workaround."
+                  ;;
+              *)
+                  echo "TC-0001 canary exited unexpectedly with status $status" >&2
+                  exit "$status"
+                  ;;
+          esac
+
+      - name: External import compile smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          cat > "$tmp/root.d" <<'D'
+          import color;
+
+          enum mapped =
+              Oklchd(
+                  0.70,
+                  0.30,
+                  OklabHued.fromDegrees(40.0)
+              )
+              .gamutMapRayTraceToLinearSRgb();
+
+          static assert(mapped.inGamut);
+
+          bool toneBatchCtfe()
+          @safe pure nothrow @nogc
+          {
+              const seed =
+                  Oklchd(
+                      0.50,
+                      0.10,
+                      OklabHued.fromDegrees(210.0)
+                  );
+
+              const double[3] lightnesses =
+                  [0.20, 0.50, 0.80];
+
+              const double[3] chromas =
+                  [0.04, 0.10, 0.06];
+
+              Oklchd[3] tones;
+
+              tonesAtLightnessAndChromaInto(
+                  seed,
+                  lightnesses,
+                  chromas,
+                  tones
+              );
+
+              return
+                  tones[0].l == 0.20 &&
+                  tones[1].c == 0.10 &&
+                  tones[2].c == 0.06;
+          }
+
+          static assert(toneBatchCtfe());
+
+          void main()
+          {
+              double[2] lightnesses =
+                  [0.25, 0.75];
+
+              double[2] chromas =
+                  [0.05, 0.15];
+
+              Oklchd[2] output;
+
+              assert(
+                  tryTonesAtLightnessAndChromaInto(
+                      Oklchd(
+                          0.50,
+                          0.10,
+                          OklabHued.fromDegrees(210.0)
+                      ),
+                      lightnesses[],
+                      chromas[],
+                      output[]
+                  )
+              );
+          }
+          D
+
+          cat > "$tmp/direct.d" <<'D'
+          import color.rgb;
+          import color.xyz;
+          import color.oklab;
+          import color.oklch;
+          import color.gamut;
+          import color.alpha;
+          import color.composite;
+          import color.interpolate;
+          import color.difference;
+          import color.wcag;
+          import color.tone;
+
+          void main()
+          {
+          }
+          D
+
+          "$DC"               -c               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/root.o"               "$tmp/root.d"
+
+          "$DC"               -c               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/direct.o"               "$tmp/direct.d"

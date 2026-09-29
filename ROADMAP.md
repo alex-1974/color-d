@@ -8,7 +8,7 @@ The current planned first public release is:
 v0.1.0 — First public release
 ```
 
-GitHub milestone `v0.1.0 — First public release` is the concrete release target.
+GitHub milestone `v0.1.0` is the concrete release target.
 
 The R0–R4 names below describe development phases and promotion/validation
 gates leading to that release. They are not separate package releases.
@@ -180,8 +180,9 @@ Tracked by GitHub issue #3.
 **Status: COMPLETE — 2026-09-26.**
 
 R1 promoted accepted R0 research into deliberate production modules and API.
-The integrated exit audit is recorded in
-[`docs/research/R1_CLOSEOUT.md`](docs/research/R1_CLOSEOUT.md).
+The production contract is the maintained source/Ddoc, tests, accepted ADRs,
+and the scope recorded below. Historical closeout evidence remains research
+material; see [RESEARCH.md](RESEARCH.md).
 
 Research experiment code remains evidence, not production code to copy
 mechanically.
@@ -209,8 +210,9 @@ Status: **COMPLETE**
 
 Tracked by GitHub issue #11.
 
-Production closeout:
-[`docs/research/R2_CLOSEOUT.md`](docs/research/R2_CLOSEOUT.md).
+The production contract is the maintained source/Ddoc, tests, accepted ADRs,
+and the scope recorded below. Historical R2 closeout evidence remains research
+material; see [RESEARCH.md](RESEARCH.md).
 
 Accepted v0.1 scope:
 
@@ -227,46 +229,72 @@ Accepted v0.1 scope:
 
 Tracked by GitHub issue #12.
 
-**Status: ACTIVE — R3.1–R3.3 complete; R3.4–R3.6 remain.**
+**Status: COMPLETE — 2026-09-27.**
 
 Completed production slices:
 
 - R3.1 — Oklab `deltaEOK`;
 - R3.2 — WCAG-2 relative luminance and contrast measurement;
-- R3.3 — explicit Local MINDE and Ray Trace perceptual sRGB gamut mapping.
+- R3.3 — explicit Local MINDE and Ray Trace perceptual sRGB gamut mapping;
+- R3.4 — raw OKLCH `withLightness`, `withChroma`, and `withHue`
+  component operations;
+- R3.5 — inclusive finite scalar `linearSchedule!N(start, end)`
+  generation in `color.tone`;
+- R3.6 — static-cardinality and runtime caller-owned raw tone-family batch
+  forms.
 
-Remaining accepted v0.1 scope:
-
-- R3.4 — raw OKLCH component operations;
-- R3.5 — finite scalar schedule generation;
-- R3.6 — tone-family batch forms.
+The production contract is the maintained source/Ddoc, tests, accepted ADRs,
+and the scope recorded below. Historical R3 closeout evidence remains research
+material; see [RESEARCH.md](RESEARCH.md).
 
 The gamut-mapping API has no default mapper; algorithm selection remains
 explicit.
 
+The accepted R1–R3 v0.1 production feature scope is now closed. API freeze is
+later: R4 consumer validation may still justify pre-1.0 corrections to the
+promoted surface.
+
 ## R4 — First consumer integration
 
-Consumer validation is tracked separately for the two initial real consumers:
+**Status: COMPLETE — 2026-09-28. v0.1.0 RELEASED.**
 
-- #4 — `imagery-d`;
-- #13 — OSM editor theme/style layer.
+The accepted R1–R3 production feature scope was frozen for v0.1.0. R4
+validated that frozen surface through two real consumers. Neither consumer
+demonstrated a need to reopen feature scope or correct the public API.
 
-The exact consumer paths must come from real application requirements rather
-than synthetic API demonstrations.
+The v0.1 feature freeze ended with publication of v0.1.0. New work now follows
+the normal post-release `develop` workflow; deferred feature families remain
+outside v0.1.0 and require their own evidence and planning before adoption.
 
-Public API stabilization begins only after real consumer usage has exercised
-the production surface and discovered friction has been resolved or
-deliberately documented.
+The durable freeze policy and exception process are recorded in
+[`docs/maintainer/v0.1-feature-freeze.md`](docs/maintainer/v0.1-feature-freeze.md).
+
+Consumer validation completed through two independent real consumers:
+
+- #4 — `imagery-d`: encoded/linear sRGB transfer inside real region-based
+  image processing, including layout/ROI and allocation-free integration;
+- #13 — Dunia editor theme/style: CTFE/runtime theme construction, explicit
+  gamut mapping, WCAG contrast, `deltaEOK`, and runtime background-dependent
+  selection from prepared candidates.
+
+Both consumer gates closed without a provider-side API correction. Release
+hardening may therefore proceed without reopening the v0.1 feature scope.
 
 ## v0.1.0 — Release hardening and publication
 
 Tracked by GitHub issue #14 and milestone
-`v0.1.0 — First public release`.
+`v0.1.0`.
+
+**Status: COMPLETE — v0.1.0 RELEASED.**
+
+The v0.1.0 feature scope remained frozen through release hardening and
+publication. That freeze ended with v0.1.0; its historical policy is retained in
+[`docs/maintainer/v0.1-feature-freeze.md`](docs/maintainer/v0.1-feature-freeze.md).
 
 Release hardening follows completion of the accepted R1–R3 production scope
 and both R4 consumer-validation paths.
 
-The final gate covers:
+The completed release gate covered:
 
 - public root/direct-module surface audit;
 - tested DMD/LDC support statement;
@@ -278,9 +306,14 @@ The final gate covers:
 Public Ddoc, tests and executable examples are not deferred to this phase;
 they evolve with the production APIs that introduce them.
 
-## Later
+## Post-v0.1 candidate backlog
 
-Only with concrete consumer requirements:
+The following are **deferred candidates**, not committed roadmap items and not
+part of the v0.1.0 release scope.
+
+They may be reconsidered only when concrete consumer requirements justify
+their cost and library-boundary impact. Their order below is not a priority
+ranking, and inclusion in this list does not imply a planned release version.
 
 - `SRgb8` / `SRgba8`
 - HSL / HSV

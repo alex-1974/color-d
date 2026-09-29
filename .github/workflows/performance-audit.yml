@@ -1,0 +1,237 @@
+name: Performance audit
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - "source/color/rgb.d"
+      - "source/color/oklab.d"
+      - "source/color/oklch.d"
+      - "source/color/xyz.d"
+      - "source/color/gamut.d"
+      - "tests/performance/**"
+      - ".github/workflows/performance-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  srgb-encode-pow:
+    name: Audit / sRGB encode pow
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install LDC
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-1.43.0
+
+      - name: Environment
+        shell: bash
+        run: |
+          "$DC" --version
+          lscpu
+          uname -a
+
+      - name: Build focused release probe
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -Isource \
+              -i \
+              -of=rgb-encode-pow-probe \
+              tests/performance/rgb_encode_pow_probe.d
+
+      - name: Run focused release probe
+        run: ./rgb-encode-pow-probe
+
+  gamut-inline:
+    name: Audit / gamut inline hint
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install LDC
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-1.43.0
+
+      - name: Environment
+        shell: bash
+        run: |
+          "$DC" --version
+          lscpu
+          uname -a
+
+      - name: Build focused release probe
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -of=gamut-inline-probe \
+              tests/performance/gamut_inline_probe.d
+
+      - name: Run focused release probe
+        run: ./gamut-inline-probe
+
+
+  oklch-chroma-production:
+    name: Audit / OKLCH chroma production
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install LDC
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-1.43.0
+
+      - name: Environment
+        shell: bash
+        run: |
+          "$DC" --version
+          lscpu
+          uname -a
+
+      - name: Build focused release probe
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -Isource \
+              -i \
+              -of=oklch-chroma-probe \
+              tests/performance/oklch_chroma_probe.d
+
+      - name: Run focused release probe
+        run: ./oklch-chroma-probe
+
+
+  oklab-extreme-fallback:
+    name: Audit / Oklab extreme fallback
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install LDC
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-1.43.0
+
+      - name: Environment
+        shell: bash
+        run: |
+          "$DC" --version
+          lscpu
+          uname -a
+
+      - name: Build focused release probe
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -Isource \
+              -i \
+              -of=oklab-extreme-fallback-probe \
+              tests/performance/oklab_extreme_fallback_probe.d
+
+      - name: Run focused release probe
+        run: ./oklab-extreme-fallback-probe
+
+
+  xyz-linear-rgb-production:
+    name: Audit / XYZ LinearRGB production
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install LDC
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-1.43.0
+
+      - name: Environment
+        shell: bash
+        run: |
+          "$DC" --version
+          lscpu
+          uname -a
+
+      - name: Build focused release probe
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -Isource \
+              -i \
+              -of=xyz-linear-rgb-production-probe \
+              tests/performance/xyz_linear_rgb_production_probe.d
+
+      - name: Run focused release probe
+        run: ./xyz-linear-rgb-production-probe
+
+
+  gamut-production:
+    name: Audit / gamut production
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install LDC
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-1.43.0
+
+      - name: Environment
+        shell: bash
+        run: |
+          "$DC" --version
+          lscpu
+          uname -a
+
+      - name: Build focused release probe
+        shell: bash
+        run: |
+          "$DC" \
+              -O3 \
+              -release \
+              -boundscheck=off \
+              -mcpu=native \
+              -Isource \
+              -i \
+              -of=gamut-production-probe \
+              tests/performance/gamut_production_probe.d
+
+      - name: Run focused release probe
+        run: ./gamut-production-probe

@@ -1,3 +1,8 @@
+/++
+ Perceptual color-difference measurements.
+
+ The public deltaEOK operation measures Euclidean distance directly in Oklab and does not perform hidden conversion, clipping, gamut mapping, or perceptual classification.
++/
 module color.difference;
 
 private import color.oklab :
@@ -12,28 +17,28 @@ private import std.math :
 
 
 /**
- * Measure Euclidean color difference directly in Oklab.
+ * Measures Euclidean color difference directly in Oklab.
  *
- * `deltaEOK` is the three-dimensional Euclidean distance between two Oklab
- * triples with the same scalar type.
+ * Finite extended coordinates are accepted. The operation performs no hidden
+ * conversion, clipping, gamut mapping, alpha resolution, or just-noticeable
+ * difference classification.
  *
- * Finite extended Oklab coordinates are accepted. The operation does not
- * clamp, convert, gamut-map, or otherwise modify either operand.
+ * NaN component differences produce NaN; otherwise any infinite component
+ * difference produces positive infinity.
  *
- * Special-value behavior is explicit:
+ * Params:
+ *     lhs = First Oklab color.
+ *     rhs = Second Oklab color.
  *
- * - if any component difference is NaN, the result is NaN;
- * - otherwise, if any component difference is infinite, the result is
- *   positive infinity;
- * - otherwise the finite Euclidean norm is evaluated with the three-argument
- *   `hypot` implementation.
+ * Returns:
+ *     The three-dimensional Euclidean distance in Oklab.
  *
- * This operation is a measurement only. It does not assign a just-noticeable
- * difference threshold or another perceptual classification.
- *
- * Alpha-bearing colors are deliberately not accepted. Alpha must first be
- * resolved according to explicit caller rendering/compositing policy.
+ * Standards:
+ *     DeltaEOK follows the Euclidean Oklab definition described by W3C CSS
+ *     Color Module Level 4. The formula and special-value policy were
+ *     independently validated by color-d R0.10.
  */
+
 T deltaEOK(T)(
     Oklab!T lhs,
     Oklab!T rhs
@@ -83,6 +88,9 @@ version (unittest)
 
     private import color.xyz :
         XyzD65d;
+
+    private import std.math :
+        sqrt;
 
 
     // The operation is deliberately same-space and same-scalar.
@@ -249,6 +257,167 @@ version (unittest)
             originF,
             Oklabf(tinyF, 0, 0)
         ) == tinyF
+    );
+
+
+    // Current-Phobos range audit:
+    //
+    // std.math.hypot(x, y, z) scales by the largest component. Exercise the
+    // three-component path close to the representable upper bound and in the
+    // subnormal range, rather than only one-axis controls.
+    enum nearMaxComponentD =
+        double.max / 2;
+
+    enum nearMaxNormD =
+        deltaEOK(
+            originD,
+            Oklabd(
+                nearMaxComponentD,
+                nearMaxComponentD,
+                nearMaxComponentD
+            )
+        );
+
+    enum nearMaxReferenceD =
+        cast(double)(
+            cast(real)nearMaxComponentD *
+            sqrt(real(3))
+        );
+
+    static assert(
+        nearMaxNormD < double.infinity
+    );
+
+    static assert(
+        nearMaxNormD ==
+        nearMaxReferenceD
+    );
+
+
+    enum nearMaxComponentF =
+        float.max / 2;
+
+    enum nearMaxNormF =
+        deltaEOK(
+            originF,
+            Oklabf(
+                nearMaxComponentF,
+                nearMaxComponentF,
+                nearMaxComponentF
+            )
+        );
+
+    enum nearMaxReferenceF =
+        cast(float)(
+            cast(real)nearMaxComponentF *
+            sqrt(real(3))
+        );
+
+    static assert(
+        nearMaxNormF < float.infinity
+    );
+
+    static assert(
+        nearMaxNormF ==
+        nearMaxReferenceF
+    );
+
+
+    enum minSubnormalD =
+        double.min_normal *
+        double.epsilon;
+
+    enum minSubnormalNormD =
+        deltaEOK(
+            originD,
+            Oklabd(
+                minSubnormalD,
+                minSubnormalD,
+                minSubnormalD
+            )
+        );
+
+    enum minSubnormalReferenceD =
+        cast(double)(
+            cast(real)minSubnormalD *
+            sqrt(real(3))
+        );
+
+    static assert(
+        minSubnormalNormD ==
+        minSubnormalReferenceD
+    );
+
+    static assert(
+        minSubnormalNormD >
+        cast(double)0
+    );
+
+
+    enum minSubnormalF =
+        float.min_normal *
+        float.epsilon;
+
+    enum minSubnormalNormF =
+        deltaEOK(
+            originF,
+            Oklabf(
+                minSubnormalF,
+                minSubnormalF,
+                minSubnormalF
+            )
+        );
+
+    enum minSubnormalReferenceF =
+        cast(float)(
+            cast(real)minSubnormalF *
+            sqrt(real(3))
+        );
+
+    static assert(
+        minSubnormalNormF ==
+        minSubnormalReferenceF
+    );
+
+    static assert(
+        minSubnormalNormF >
+        cast(float)0
+    );
+
+
+    // Finite endpoints can have a non-representable component difference.
+    // The mathematical distance is then also non-representable in T, so +Inf
+    // is the correct floating-point result rather than a repair or clamp.
+    static assert(
+        deltaEOK(
+            Oklabd(
+                double.max,
+                0,
+                0
+            ),
+            Oklabd(
+                -double.max,
+                0,
+                0
+            )
+        ) ==
+        double.infinity
+    );
+
+    static assert(
+        deltaEOK(
+            Oklabf(
+                float.max,
+                0,
+                0
+            ),
+            Oklabf(
+                -float.max,
+                0,
+                0
+            )
+        ) ==
+        float.infinity
     );
 
 

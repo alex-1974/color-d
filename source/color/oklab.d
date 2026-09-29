@@ -1,3 +1,8 @@
+/++
+ Oklab values and explicit conversion to and from CIE XYZ D65.
+
+ The module preserves extended mathematical values and supports the same semantic conversion API at runtime and during CTFE.
++/
 module color.oklab;
 
 private import color.xyz :
@@ -8,12 +13,13 @@ private import color.xyz :
 /**
  * Oklab color value.
  *
- * `T` is restricted to the v0.1 computational scalar set: `float` or
- * `double`.
+ * `T` must be `float` or `double`. Components are mathematical values;
+ * construction does not clamp or canonicalize them.
  *
- * Components are mathematical values. Construction does not clamp or
- * canonicalize them.
+ * The natural floating-point `.init` state contains NaNs and is therefore a
+ * detectably invalid/uninitialized semantic color.
  */
+
 struct Oklab(T)
 if (is(T == float) || is(T == double))
 {
@@ -47,13 +53,27 @@ private T cubeRoot(T)(const T value)
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {
-    import std.math : pow;
+    import std.math :
+        cbrt,
+        pow;
 
-    // Oklab requires a real, sign-preserving cube root because extended
-    // XYZ values can produce negative LMS intermediates. Returning zero
-    // unchanged also preserves the sign of -0.0.
+    /*
+     * Oklab requires a real, sign-preserving cube root because extended XYZ
+     * values can produce negative LMS intermediates.
+     *
+     * Current Phobos cbrt is @safe pure nothrow @nogc on the tested
+     * DMD 2.113.0 / LDC 1.43.0 line and is both more accurate and faster than
+     * pow(|x|, 1/3) at runtime. It still cannot execute in CTFE because the
+     * implementation reaches the C cbrtl symbol without D source.
+     *
+     * Keep the source-available pow route only for CTFE. Returning zero before
+     * either path also preserves the sign bit of -0.0.
+     */
     if (value == cast(T)0)
         return value;
+
+    if (!__ctfe)
+        return cbrt(value);
 
     const T absValue =
         value < cast(T)0
@@ -70,13 +90,112 @@ if (is(T == float) || is(T == double))
         : root;
 }
 
+private bool isFiniteScalar(T)(const T value)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    return
+        value == value &&
+        value != T.infinity &&
+        value != -T.infinity;
+}
+
+private T magnitude(T)(const T value)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    return value < cast(T)0 ? -value : value;
+}
+
+private T maximum(T)(const T first, const T second)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    return first > second ? first : second;
+}
+
+private Oklab!T toOklabScaledFinite(T)(XyzD65!T xyz)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    const T scale =
+        maximum(
+            magnitude(xyz.x),
+            maximum(
+                magnitude(xyz.y),
+                magnitude(xyz.z)
+            )
+        );
+
+    if (scale == cast(T)0)
+        return Oklab!T(
+            cast(T)0,
+            cast(T)0,
+            cast(T)0
+        );
+
+    const T x = xyz.x / scale;
+    const T y = xyz.y / scale;
+    const T z = xyz.z / scale;
+
+    const T l =
+        cast(T)0.8190224379967030 * x +
+        cast(T)0.3619062600528904 * y -
+        cast(T)0.1288737815209879 * z;
+
+    const T m =
+        cast(T)0.0329836539323885 * x +
+        cast(T)0.9292868615863434 * y +
+        cast(T)0.0361446663506424 * z;
+
+    const T s =
+        cast(T)0.0481771893596242 * x +
+        cast(T)0.2642395317527308 * y +
+        cast(T)0.6335478284694309 * z;
+
+    const T rootScale = cubeRoot(scale);
+
+    const T lp = rootScale * cubeRoot(l);
+    const T mp = rootScale * cubeRoot(m);
+    const T sp = rootScale * cubeRoot(s);
+
+    return Oklab!T(
+        cast(T)0.2104542683093140 * lp +
+        cast(T)0.7936177747023054 * mp -
+        cast(T)0.0040720430116193 * sp,
+
+        cast(T)1.9779985324311684 * lp -
+        cast(T)2.4285922420485799 * mp +
+        cast(T)0.4505937096174110 * sp,
+
+        cast(T)0.0259040424655478 * lp +
+        cast(T)0.7827717124575296 * mp -
+        cast(T)0.8086757549230774 * sp
+    );
+}
+
 /**
- * Convert CIE XYZ D65 to Oklab.
+ * Converts CIE XYZ D65 to Oklab.
  *
- * The conversion uses the high-precision XYZ/LMS/Oklab coefficient route
- * validated during R0. Extended finite values are preserved; negative LMS
- * intermediates use a sign-preserving real cube root.
+ * Extended finite values are preserved. Negative LMS intermediates use a
+ * sign-preserving real cube root. Extreme finite XYZ values that would
+ * overflow the direct LMS intermediate use a scale-equivalent fallback so a
+ * representable Oklab result remains finite.
+ *
+ * Params:
+ *     xyz = CIE XYZ D65 value to convert.
+ *
+ * Returns:
+ *     The corresponding Oklab value.
+ *
+ * Standards:
+ *     Uses Björn Ottosson's published Oklab XYZ/LMS/Oklab transform,
+ *     including the higher-precision sRGB/D65 update validated by color-d.
+ *
+ * See_Also:
+ *     toXyzD65
  */
+
 Oklab!T toOklab(T)(XyzD65!T xyz)
 @safe pure nothrow @nogc
 {
@@ -99,7 +218,7 @@ Oklab!T toOklab(T)(XyzD65!T xyz)
     const T mp = cubeRoot(m);
     const T sp = cubeRoot(s);
 
-    return Oklab!T(
+    const Oklab!T ordinary = Oklab!T(
         cast(T)0.2104542683093140 * lp +
         cast(T)0.7936177747023054 * mp -
         cast(T)0.0040720430116193 * sp,
@@ -112,14 +231,90 @@ Oklab!T toOklab(T)(XyzD65!T xyz)
         cast(T)0.7827717124575296 * mp -
         cast(T)0.8086757549230774 * sp
     );
+
+    if (
+        isFiniteScalar(ordinary.l) &&
+        isFiniteScalar(ordinary.a) &&
+        isFiniteScalar(ordinary.b)
+    )
+    {
+        return ordinary;
+    }
+
+    if (
+        !isFiniteScalar(xyz.x) ||
+        !isFiniteScalar(xyz.y) ||
+        !isFiniteScalar(xyz.z)
+    )
+    {
+        return ordinary;
+    }
+
+    /*
+     * Extreme finite XYZ can overflow the direct LMS matrix before the cube
+     * root even though the final Oklab value is representable. Scale XYZ into
+     * a safe range, take cube roots there, then restore the homogeneous
+     * cube-root scale. Ordinary finite results never enter this path.
+     */
+    return toOklabScaledFinite(xyz);
+}
+
+@safe pure nothrow @nogc unittest
+{
+    const extremeDouble =
+        XyzD65d(
+            double.max,
+            double.max,
+            -double.max
+        ).toOklab;
+
+    assert(isFiniteScalar(extremeDouble.l));
+    assert(isFiniteScalar(extremeDouble.a));
+    assert(isFiniteScalar(extremeDouble.b));
+
+    const extremeFloat =
+        XyzD65f(
+            float.max,
+            float.max,
+            -float.max
+        ).toOklab;
+
+    assert(isFiniteScalar(extremeFloat.l));
+    assert(isFiniteScalar(extremeFloat.a));
+    assert(isFiniteScalar(extremeFloat.b));
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    import std.math : fabs;
+
+    const xyz = XyzD65d(0.125, 0.25, 0.50);
+    const roundTrip = xyz.toOklab.toXyzD65;
+
+    assert(fabs(roundTrip.x - xyz.x) < 1e-12);
+    assert(fabs(roundTrip.y - xyz.y) < 1e-12);
+    assert(fabs(roundTrip.z - xyz.z) < 1e-12);
 }
 
 /**
- * Convert Oklab to CIE XYZ D65.
+ * Converts Oklab to CIE XYZ D65.
  *
- * The inverse conversion uses the coefficient route validated during R0.
- * It is allocation-free, CTFE-capable and does not clamp extended values.
+ * Extended values are preserved and no clipping or gamut mapping is performed.
+ *
+ * Params:
+ *     lab = Oklab value to convert.
+ *
+ * Returns:
+ *     The corresponding CIE XYZ D65 value.
+ *
+ * Standards:
+ *     Uses the inverse of Björn Ottosson's published Oklab transform.
+ *
+ * See_Also:
+ *     toOklab
  */
+
 XyzD65!T toXyzD65(T)(Oklab!T lab)
 @safe pure nothrow @nogc
 {
@@ -157,6 +352,17 @@ XyzD65!T toXyzD65(T)(Oklab!T lab)
     );
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const neutral = Oklabd(0.5, 0.0, 0.0);
+    const xyz = neutral.toXyzD65;
+
+    assert(xyz.x == xyz.x);
+    assert(xyz.y == xyz.y);
+    assert(xyz.z == xyz.z);
+}
+
 @safe pure nothrow @nogc unittest
 {
     const lab = Oklabd(0.627955, 0.224863, 0.125846);
@@ -176,7 +382,7 @@ static assert(!__traits(compiles, Oklab!real));
 static assert(!__traits(compiles, Oklabf.init.toOklab));
 static assert(!__traits(compiles, XyzD65f.init.toXyzD65));
 
-unittest
+@safe pure nothrow @nogc unittest
 {
     assert(Oklabf.sizeof == 3 * float.sizeof);
     assert(Oklabd.sizeof == 3 * double.sizeof);
@@ -239,6 +445,30 @@ version (unittest)
         1e-15,
         1e-15
     ));
+
+    // REGRESSION: extreme finite XYZ remains finite even when the direct LMS
+    // intermediate would overflow in the public scalar type.
+    enum extremeLabD =
+        XyzD65d(
+            double.max,
+            double.max,
+            -double.max
+        ).toOklab;
+
+    static assert(isFiniteScalar(extremeLabD.l));
+    static assert(isFiniteScalar(extremeLabD.a));
+    static assert(isFiniteScalar(extremeLabD.b));
+
+    enum extremeLabF =
+        XyzD65f(
+            float.max,
+            float.max,
+            -float.max
+        ).toOklab;
+
+    static assert(isFiniteScalar(extremeLabF.l));
+    static assert(isFiniteScalar(extremeLabF.a));
+    static assert(isFiniteScalar(extremeLabF.b));
 
     // EXACT: structural black maps to structural zero in both directions.
     enum blackLab = XyzD65d(0.0, 0.0, 0.0).toOklab;

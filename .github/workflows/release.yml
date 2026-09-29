@@ -1,0 +1,360 @@
+name: Release Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Release / ${{ matrix.compiler }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: dmd-2.113.0
+            consumer_build: debug
+          - compiler: ldc-1.43.0
+            consumer_build: release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install D toolchain
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      - name: Toolchain versions
+        run: |
+          "$DC" --version
+          dub --version
+
+      - name: Repository metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for file in AGENTS.md README.md ROADMAP.md DESIGN_PRINCIPLES.md LICENSE dub.sdl
+          do
+              test -s "$file"
+          done
+
+          grep -q '^name "color-d"$' dub.sdl
+          grep -q '^targetType "library"$' dub.sdl
+
+      - name: Debug unittests
+        run: dub test --compiler="$DC" --build=debug --force
+
+      - name: DDox documentation smoke
+        if: matrix.compiler == 'dmd-2.113.0'
+        run: dub build --compiler="$DC" --build=ddox --force
+
+      - name: Release unittests
+        run: dub test --compiler="$DC" --build=release --force
+
+      - name: Public API compile contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          compile_ok()
+          {
+              source="$1"
+              object="$2"
+
+              "$DC" -c -I"$GITHUB_WORKSPACE/source" -i -of="$object" "$source"
+          }
+
+          compile_fail()
+          {
+              source="$1"
+              object="$2"
+
+              if "$DC" -c -I"$GITHUB_WORKSPACE/source" -i -of="$object" "$source" >"$tmp/negative.log" 2>&1
+              then
+                  echo "Unexpected compile success: $source"
+                  cat "$tmp/negative.log"
+                  return 1
+              fi
+          }
+
+          cat > "$tmp/root_positive.d" <<'D'
+          import color;
+
+          enum mapped =
+              Oklchd(
+                  0.70,
+                  0.30,
+                  OklabHued.fromDegrees(40.0)
+              )
+              .gamutMapRayTraceToLinearSRgb();
+
+          static assert(mapped.inGamut);
+
+          bool toneBatchCtfe()
+          @safe pure nothrow @nogc
+          {
+              const seed =
+                  Oklchd(
+                      0.50,
+                      0.10,
+                      OklabHued.fromDegrees(210.0)
+                  );
+
+              const double[3] lightnesses =
+                  [0.20, 0.50, 0.80];
+
+              const double[3] chromas =
+                  [0.04, 0.10, 0.06];
+
+              Oklchd[3] tones;
+
+              tonesAtLightnessAndChromaInto(
+                  seed,
+                  lightnesses,
+                  chromas,
+                  tones
+              );
+
+              return
+                  tones[0].l == 0.20 &&
+                  tones[1].c == 0.10 &&
+                  tones[2].l == 0.80;
+          }
+
+          static assert(toneBatchCtfe());
+
+          @safe pure nothrow @nogc
+          LinearSRgbd mapColor(Oklchd value)
+          {
+              return value.gamutMapLocalMindeToLinearSRgb();
+          }
+
+          @safe pure nothrow @nogc
+          bool writeToneFamily(
+              Oklchd seed,
+              const(double)[] lightnesses,
+              const(double)[] chromas,
+              Oklchd[] output
+          )
+          {
+              return
+                  tryTonesAtLightnessAndChromaInto(
+                      seed,
+                      lightnesses,
+                      chromas,
+                      output
+                  );
+          }
+          D
+
+          cat > "$tmp/direct_positive.d" <<'D'
+          import color.rgb;
+          import color.xyz;
+          import color.oklab;
+          import color.oklch;
+          import color.gamut;
+          import color.alpha;
+          import color.composite;
+          import color.interpolate;
+          import color.difference;
+          import color.wcag;
+          import color.tone;
+          D
+
+          cat > "$tmp/generic_mapper_negative.d" <<'D'
+          import color;
+
+          void probe(Oklchd value)
+          {
+              auto mapped = gamutMapToLinearSRgb(value);
+          }
+          D
+
+          cat > "$tmp/method_enum_negative.d" <<'D'
+          import color;
+
+          GamutMapMethod method;
+          D
+
+          cat > "$tmp/wrong_space_negative.d" <<'D'
+          import color;
+
+          void probe(Oklabd value)
+          {
+              auto mapped =
+                  value.gamutMapRayTraceToLinearSRgb();
+          }
+          D
+
+          cat > "$tmp/unsupported_scalar_negative.d" <<'D'
+          import color;
+
+          alias InvalidOklch = Oklch!int;
+          D
+
+          cat > "$tmp/tone_batch_length_negative.d" <<'D'
+          import color;
+
+          void probe()
+          {
+              const seed =
+                  Oklchd(
+                      0.50,
+                      0.10,
+                      OklabHued.fromDegrees(210.0)
+                  );
+
+              const double[2] lightnesses =
+                  [0.25, 0.75];
+
+              const double[1] chromas =
+                  [0.10];
+
+              Oklchd[2] output;
+
+              tonesAtLightnessAndChromaInto(
+                  seed,
+                  lightnesses,
+                  chromas,
+                  output
+              );
+          }
+          D
+
+          compile_ok "$tmp/root_positive.d" "$tmp/root_positive.o"
+          compile_ok "$tmp/direct_positive.d" "$tmp/direct_positive.o"
+
+          compile_fail "$tmp/generic_mapper_negative.d" "$tmp/generic_mapper_negative.o"
+          compile_fail "$tmp/method_enum_negative.d" "$tmp/method_enum_negative.o"
+          compile_fail "$tmp/wrong_space_negative.d" "$tmp/wrong_space_negative.o"
+          compile_fail "$tmp/unsupported_scalar_negative.d" "$tmp/unsupported_scalar_negative.o"
+          compile_fail "$tmp/tone_batch_length_negative.d" "$tmp/tone_batch_length_negative.o"
+
+      - name: Checkout validated imagery-d consumer
+        uses: actions/checkout@v7
+        with:
+          repository: alex-1974/imagery-d
+          ref: 3ead4239861da0da384936f035fa7b7e96cb14d6
+          path: consumer-workspace/imagery-d
+
+      - name: Checkout validated raster-d dependency
+        uses: actions/checkout@v7
+        with:
+          repository: alex-1974/raster-d
+          ref: c2e5932c1b2c0402832ac210411119f373f8cd30
+          path: consumer-workspace/raster-d
+
+      - name: Checkout validated Dunia consumer
+        uses: actions/checkout@v7
+        with:
+          repository: alex-1974/dunia
+          ref: 9f0a6c182b02fa75434ac09987d239156506271e
+          path: consumer-workspace/dunia
+
+      - name: Clean-package external DUB consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          mkdir -p "$tmp/package"
+          mkdir -p "$tmp/consumer/source"
+
+          git archive --format=tar HEAD |
+              tar -xf - -C "$tmp/package"
+
+          cat > "$tmp/consumer/dub.json" <<JSON
+          {
+            "name": "color-d-release-consumer",
+            "targetType": "executable",
+            "dependencies": {
+              "color-d": {
+                "path": "$tmp/package"
+              }
+            }
+          }
+          JSON
+
+          cat > "$tmp/consumer/source/app.d" <<'D'
+          import color;
+
+          void main()
+          {
+              const encoded =
+                  SRgbd(
+                      0.82,
+                      0.25,
+                      0.12
+                  );
+
+              const perceptual =
+                  encoded
+                  .toLinear
+                  .toXyzD65
+                  .toOklab
+                  .toOklch;
+
+              const mapped =
+                  perceptual
+                  .withLightness(0.70)
+                  .withChroma(0.16)
+                  .gamutMapRayTraceToLinearSRgb;
+
+              assert(mapped.inGamut);
+
+              double[3] lightnesses =
+                  [0.20, 0.50, 0.80];
+
+              double[3] chromas =
+                  [0.04, 0.10, 0.06];
+
+              Oklchd[3] tones;
+
+              assert(
+                  perceptual
+                  .tryTonesAtLightnessAndChromaInto(
+                      lightnesses[],
+                      chromas[],
+                      tones[]
+                  )
+              );
+
+              assert(tones[2].l == 0.80);
+              assert(tones[2].c == 0.06);
+          }
+          D
+
+          (
+              cd "$tmp/consumer"
+              dub build --compiler="$DC" --build=release
+              ./color-d-release-consumer
+          )
+
+      - name: Accepted real consumer gates
+        shell: bash
+        run: |
+          bash .github/scripts/run-real-consumer-gates.sh \
+              "$DC" \
+              "${{ matrix.consumer_build }}" \
+              "$GITHUB_WORKSPACE"

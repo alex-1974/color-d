@@ -1,0 +1,40 @@
+name: Advisory D code quality
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - "source/**/*.d"
+      - "tests/**/*.d"
+      - "dscanner.ini"
+      - ".github/workflows/advisory.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dscanner:
+    name: Advisory / D-Scanner
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install D toolchain
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: dmd-2.113.0
+
+      - name: Toolchain versions
+        run: |
+          "$DC" --version
+          dub --version
+
+      - name: D-Scanner lint
+        continue-on-error: true
+        run: |
+          dub fetch dscanner@0.15.2
+          dub run dscanner@0.15.2 -- lint source/ --skipTests

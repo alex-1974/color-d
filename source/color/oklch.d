@@ -1,3 +1,8 @@
+/++
+ OKLCH values, Oklab-family hue semantics, and raw component operations.
+
+ Hue storage is degree-based and intentionally unbounded. Canonicalization, component replacement, and Oklab/OKLCH conversion remain explicit operations.
++/
 module color.oklch;
 
 private import color.oklab :
@@ -52,15 +57,64 @@ if (is(Unqual!T == float) || is(Unqual!T == double))
     return cast(U)degrees * cast(U)(PI / 180.0L);
 }
 
+
+private T oklabChromaMagnitude(T)(
+    T a,
+    T b
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    import std.math :
+        hypot,
+        sqrt;
+
+    /*
+     * Preserve the ordinary direct path and its established rounding.
+     *
+     * For finite extreme values, a*a + b*b can overflow or underflow even
+     * when the Euclidean magnitude itself is representable. Only those
+     * exceptional finite cases take Phobos' scaled hypot path.
+     *
+     * NaN makes the squared sum NaN and therefore stays on the direct path.
+     * Infinite squared sums may use hypot; for inputs without NaN this retains
+     * the same visible infinity classification while also covering finite
+     * overflow.
+     */
+    const T squared =
+        a * a +
+        b * b;
+
+    const T direct =
+        cast(T)sqrt(squared);
+
+    if (
+        squared == T.infinity ||
+        (
+            squared < T.min_normal &&
+            (
+                a != cast(T)0 ||
+                b != cast(T)0
+            )
+        )
+    )
+    {
+        return hypot(a, b);
+    }
+
+    return direct;
+}
+
 /**
  * Hue value for the Oklab family.
  *
  * Public/default units are degrees. The stored angle is raw and unbounded:
  * construction does not normalize complete revolutions.
  *
- * `T` is restricted to the v0.1 computational scalar set: `float` or
- * `double`.
+ * `T` must be `float` or `double`. The natural floating-point `.init` state
+ * contains NaN and is therefore detectably invalid/uninitialized.
  */
+
 struct OklabHue(T)
 if (is(T == float) || is(T == double))
 {
@@ -70,10 +124,17 @@ if (is(T == float) || is(T == double))
     alias Scalar = T;
 
     /**
-     * Construct a hue from a raw degree value.
-     *
-     * No normalization is performed.
-     */
+ * Constructs an Oklab-family hue from a raw degree value.
+ *
+ * No normalization is performed.
+ *
+ * Params:
+ *     value = Raw hue in degrees.
+ *
+ * Returns:
+ *     A hue storing `value` unchanged.
+ */
+
     static OklabHue fromDegrees(T value)
     @safe pure nothrow @nogc
     {
@@ -87,14 +148,14 @@ if (is(T == float) || is(T == double))
         return degrees_;
     }
 
-    /// Return the equivalent hue in the canonical interval [0, 360).
+    /// Return the equivalent hue from 0 degrees inclusive to 360 degrees exclusive.
     @property T positiveDegrees() const
     @safe pure nothrow @nogc
     {
         return normalizePositiveDegrees(degrees_);
     }
 
-    /// Return the equivalent hue in the canonical interval (-180, 180].
+    /// Return the equivalent hue above -180 degrees and at most 180 degrees.
     @property T signedDegrees() const
     @safe pure nothrow @nogc
     {
@@ -110,14 +171,15 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * OKLCH color value: the cylindrical form of Oklab.
+ * OKLCH color value, the cylindrical form of Oklab.
  *
  * Lightness and chroma are stored as mathematical values. Chroma is not
  * silently clamped or canonicalized, and hue preserves its raw degree value.
  *
- * `T` is restricted to the v0.1 computational scalar set: `float` or
- * `double`.
+ * `T` must be `float` or `double`. The natural floating-point `.init` state
+ * contains NaNs and is therefore detectably invalid/uninitialized.
  */
+
 struct Oklch(T)
 if (is(T == float) || is(T == double))
 {
@@ -145,13 +207,26 @@ if (is(T == float) || is(T == double))
     }
 
     /**
-     * Test caller-selected near-achromaticity.
-     *
-     * The library does not impose one global chroma epsilon.
-     */
+ * Tests caller-selected near-achromaticity.
+ *
+ * The library does not impose a global chroma epsilon.
+ *
+ * Params:
+ *     epsilon = Non-negative caller-selected chroma magnitude threshold.
+ *
+ * Returns:
+ *     `true` when `abs(c) <= epsilon`.
+ *
+ * Preconditions:
+ *     `epsilon >= 0`. This is a programmer precondition; callers that need
+ *     recoverable validation must validate external input before calling.
+ */
+
     bool isNearAchromatic(T epsilon) const
     @safe pure nothrow @nogc
     {
+        assert(epsilon >= cast(T)0);
+
         const T magnitude =
             c < cast(T)0
                 ? -c
@@ -174,7 +249,11 @@ if (is(T == float) || is(T == double))
      * 180-degree addition.
      *
      * Non-finite hue values remain non-finite rather than being repaired.
-     */
+ *
+ * Returns:
+ *     An equivalent OKLCH representation with non-negative chroma.
+ */
+
     @property Oklch canonicalized() const
     @safe pure nothrow @nogc
     {
@@ -236,7 +315,278 @@ alias Oklchf = Oklch!float;
 alias Oklchd = Oklch!double;
 
 
-unittest
+/**
+ * Returns a copy of an OKLCH value with raw lightness replaced.
+ *
+ * Chroma and stored hue are preserved exactly. No range restriction, clipping,
+ * gamut mapping, canonicalization, or other policy is applied.
+ *
+ * Params:
+ *     color = Source OKLCH value.
+ *     lightness = Raw replacement lightness.
+ *
+ * Returns:
+ *     A copy of `color` with only lightness replaced.
+ *
+ * See_Also:
+ *     withChroma, withHue
+ */
+
+Oklch!T withLightness(T)(
+    Oklch!T color,
+    T lightness
+)
+@safe pure nothrow @nogc
+{
+    color.l = lightness;
+    return color;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    enum color = Oklchd(
+        0.55,
+        0.12,
+        OklabHued.fromDegrees(250.0)
+    );
+    enum changed = color.withLightness(1.25);
+
+    static assert(changed.l == 1.25);
+    static assert(changed.c == color.c);
+    static assert(changed.h.rawDegrees == color.h.rawDegrees);
+}
+
+
+/**
+ * Returns a copy of an OKLCH value with raw chroma replaced.
+ *
+ * Lightness and stored hue are preserved exactly. Negative chroma is not
+ * canonicalized, zero chroma does not erase powerless hue, and no clipping or
+ * gamut mapping is performed.
+ *
+ * Params:
+ *     color = Source OKLCH value.
+ *     chroma = Raw replacement chroma.
+ *
+ * Returns:
+ *     A copy of `color` with only chroma replaced.
+ *
+ * See_Also:
+ *     withLightness, withHue
+ */
+
+Oklch!T withChroma(T)(
+    Oklch!T color,
+    T chroma
+)
+@safe pure nothrow @nogc
+{
+    color.c = chroma;
+    return color;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    enum color = Oklchd(
+        0.55,
+        0.12,
+        OklabHued.fromDegrees(250.0)
+    );
+    enum changed = color.withChroma(-0.10);
+
+    static assert(changed.l == color.l);
+    static assert(changed.c == -0.10);
+    static assert(changed.h.rawDegrees == color.h.rawDegrees);
+}
+
+
+/**
+ * Returns a copy of an OKLCH value with raw stored hue replaced.
+ *
+ * Lightness and chroma are preserved exactly. The supplied hue is stored
+ * without normalization, wrapping, chroma adjustment, clipping, or gamut mapping.
+ *
+ * Params:
+ *     color = Source OKLCH value.
+ *     hue = Raw replacement Oklab-family hue.
+ *
+ * Returns:
+ *     A copy of `color` with only hue replaced.
+ *
+ * See_Also:
+ *     withLightness, withChroma
+ */
+
+Oklch!T withHue(T)(
+    Oklch!T color,
+    OklabHue!T hue
+)
+@safe pure nothrow @nogc
+{
+    color.h = hue;
+    return color;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    enum color = Oklchd(
+        0.55,
+        0.12,
+        OklabHued.fromDegrees(250.0)
+    );
+    enum changed =
+        color.withHue(
+            OklabHued.fromDegrees(725.0)
+        );
+
+    static assert(changed.l == color.l);
+    static assert(changed.c == color.c);
+    static assert(changed.h.rawDegrees == 725.0);
+}
+
+
+@safe pure nothrow @nogc unittest
+{
+    enum seedD =
+        Oklchd(
+            0.55,
+            0.12,
+            OklabHued.fromDegrees(250.0)
+        );
+
+    enum changedLightnessD =
+        seedD.withLightness(-0.25);
+
+    static assert(changedLightnessD.l == -0.25);
+    static assert(changedLightnessD.c == seedD.c);
+    static assert(
+        changedLightnessD.h.rawDegrees ==
+        seedD.h.rawDegrees
+    );
+
+    enum changedChromaD =
+        seedD.withChroma(-0.10);
+
+    static assert(changedChromaD.l == seedD.l);
+    static assert(changedChromaD.c == -0.10);
+    static assert(
+        changedChromaD.h.rawDegrees ==
+        seedD.h.rawDegrees
+    );
+
+    enum powerlessD =
+        seedD.withChroma(0.0);
+
+    static assert(powerlessD.c == 0.0);
+    static assert(
+        powerlessD.h.rawDegrees ==
+        seedD.h.rawDegrees
+    );
+
+    enum restoredD =
+        powerlessD.withChroma(seedD.c);
+
+    static assert(restoredD == seedD);
+
+    enum changedHueD =
+        seedD.withHue(
+            OklabHued.fromDegrees(725.0)
+        );
+
+    static assert(changedHueD.l == seedD.l);
+    static assert(changedHueD.c == seedD.c);
+    static assert(changedHueD.h.rawDegrees == 725.0);
+
+    enum seedF =
+        Oklchf(
+            1.25f,
+            -0.20f,
+            OklabHuef.fromDegrees(-390.0f)
+        );
+
+    enum changedLightnessF =
+        seedF.withLightness(-1.5f);
+
+    static assert(changedLightnessF.l == -1.5f);
+    static assert(changedLightnessF.c == seedF.c);
+    static assert(
+        changedLightnessF.h.rawDegrees ==
+        seedF.h.rawDegrees
+    );
+
+    enum changedChromaF =
+        seedF.withChroma(0.0f);
+
+    static assert(changedChromaF.l == seedF.l);
+    static assert(changedChromaF.c == 0.0f);
+    static assert(
+        changedChromaF.h.rawDegrees ==
+        seedF.h.rawDegrees
+    );
+
+    enum changedHueF =
+        seedF.withHue(
+            OklabHuef.fromDegrees(1080.0f)
+        );
+
+    static assert(changedHueF.l == seedF.l);
+    static assert(changedHueF.c == seedF.c);
+    static assert(changedHueF.h.rawDegrees == 1080.0f);
+}
+
+
+@safe pure nothrow @nogc unittest
+{
+    const seed =
+        Oklchd(
+            0.55,
+            0.12,
+            OklabHued.fromDegrees(250.0)
+        );
+
+    const nonFiniteLightness =
+        seed.withLightness(double.nan);
+
+    assert(
+        nonFiniteLightness.l !=
+        nonFiniteLightness.l
+    );
+    assert(nonFiniteLightness.c == seed.c);
+    assert(
+        nonFiniteLightness.h.rawDegrees ==
+        seed.h.rawDegrees
+    );
+
+    const nonFiniteChroma =
+        seed.withChroma(double.infinity);
+
+    assert(nonFiniteChroma.l == seed.l);
+    assert(nonFiniteChroma.c == double.infinity);
+    assert(
+        nonFiniteChroma.h.rawDegrees ==
+        seed.h.rawDegrees
+    );
+
+    const nonFiniteHue =
+        seed.withHue(
+            OklabHued.fromDegrees(
+                -double.infinity
+            )
+        );
+
+    assert(nonFiniteHue.l == seed.l);
+    assert(nonFiniteHue.c == seed.c);
+    assert(
+        nonFiniteHue.h.rawDegrees ==
+        -double.infinity
+    );
+}
+
+
+@safe pure nothrow @nogc unittest
 {
     /*
      * Negative-chroma canonicalization preserves ordinary raw hue
@@ -405,21 +755,35 @@ unittest
 }
 
 /**
- * Convert Oklab to its cylindrical OKLCH representation.
+ * Converts Cartesian Oklab to its cylindrical OKLCH representation.
  *
- * Cartesian Oklab has no stored hue revolutions to preserve. Non-achromatic
- * results therefore use non-negative chroma and a hue in [0, 360). Exact
- * achromatic Oklab uses the deterministic numeric fallback C = 0, h = 0°.
+ * Non-achromatic results use non-negative chroma and hue from 0 degrees
+ * inclusive to 360 degrees exclusive. Chroma uses an overflow/underflow-safe
+ * Euclidean magnitude fallback when the direct squared magnitude leaves the
+ * ordinary finite range, so representable extreme finite magnitudes are not
+ * lost merely through intermediate squaring.
+ * Exactly achromatic Oklab uses the deterministic numeric representation
+ * `C = 0, h = 0°`.
+ *
+ * Params:
+ *     color = Oklab value to convert.
+ *
+ * Returns:
+ *     The corresponding OKLCH value.
+ *
+ * See_Also:
+ *     toOklab
  */
+
 Oklch!T toOklch(T)(Oklab!T color)
 @safe pure nothrow @nogc
 {
-    import std.math : atan2, sqrt;
+    import std.math : atan2;
 
     const T chroma =
-        cast(T)sqrt(
-            color.a * color.a +
-            color.b * color.b
+        oklabChromaMagnitude(
+            color.a,
+            color.b
         );
 
     // atan2(0, 0) must not define the public achromatic semantics.
@@ -450,18 +814,33 @@ Oklch!T toOklch(T)(Oklab!T color)
     );
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const neutral = Oklabd(0.5, 0.0, 0.0).toOklch;
+
+    assert(neutral.l == 0.5);
+    assert(neutral.c == 0.0);
+    assert(neutral.h.rawDegrees == 0.0);
+}
+
 /**
- * Convert OKLCH to Cartesian Oklab.
+ * Converts OKLCH to Cartesian Oklab.
  *
- * Raw hue storage is preserved. Before evaluating trigonometric functions,
- * complete revolutions are reduced to the equivalent canonical degree angle.
- * This preserves the represented direction while avoiding overflow in the
- * degree-to-radian conversion for very large finite raw hue values.
+ * Complete hue revolutions are reduced before trigonometric evaluation,
+ * preserving the represented direction without mutating the stored OKLCH value.
+ * Negative chroma remains valid raw mathematical input.
  *
- * Equivalent angles such as 30° and 390° therefore map to the same Cartesian
- * direction without mutating the stored OKLCH value. Negative chroma is also
- * accepted as raw mathematical input.
+ * Params:
+ *     color = OKLCH value to convert.
+ *
+ * Returns:
+ *     The corresponding Cartesian Oklab value.
+ *
+ * See_Also:
+ *     toOklch
  */
+
 Oklab!T toOklab(T)(Oklch!T color)
 @safe pure nothrow @nogc
 {
@@ -476,6 +855,50 @@ Oklab!T toOklab(T)(Oklch!T color)
         color.l,
         color.c * cast(T)cos(radians),
         color.c * cast(T)sin(radians)
+    );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const neutral = Oklchd(
+        0.5,
+        0.0,
+        OklabHued.fromDegrees(725.0)
+    ).toOklab;
+
+    assert(neutral == Oklabd(0.5, 0.0, 0.0));
+}
+
+@safe pure nothrow @nogc unittest
+{
+    // Runtime companion to the CTFE/toolchain canary below. The public
+    // conversion must preserve an axis-aligned minimum subnormal magnitude.
+    double smallestPositiveD = 0x1p-1074;
+    float smallestPositiveF = 0x1p-149f;
+
+    const smallestPolarD =
+        Oklabd(
+            0.5,
+            smallestPositiveD,
+            0.0
+        ).toOklch;
+
+    const smallestPolarF =
+        Oklabf(
+            0.5f,
+            smallestPositiveF,
+            0.0f
+        ).toOklch;
+
+    assert(
+        smallestPolarD.c ==
+            smallestPositiveD
+    );
+
+    assert(
+        smallestPolarF.c ==
+            smallestPositiveF
     );
 }
 
@@ -524,7 +947,7 @@ static assert(!__traits(compiles, Oklch!real));
 static assert(!__traits(compiles, Oklchf.init.toOklch));
 static assert(!__traits(compiles, Oklabf.init.toOklab));
 
-unittest
+@safe pure nothrow @nogc unittest
 {
     assert(OklabHuef.sizeof == float.sizeof);
     assert(OklabHued.sizeof == double.sizeof);
@@ -611,6 +1034,38 @@ version (unittest)
     static assert(!tinyChroma.isAchromatic);
     static assert(tinyChroma.isNearAchromatic(1e-9));
     static assert(!tinyChroma.isNearAchromatic(1e-11));
+
+    // REGRESSION / TOOLCHAIN CANARY:
+    // Phobos 2.111 two-argument hypot mishandled sufficiently tiny operands.
+    // color-d does not support that frontend generation, but the public
+    // Oklab -> OKLCH path deliberately exercises the exact smallest-positive
+    // binary64 case so the current supported matrix cannot regress silently.
+    enum smallestPositiveD = 0x1p-1074;
+    enum smallestPositiveF = 0x1p-149f;
+
+    enum smallestPolarD =
+        Oklabd(
+            0.5,
+            smallestPositiveD,
+            0.0
+        ).toOklch;
+
+    enum smallestPolarF =
+        Oklabf(
+            0.5f,
+            smallestPositiveF,
+            0.0f
+        ).toOklch;
+
+    static assert(
+        smallestPolarD.c ==
+            smallestPositiveD
+    );
+
+    static assert(
+        smallestPolarF.c ==
+            smallestPositiveF
+    );
 
     // REFERENCE: primary Cartesian axes define the canonical hue quadrants.
     enum axis0 = Oklabd(0.5, 0.2, 0.0).toOklch;

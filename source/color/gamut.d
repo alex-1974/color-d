@@ -1,3 +1,8 @@
+/++
+ sRGB gamut diagnostics, hard clipping, and explicit perceptual gamut mapping.
+
+ Clipping and perceptual mapping are distinct operations. Perceptual mapping requires an explicit algorithm choice; the module defines no default mapper.
++/
 module color.gamut;
 
 private import color.rgb :
@@ -16,7 +21,8 @@ private import color.difference :
 
 private import color.xyz :
     xyzFromLinearSRgb = toXyzD65,
-    linearSRgbFromXyz = toLinearSRgb;
+    linearSRgbFromXyz = toLinearSRgb,
+    linearSRgbFromXyzDirect = toLinearSRgbDirect;
 
 private import color.oklab :
     Oklab,
@@ -71,11 +77,17 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * Test strict membership in the sRGB target gamut.
+ * Tests strict membership in the encoded-sRGB target gamut.
  *
- * Encoded sRGB uses the geometric component domain [0, 1] for each channel.
- * Non-finite values are outside the gamut. No tolerance is implied.
+ * All three components must be finite and in `[0, 1]`; no tolerance is implied.
+ *
+ * Params:
+ *     color = Encoded sRGB value to test.
+ *
+ * Returns:
+ *     `true` exactly when all components are finite and in `[0, 1]`.
  */
+
 bool inGamut(T)(SRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -85,12 +97,25 @@ bool inGamut(T)(SRgb!T color)
         inUnitInterval(color.b);
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    assert(SRgbd(0.1, 0.5, 1.0).inGamut);
+    assert(!SRgbd(-0.1, 0.5, 1.0).inGamut);
+}
+
 /**
- * Test strict membership in the sRGB target gamut.
+ * Tests strict membership in the linear-sRGB target gamut.
  *
- * Linear-light sRGB uses the same geometric component domain [0, 1] for each
- * channel. Non-finite values are outside the gamut. No tolerance is implied.
+ * All three components must be finite and in `[0, 1]`; no tolerance is implied.
+ *
+ * Params:
+ *     color = Linear-light sRGB value to test.
+ *
+ * Returns:
+ *     `true` exactly when all components are finite and in `[0, 1]`.
  */
+
 bool inGamut(T)(LinearSRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -101,12 +126,18 @@ bool inGamut(T)(LinearSRgb!T color)
 }
 
 /**
- * Explicitly hard-clip encoded sRGB components to [0, 1].
+ * Hard-clips encoded sRGB components to `[0, 1]`.
  *
- * Finite components below zero become zero and components above one become
- * one. Finite in-range components are preserved. NaN and infinities remain
- * visible rather than being silently repaired.
+ * Finite values below zero become zero and finite values above one become one.
+ * NaN and infinities remain visible rather than being silently repaired.
+ *
+ * Params:
+ *     color = Encoded sRGB value to clip.
+ *
+ * Returns:
+ *     The component-wise hard-clipped encoded sRGB value.
  */
+
 SRgb!T clip(T)(SRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -117,13 +148,27 @@ SRgb!T clip(T)(SRgb!T color)
     );
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const clipped = SRgbd(-0.25, 0.50, 1.25).clip;
+
+    assert(clipped == SRgbd(0.0, 0.50, 1.0));
+}
+
 /**
- * Explicitly hard-clip linear-light sRGB components to [0, 1].
+ * Hard-clips linear-light sRGB components to `[0, 1]`.
  *
- * Finite components below zero become zero and components above one become
- * one. Finite in-range components are preserved. NaN and infinities remain
- * visible rather than being silently repaired.
+ * Finite values below zero become zero and finite values above one become one.
+ * NaN and infinities remain visible rather than being silently repaired.
+ *
+ * Params:
+ *     color = Linear-light sRGB value to clip.
+ *
+ * Returns:
+ *     The component-wise hard-clipped linear-light sRGB value.
  */
+
 LinearSRgb!T clip(T)(LinearSRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -158,10 +203,19 @@ private bool isFiniteLinearSRgb(T)(LinearSRgb!T value)
 private LinearSRgb!T oklabToLinearSRgb(T)(Oklab!T value)
 @safe pure nothrow @nogc
 {
-    return
-        linearSRgbFromXyz(
-            xyzFromOklab(value)
-        );
+    const auto xyz =
+        xyzFromOklab(value);
+
+    /*
+     * Ray Trace already owns a dedicated first-ray overflow fallback for huge
+     * finite chroma. Keeping float on the direct inverse matrix here preserves
+     * the R0.8-validated mapping hot path without weakening the robust public
+     * XYZ conversion. Double retains the promoted dominant-factor route.
+     */
+    static if (is(T == float))
+        return linearSRgbFromXyzDirect(xyz);
+    else
+        return linearSRgbFromXyz(xyz);
 }
 
 
@@ -248,6 +302,11 @@ private T maximum(T)(T first, T second)
 private T rayEpsilon(T)()
 @safe pure nothrow @nogc
 {
+    /*
+     * R0.8 validated these as Ray Trace interior/progress tolerances for the
+     * respective scalar types. They are algorithm-local numerical controls,
+     * not a public or library-wide comparison epsilon.
+     */
     static if (is(T == float))
         return cast(T)1e-6;
     else
@@ -293,6 +352,15 @@ private RayIntersection!T noRayIntersection(T)()
 }
 
 
+/*
+ * Keep this explicit inline hint evidence-based.
+ *
+ * The R4 LDC 1.43 audit in gamut_inline_probe.d compared this exact helper
+ * with and without pragma(inline, true): double showed no material benefit,
+ * while float was consistently about 2.2x faster with forced inlining on the
+ * observed release runner. Re-evaluate when the release-performance compiler
+ * changes materially.
+ */
 private pragma(inline, true)
 RayIntersection!T intersectUnitRgbCube(T)(
     LinearSRgb!T start,
@@ -996,27 +1064,37 @@ private LinearSRgb!T gamutMapRayTraceImpl(T)(
 
 
 /**
- * Perceptually map an OKLCH color into the linear-sRGB target gamut using
- * Local MINDE.
+ * Perceptually maps an OKLCH color into linear sRGB using Local MINDE.
  *
- * Local MINDE is the perceptual/reference-oriented mapper promoted from R0.8.
- * The algorithm choice is explicit in the function name; `color-d` defines no
- * default perceptual gamut mapper.
+ * Local MINDE is the perceptual/reference-oriented mapping strategy. Negative
+ * finite chroma is canonicalized before mapping. Lightness at or above 1 maps
+ * to white and lightness at or below 0 maps to black. Already-in-gamut colors
+ * take the identity path after explicit conversion.
  *
- * Finite negative chroma is canonicalized to its mathematically equivalent
- * positive-chroma representation before mapping. Lightness at or above 1 maps
- * to linear-sRGB white and lightness at or below 0 maps to black.
+ * Non-finite input is not repaired. This is per-color mathematical mapping and
+ * does not define image-wide rendering intent, encoding, or alpha compositing.
  *
- * Already-in-gamut values take the identity fast path after explicit
- * conversion to linear sRGB.
+ * Params:
+ *     color = OKLCH color to map.
  *
- * Non-finite input is not repaired. It is passed through the ordinary
- * OKLCH-to-linear-sRGB mathematical conversion so invalid numerical state
- * remains visible to the caller.
+ * Returns:
+ *     A linear-sRGB color in gamut for finite mapped input.
  *
- * This is per-color mathematical mapping. It does not define image-wide
- * rendering intent, spatial policy, encoding or alpha compositing.
+ * Standards:
+ *     Implements the Local MINDE SDR RGB gamut-mapping strategy described by
+ *     the W3C CSS Color Module Level 4 model and validated by color-d R0.8.
+ *
+ * Allocation:
+ *     Does not allocate.
+ *
+ * Complexity:
+ *     O(1) per color with a fixed defensive iteration bound; cost is
+ *     independent of image or collection size.
+ *
+ * See_Also:
+ *     gamutMapRayTraceToLinearSRgb, clip
  */
+
 LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
     Oklch!T color
 )
@@ -1053,28 +1131,59 @@ LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
 }
 
 
+/// Local MINDE is the reference-oriented perceptual mapping choice.
+@safe pure nothrow @nogc unittest
+{
+    import color.oklch :
+        OklabHued,
+        Oklchd;
+
+    const vivid =
+        Oklchd(
+            0.70,
+            0.30,
+            OklabHued.fromDegrees(40.0)
+        );
+
+    const mapped =
+        vivid.gamutMapLocalMindeToLinearSRgb;
+
+    assert(mapped.inGamut);
+}
+
+
 /**
- * Perceptually map an OKLCH color into the linear-sRGB target gamut using
- * Ray Trace.
+ * Perceptually maps an OKLCH color into linear sRGB using Ray Trace.
  *
- * Ray Trace is the bounded-cost/performance-oriented mapper promoted from
- * R0.8. The algorithm choice is explicit in the function name; `color-d`
- * defines no default perceptual gamut mapper.
+ * Ray Trace is the bounded-cost/performance-oriented mapping strategy.
+ * Negative finite chroma is canonicalized before mapping. Lightness at or
+ * above 1 maps to white and lightness at or below 0 maps to black.
+ * Already-in-gamut colors take the identity path after explicit conversion.
  *
- * Finite negative chroma is canonicalized to its mathematically equivalent
- * positive-chroma representation before mapping. Lightness at or above 1 maps
- * to linear-sRGB white and lightness at or below 0 maps to black.
+ * Non-finite input is not repaired. This is per-color mathematical mapping and
+ * does not define image-wide rendering intent, encoding, or alpha compositing.
  *
- * Already-in-gamut values take the identity fast path after explicit
- * conversion to linear sRGB.
+ * Params:
+ *     color = OKLCH color to map.
  *
- * Non-finite input is not repaired. It is passed through the ordinary
- * OKLCH-to-linear-sRGB mathematical conversion so invalid numerical state
- * remains visible to the caller.
+ * Returns:
+ *     A linear-sRGB color in gamut for finite mapped input.
  *
- * This is per-color mathematical mapping. It does not define image-wide
- * rendering intent, spatial policy, encoding or alpha compositing.
+ * Standards:
+ *     Implements the Ray Trace SDR RGB gamut-mapping strategy described by
+ *     the W3C CSS Color Module Level 4 model and validated by color-d R0.8.
+ *
+ * Allocation:
+ *     Does not allocate.
+ *
+ * Complexity:
+ *     O(1) per color using a fixed bounded ray-intersection refinement; cost
+ *     is independent of image or collection size.
+ *
+ * See_Also:
+ *     gamutMapLocalMindeToLinearSRgb, clip
  */
+
 LinearSRgb!T gamutMapRayTraceToLinearSRgb(T)(
     Oklch!T color
 )
@@ -1111,12 +1220,40 @@ LinearSRgb!T gamutMapRayTraceToLinearSRgb(T)(
 }
 
 
+/// Ray Trace is the bounded-cost perceptual mapping choice.
+@safe pure nothrow @nogc unittest
+{
+    import color.oklch :
+        OklabHued,
+        Oklchd;
+
+    const vivid =
+        Oklchd(
+            0.70,
+            0.30,
+            OklabHued.fromDegrees(40.0)
+        );
+
+    const mapped =
+        vivid.gamutMapRayTraceToLinearSRgb;
+
+    assert(mapped.inGamut);
+}
+
+
 /**
- * Map a straight-alpha OKLCH color using Local MINDE.
+ * Maps a straight-alpha OKLCH color using Local MINDE.
  *
- * Gamut mapping transforms only the wrapped color. Alpha is copied unchanged;
- * it is not clamped, premultiplied, composited or otherwise interpreted.
+ * Only the wrapped color is mapped. Alpha is copied unchanged and is not
+ * clamped, premultiplied, composited, or otherwise interpreted.
+ *
+ * Params:
+ *     value = Straight-alpha OKLCH value to map.
+ *
+ * Returns:
+ *     Straight-alpha linear sRGB with unchanged alpha.
  */
+
 Alpha!(LinearSRgb!T) gamutMapLocalMindeToLinearSRgb(T)(
     Alpha!(Oklch!T) value
 )
@@ -1132,11 +1269,18 @@ Alpha!(LinearSRgb!T) gamutMapLocalMindeToLinearSRgb(T)(
 
 
 /**
- * Map a straight-alpha OKLCH color using Ray Trace.
+ * Maps a straight-alpha OKLCH color using Ray Trace.
  *
- * Gamut mapping transforms only the wrapped color. Alpha is copied unchanged;
- * it is not clamped, premultiplied, composited or otherwise interpreted.
+ * Only the wrapped color is mapped. Alpha is copied unchanged and is not
+ * clamped, premultiplied, composited, or otherwise interpreted.
+ *
+ * Params:
+ *     value = Straight-alpha OKLCH value to map.
+ *
+ * Returns:
+ *     Straight-alpha linear sRGB with unchanged alpha.
  */
+
 Alpha!(LinearSRgb!T) gamutMapRayTraceToLinearSRgb(T)(
     Alpha!(Oklch!T) value
 )
@@ -1151,26 +1295,31 @@ Alpha!(LinearSRgb!T) gamutMapRayTraceToLinearSRgb(T)(
 }
 
 
-/// Explicit per-color perceptual mapping requires an algorithm choice.
+/// Straight alpha is carried through mapping unchanged.
 @safe pure nothrow @nogc unittest
 {
+    import color.alpha :
+        Alpha;
+
     import color.oklch :
         OklabHued,
         Oklchd;
 
-    const input =
-        Oklchd(
-            0.96476,
-            0.24503,
-            OklabHued.fromDegrees(
-                110.23
-            )
+    const selected =
+        Alpha!Oklchd(
+            Oklchd(
+                0.70,
+                0.30,
+                OklabHued.fromDegrees(40.0)
+            ),
+            0.40
         );
 
     const mapped =
-        input.gamutMapRayTraceToLinearSRgb();
+        selected.gamutMapRayTraceToLinearSRgb;
 
-    assert(mapped.inGamut);
+    assert(mapped.alpha == 0.40);
+    assert(mapped.color.inGamut);
 }
 
 
@@ -2040,4 +2189,187 @@ version (unittest)
     const clipped = outside.clip;
     assert(clipped == LinearSRgbd(0.0, 0.4, 1.0));
     assert(clipped.inGamut);
+}
+
+
+version (unittest)
+{
+    /*
+     * R4 huge-chroma fallback verifier.
+     *
+     * Keep this test-only helper next to the production private helpers so it
+     * exercises the actual conversion, scaled-direction and cube-intersection
+     * implementation rather than a copied audit algorithm.
+     */
+    private bool verifyHugeRayTraceFallback(T)(
+        Oklch!T input
+    )
+    @safe pure nothrow @nogc
+    if (is(T == float) || is(T == double))
+    {
+        const T radians =
+            hueRadians(input);
+
+        const T cosHue =
+            cast(T)cos(radians);
+
+        const T sinHue =
+            cast(T)sin(radians);
+
+        const LinearSRgb!T anchor =
+            oklabToLinearSRgb(
+                fixedHueOklab(
+                    input.l,
+                    cast(T)0,
+                    cosHue,
+                    sinHue
+                )
+            );
+
+        const LinearSRgb!T endpoint =
+            oklabToLinearSRgb(
+                fixedHueOklab(
+                    input.l,
+                    input.c,
+                    cosHue,
+                    sinHue
+                )
+            );
+
+        // This fixture is specifically a first-ray endpoint-overflow case.
+        if (isFiniteLinearSRgb(endpoint))
+            return false;
+
+        const LinearSRgb!T direction =
+            scaledHugeChromaRayDirection(
+                input.l,
+                input.c,
+                cosHue,
+                sinHue,
+                anchor
+            );
+
+        if (!isFiniteLinearSRgb(direction))
+            return false;
+
+        const auto intersection =
+            intersectUnitRgbCubeDirection(
+                anchor,
+                direction
+            );
+
+        if (!intersection.found)
+            return false;
+
+        return
+            gamutMapRayTraceToLinearSRgb(
+                input
+            ).inGamut;
+    }
+}
+
+
+@safe pure nothrow @nogc unittest
+{
+    import color.oklch :
+        OklabHue,
+        Oklch;
+
+    /*
+     * The public contract is semantic: finite 0 < L < 1 input maps to a
+     * strict in-gamut linear-sRGB color. Internal Ray Trace path metadata and
+     * exact derived coordinates are not portable contracts because D permits
+     * floating-point intermediates to use greater precision (TC-0015).
+     *
+     * These two inputs force the ordinary fixed-L/fixed-hue RGB endpoint
+     * outside the scalar range. The scaled cubic fallback must remain finite
+     * and find the unit cube in both CTFE and runtime, for both public scalar
+     * widths.
+     */
+    enum hugeD =
+        Oklch!double(
+            0.50,
+            double.max * 0.75,
+            OklabHue!double.fromDegrees(
+                25.0
+            )
+        );
+
+    enum hugeF =
+        Oklch!float(
+            0.50f,
+            float.max * 0.75f,
+            OklabHue!float.fromDegrees(
+                25.0f
+            )
+        );
+
+    static assert(
+        verifyHugeRayTraceFallback(
+            hugeD
+        )
+    );
+
+    static assert(
+        verifyHugeRayTraceFallback(
+            hugeF
+        )
+    );
+
+
+    /*
+     * Fixed R0.13 TC-0015 probe. DMD runtime historically took different
+     * internal success/path metadata from DMD CTFE/LDC for the corresponding
+     * research implementation while the mapped color remained valid.
+     *
+     * Freeze only the public semantic postcondition, not path metadata or
+     * CTFE/runtime bit identity.
+     */
+    enum tc0015Input =
+        Oklch!float(
+            0.88228511810302734375f,
+            0.343281686305999755859f,
+            OklabHue!float.fromDegrees(
+                19.4710636138916015625f
+            )
+        );
+
+    enum tc0015Ctfe =
+        gamutMapRayTraceToLinearSRgb(
+            tc0015Input
+        );
+
+    static assert(
+        tc0015Ctfe.inGamut
+    );
+
+
+    // Mutable locals exercise the ordinary unittest/runtime call path. No
+    // equality with the CTFE coordinates is required.
+    Oklch!double runtimeHugeD =
+        hugeD;
+
+    Oklch!float runtimeHugeF =
+        hugeF;
+
+    assert(
+        verifyHugeRayTraceFallback(
+            runtimeHugeD
+        )
+    );
+
+    assert(
+        verifyHugeRayTraceFallback(
+            runtimeHugeF
+        )
+    );
+
+    Oklch!float tc0015RuntimeInput =
+        tc0015Input;
+
+    assert(
+        gamutMapRayTraceToLinearSRgb(
+            tc0015RuntimeInput
+        ).inGamut
+    );
 }

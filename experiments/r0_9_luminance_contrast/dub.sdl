@@ -1,6 +1,0 @@
-name "color-d-r0-9-luminance-contrast"
-description "color-d R0.9: relative luminance and contrast semantics"
-authors "Alexander"
-license "MIT"
-targetType "executable"
-sourcePaths "source"

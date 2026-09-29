@@ -1,0 +1,39 @@
+name: Toolchain problem
+description: Report a DMD, LDC, Phobos, druntime, DUB, or CI tooling issue.
+title: ""
+labels: ["toolchain"]
+body:
+  - type: dropdown
+    id: class
+    attributes:
+      label: Class
+      options:
+        - WRONG-CODE
+        - CRASH
+        - REJECTS-VALID
+        - LIBRARY
+        - PERF
+        - LINK
+        - PLATFORM
+        - TOOLING
+        - SPECIFIED / unclear
+    validations:
+      required: true
+  - type: textarea
+    id: matrix
+    attributes:
+      label: Tested matrix
+      description: Exact failing and passing versions/platforms.
+    validations:
+      required: true
+  - type: textarea
+    id: reproducer
+    attributes:
+      label: Minimal reproducer
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround / upstream status
+      description: Existing workaround, upstream issue, and removal condition if known.

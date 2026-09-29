@@ -3,6 +3,10 @@
 `color-d` is a small, type-safe, allocation-free modern color mathematics
 library for D.
 
+Stable API documentation: https://alex-1974.github.io/color-d/
+
+Development API documentation: https://alex-1974.github.io/color-d/dev/
+
 The library is intended to provide explicit color-space types, correct
 linear-light operations, perceptual color workflows, alpha compositing,
 interpolation, gamut handling, contrast analysis, and palette primitives.
@@ -12,6 +16,17 @@ Primary initial consumers are:
 - the D OSM/geospatial editor;
 - `imagery-d`;
 - GUI and rendering code in the `d-geospatial-workspace`.
+
+## When to use color-d
+
+Use `color-d` when a D program needs explicit color-space mathematics rather
+than framework-specific styling objects. Typical use cases include typed
+sRGB/XYZ/Oklab/OKLCH conversion, linear-light alpha compositing, perceptual
+interpolation, explicit sRGB gamut handling, WCAG 2 measurements, and
+compile-time construction of fixed color data.
+
+The library deliberately does not own application theme roles, OSM semantics,
+renderer policy, image-wide rendering intent, or GUI-framework tokens.
 
 ## Design direction
 
@@ -29,67 +44,136 @@ Core principles:
 - `@safe`, `pure`, `nothrow`, and `@nogc` are preferred where applicable;
 - deterministic core operations should support CTFE where technically possible.
 
-## Validated research
+## Support and compatibility
 
-The initial architecture has been exercised through executable research
-spikes:
+The current pre-1.0 development matrix is:
 
-| Stage | Topic | Status |
-|---|---|---|
-| R0.1 | Type model and CTFE | PASS |
-| R0.2 | sRGB <-> linear sRGB | PASS |
-| R0.3 | linear sRGB <-> XYZ D65 | PASS |
-| R0.4 | XYZ D65 <-> Oklab | PASS |
-| R0.5 | Oklab <-> OKLCH and hue semantics | PASS |
-| R0.6 | Alpha, premultiplied alpha and linear-light source-over | PASS |
-| R0.7 | Interpolation and OKLCH hue-path semantics | PASS |
-| R0.8 | Gamut detection, clipping and perceptual gamut mapping | PASS |
-| R0.9 | WCAG-2 relative luminance and contrast semantics | PASS |
-| R0.10 | Oklab `deltaEOK` semantics and numerical robustness | PASS |
-| R0.11 | OKLCH tone-scale semantics, CTFE and representation | PASS |
-| R0.12 | Compile-time palette construction and validation | PASS |
-| R0.13 | Numerical tolerance and reference policy | PASS |
-| R0.14 | v0.1 scope and R0→R1 promotion decision | ACCEPTED |
+| Toolchain | Tested configuration |
+|---|---|
+| DMD | 2.113.0 on Ubuntu 24.04 x86-64 |
+| LDC | 1.43.0 on Ubuntu 24.04 x86-64 |
 
-The currently validated computational chain is:
+No older minimum D frontend is currently promised. Passing on an older compiler
+does not by itself establish supported compatibility. DMD and LDC are both
+correctness targets; LDC is the current release-performance reference compiler.
 
-```text
-SRgb!T
-    ⇅
-LinearSRgb!T
-    ⇅
-XyzD65!T
-    ⇅
-Oklab!T
-    ⇅
-Oklch!T
+The public API remains pre-1.0, so later 0.x releases may still make breaking
+changes when justified and documented. R4 real-consumer validation completed
+without requiring a provider-side API correction for v0.1.0.
+
+## Installation with DUB
+
+The first public release is `v0.1.0`.
+
+For normal released-package use through the DUB registry, the dependency form is:
+
+```sdl
+dependency "color-d" version="~>0.1.0"
 ```
 
-The research spikes validate, among other things:
+The release publication process verifies the tagged source and consumer archive
+before publishing GitHub release assets. DUB registry visibility/resolution is
+verified separately after tag publication; if the registry has not indexed the
+release yet, pin the exact release tag/commit rather than following a moving
+branch.
 
-- distinct statically typed color spaces;
-- generic `float` and `double` computation;
-- compact value layouts;
-- allocation-free scalar conversion mathematics;
-- CTFE across the tested conversion chain;
-- preservation of extended/out-of-gamut intermediate values;
-- explicit OKLCH hue semantics;
-- raw/unbounded hue storage with explicit normalization.
+For a local workspace checkout, a path dependency remains valid:
 
-Detailed executable results are available under
-[`experiments/`](experiments/).
+```sdl
+dependency "color-d" path="../color-d"
+```
 
-In particular:
+For an external Git dependency pinned to the released source:
 
-- [`R0.4 XYZ D65 / Oklab results`](experiments/r0_4_xyz_oklab/RESULTS.md)
-- [`R0.5 OKLCH / hue semantics results`](experiments/r0_5_oklch_semantics/RESULTS.md)
-- [`R0.6 alpha / compositing results`](experiments/r0_6_alpha_semantics/RESULTS.md)
-- [`R0.7 interpolation results`](experiments/r0_7_interpolation_semantics/RESULTS.md)
-- [`R0.8 gamut-semantics results`](experiments/r0_8_gamut_semantics/RESULTS.md)
-- [`R0.9 luminance / contrast results`](experiments/r0_9_luminance_contrast/RESULTS.md)
-- [`R0.10 deltaEOK results`](experiments/r0_10_delta_e_ok/RESULTS.md)
-- [`R0.11 tone-scale results`](experiments/r0_11_tone_scales/RESULTS.md)
-- [`R0.14 promotion gate`](docs/research/R0_14_PROMOTION_GATE.md)
+```sdl
+dependency "color-d" \
+    repository="git+https://github.com/alex-1974/color-d.git" \
+    version="v0.1.0"
+```
+
+## Release package, repository, and research
+
+These are deliberately different products.
+
+The **consumer release** contains the library source, DUB metadata, licence,
+README/CHANGELOG, and concise user-facing documentation. It excludes tests, CI,
+repository tooling, ADR/spec material, detailed research, experiments, and
+benchmark evidence.
+
+The **GitHub production repository** additionally contains the material needed
+to maintain and release the library: tests, CI, contribution files, accepted
+architecture decisions, and release engineering.
+
+Detailed experiments and long-form evidence live in the dedicated
+[color-d-research](https://github.com/alex-1974/color-d-research) companion
+repository. The verified split keeps the production repository and normal DUB
+tag downloads lean while preserving the complete research corpus and its
+provenance.
+
+A compact provenance pointer remains in [RESEARCH.md](https://github.com/alex-1974/color-d/blob/develop/RESEARCH.md); the detailed
+migration/evidence record lives with the research corpus.
+
+Current public mathematical operations are value-based, `@nogc`, and do not
+perform hidden allocation. Batch tone construction writes into caller-owned
+storage. The library creates no worker threads and owns no scheduler; callers
+remain responsible for parallel execution.
+
+## Quick start
+
+The normal computational path keeps each color-space transition explicit:
+
+```d
+import color;
+
+void main()
+{
+    const encoded = SRgbd(0.82, 0.25, 0.12);
+
+    const perceptual =
+        encoded
+        .toLinear
+        .toXyzD65
+        .toOklab
+        .toOklch;
+
+    const adjusted =
+        perceptual
+        .withLightness(0.70)
+        .withChroma(0.16);
+
+    const displayLinear =
+        adjusted.gamutMapRayTraceToLinearSRgb();
+
+    assert(displayLinear.inGamut);
+
+    const display = displayLinear.toSRgb;
+    assert(display.r == display.r);
+}
+```
+
+No step above performs implicit clipping, gamut mapping, alpha resolution, or
+color-space conversion. Application-specific theme and styling policy remains
+outside `color-d`.
+
+Fast CI compiles and executes the same quick-start path so this documented
+call sequence cannot silently drift.
+
+## Research and evidence
+
+The public library is the maintained result of the R0–R4 research programme;
+the research programme itself is **not** part of the consumer package.
+
+Detailed experiments, compiler probes, benchmark drivers, rejected approaches,
+and long-form evidence live in
+[color-d-research](https://github.com/alex-1974/color-d-research). They are not
+part of the production repository or consumer package.
+
+The maintained production contract lives in the source/Ddoc, user
+documentation, tests, accepted ADRs, and release metadata. A consumer should
+not need research history in order to understand or use the library.
+
+Repository-level research provenance is summarized in
+[RESEARCH.md](https://github.com/alex-1974/color-d/blob/develop/RESEARCH.md).
 
 ## Workspace role
 
@@ -120,19 +204,25 @@ In particular:
 - renderer- or GPU-specific integration belongs in consumer layers unless a
   generic mathematical abstraction is demonstrated to belong here.
 
-## Architecture references
+## Documentation
 
-Start with:
+Start with the [documentation index](docs/README.md).
 
-- [`docs/spec/TECHNICAL_SPEC.md`](docs/spec/TECHNICAL_SPEC.md) — current
-  research-derived technical specification;
-- [`DESIGN_PRINCIPLES.md`](DESIGN_PRINCIPLES.md) — design constraints and
-  engineering principles;
-- [`docs/research/COLOR_LIB_01.md`](docs/research/COLOR_LIB_01.md) — initial
-  ecosystem and architecture research;
-- [`docs/research/R0_5_OKLCH_SEMANTICS.md`](docs/research/R0_5_OKLCH_SEMANTICS.md)
-  — detailed OKLCH and hue-semantics research;
-- [`ROADMAP.md`](ROADMAP.md) — current development direction.
+For users:
+
+- [Getting started](docs/tutorial/getting-started.md)
+- [How-to guides](docs/how-to/)
+- [Concepts](docs/concepts/)
+- [Glossary](docs/glossary.md)
+- [Accuracy and validation](docs/accuracy-and-validation.md)
+- [Architecture](docs/architecture.md)
+- [Performance](docs/performance.md)
+
+Maintainer architecture, ADRs, roadmap, release engineering, and research
+provenance live in the production GitHub repository and are intentionally not
+part of the consumer archive:
+
+<https://github.com/alex-1974/color-d>
 
 ## Project status
 
@@ -141,17 +231,21 @@ production API** is complete as of 2026-09-26. The promoted production core now
 covers the accepted float/double value types, explicit conversion chain, sRGB
 transfer functions, strict sRGB gamut diagnostics and explicit hard clipping.
 
-The integrated R1 exit audit is recorded in
-[`docs/research/R1_CLOSEOUT.md`](docs/research/R1_CLOSEOUT.md).
+R1 mathematical core, R2 alpha/interpolation, and R3 perceptual utilities are
+complete. The accepted R1–R3 production feature scope for v0.1 is now closed.
+Detailed closeout evidence is maintainer material in the production repository.
 
-R2 alpha/interpolation production work is also complete and recorded in
-[`docs/research/R2_CLOSEOUT.md`](docs/research/R2_CLOSEOUT.md).
+R4 real-consumer validation is complete. Both initial independent consumers
+used the public API successfully without requiring a provider-side API
+correction:
 
-R3 perceptual utilities remain the active accepted production scope before R4
-consumer validation. R3.1 `deltaEOK`, R3.2 WCAG-2 measurements, and R3.3
-explicit Local MINDE / Ray Trace sRGB gamut mapping are complete. The remaining
-R3 work is the accepted low-level OKLCH component, finite-schedule, and
-tone-family production scope.
+- `imagery-d` validated typed encoded/linear sRGB transfer inside a real
+  region/layout-neutral image-processing path;
+- Dunia, the OSM editor application, validated CTFE/runtime theme construction,
+  explicit gamut policy, WCAG contrast, `deltaEOK`, and runtime selection
+  among precomputed candidates.
+
+The v0.1 feature freeze ended with publication of v0.1.0.
 
 The accepted v0.1 production scope is intentionally smaller than the early
 candidate list. In particular, `SRgb8` / `SRgba8` and HSL/HSV are deferred
@@ -176,26 +270,24 @@ R4  real consumer validation
 v0.1.0 release hardening and publication
 ```
 
-R1--R3 promote validated R0 semantics into deliberate production modules.
-R4 consumer validation remains mandatory before release stabilization, and the
-pre-1.0 API may still be corrected when real consumer use reveals friction.
+R1--R3 have promoted the accepted validated R0 semantics into deliberate
+production modules. R4 consumer validation is complete, so v0.1 is now in release hardening and
+publication. No feature-scope reopening or API correction was required by the
+accepted consumer evidence.
 
-Initial R4 consumers are:
+Validated R4 consumers are:
 
 - `imagery-d`;
-- the OSM editor theme/style layer.
+- Dunia's editor theme/style layer.
 
-No public API is stable yet. Pre-1.0 API corrections remain expected where
-production implementation or real consumers demonstrate a better design.
+The library is still pre-1.0. The v0.1.0 release records the first supported
+public package surface, but later 0.x releases may make evidence-backed breaking
+changes with explicit release notes.
 
 Public API documentation, tests, CTFE coverage and documented `unittest`
 examples are developed together with the production API rather than postponed
 to release cleanup.
 
-See:
-
-- `docs/spec/TECHNICAL_SPEC.md`
-- `docs/research/`
-- `docs/adr/`
-- `docs/design/`
-- `ROADMAP.md`
+See the [documentation index](docs/README.md) and the development DDox API
+documentation linked at the top of this README. Release planning and
+publication engineering remain repository-only maintainer material.

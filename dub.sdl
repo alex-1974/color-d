@@ -1,8 +1,12 @@
 name "color-d"
 description "Type-safe modern color mathematics library for D"
+homepage "https://alex-1974.github.io/color-d/"
 authors "Alexander"
+copyright "Copyright (c) 2026 Alexander"
 license "MIT"
 
 targetType "library"
 
 sourcePaths "source"
+
+x:ddoxFilterArgs "--min-protection=Public" "--only-documented"

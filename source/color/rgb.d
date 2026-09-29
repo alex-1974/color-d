@@ -1,3 +1,8 @@
+/++
+ Encoded and linear-light sRGB value types and transfer conversions.
+
+ The two RGB representations are distinct types. Conversions are explicit, preserve extended mathematical values, and do not clip or gamut-map implicitly.
++/
 module color.rgb;
 
 private import std.traits : Unqual;
@@ -5,12 +10,13 @@ private import std.traits : Unqual;
 /**
  * Encoded nonlinear sRGB color value.
  *
- * `T` is restricted to the v0.1 computational scalar set: `float` or
- * `double`.
+ * `T` must be `float` or `double`. Components are mathematical values;
+ * construction does not clamp them to the nominal display gamut.
  *
- * The components are mathematical values. Construction does not clamp them to
- * the nominal display gamut.
+ * The natural floating-point `.init` state contains NaNs and is therefore a
+ * detectably invalid/uninitialized semantic color, not implicit black.
  */
+
 struct SRgb(T)
 if (is(T == float) || is(T == double))
 {
@@ -27,15 +33,29 @@ if (is(T == float) || is(T == double))
     T b;
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    // Encoded sRGB is the normal form for CSS/image-style channel values.
+    // Decode it before operations that require linear light.
+    const encoded = SRgbd(0.50, 0.25, 0.0);
+    const linear = encoded.toLinear;
+
+    assert(linear.r < encoded.r);
+    assert(linear.g < encoded.g);
+    assert(linear.b == 0.0);
+}
+
 /**
  * Linear-light sRGB color value.
  *
- * `T` is restricted to the v0.1 computational scalar set: `float` or
- * `double`.
+ * `T` must be `float` or `double`. Encoded and linear-light sRGB are
+ * deliberately distinct types even though they have the same component layout.
  *
- * Encoded and linear-light sRGB are deliberately distinct types even though
- * they have the same component layout.
+ * The natural floating-point `.init` state contains NaNs and is therefore a
+ * detectably invalid/uninitialized semantic color.
  */
+
 struct LinearSRgb(T)
 if (is(T == float) || is(T == double))
 {
@@ -50,6 +70,19 @@ if (is(T == float) || is(T == double))
 
     /// Blue linear-light component.
     T b;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    // Linear-light values are the correct domain for light mixing and
+    // compositing. Encode only when a consumer needs encoded sRGB.
+    const linear = LinearSRgbd(0.25, 0.50, 1.0);
+    const encoded = linear.toSRgb;
+
+    assert(encoded.r > linear.r);
+    assert(encoded.g > linear.g);
+    assert(encoded.b == 1.0);
 }
 
 /// Encoded sRGB with `float` components.
@@ -106,6 +139,39 @@ if (is(Unqual!T == float) || is(Unqual!T == double))
     }
 }
 
+/*
+ * Narrow LDC runtime optimization validated by the R4 D-code performance audit.
+ *
+ * The intrinsic path is used only for the inverse sRGB transfer power with a
+ * positive base and exponent 1/2.4. CTFE and non-LDC builds retain
+ * std.math.pow. The retained experiment compares both routes against a
+ * higher-precision powl reference and preserves special-value behavior.
+ */
+private auto srgbEncodePowInv24(T)(T base)
+@safe pure nothrow @nogc
+if (is(Unqual!T == float) || is(Unqual!T == double))
+{
+    import std.math : pow;
+
+    alias U = Unqual!T;
+    const U value = cast(U)base;
+    const U exponent =
+        cast(U)(1.0L / 2.4L);
+
+    if (__ctfe)
+        return cast(U)pow(value, exponent);
+
+    version (LDC)
+    {
+        import ldc.intrinsics : llvm_pow;
+        return llvm_pow!U(value, exponent);
+    }
+    else
+    {
+        return cast(U)pow(value, exponent);
+    }
+}
+
 private T srgbToLinearComponent(T)(T encoded)
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
@@ -126,30 +192,40 @@ private T linearToSrgbComponent(T)(T linear)
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {
-    import std.math : pow;
-
     const T absLinear = magnitude(linear);
 
     if (absLinear <= cast(T)0.0031308)
         return linear * cast(T)12.92;
 
-    const T exponent = cast(T)(1.0 / 2.4);
-
     const T encodedMagnitude =
         cast(T)1.055 *
-        cast(T)pow(absLinear, exponent) -
+        srgbEncodePowInv24(absLinear) -
         cast(T)0.055;
 
     return signOf(linear) * encodedMagnitude;
 }
 
 /**
- * Decode nonlinear sRGB into linear-light sRGB.
+ * Decodes nonlinear sRGB into linear-light sRGB.
  *
- * The conversion is explicit, allocation-free and does not clamp extended
- * component values. Negative extended values use the sign-preserving extension
- * validated during R0.
+ * The conversion does not clamp extended component values. Negative extended
+ * values use the same sign-preserving transfer extension as positive values.
+ *
+ * Params:
+ *     color = Encoded sRGB value to decode.
+ *
+ * Returns:
+ *     The corresponding linear-light sRGB value.
+ *
+ * Standards:
+ *     The nominal transfer follows the sRGB transfer model used by W3C CSS
+ *     Color Module Level 4; color-d extends it sign-preservingly outside the
+ *     nominal display range.
+ *
+ * See_Also:
+ *     toSRgb
  */
+
 LinearSRgb!T toLinear(T)(SRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -160,13 +236,36 @@ LinearSRgb!T toLinear(T)(SRgb!T color)
     );
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const encoded = SRgbd(1.0, 0.0, -1.0);
+    const linear = encoded.toLinear;
+
+    assert(linear == LinearSRgbd(1.0, 0.0, -1.0));
+}
+
 /**
- * Encode linear-light sRGB into nonlinear sRGB.
+ * Encodes linear-light sRGB into nonlinear sRGB.
  *
- * The conversion is explicit, allocation-free and does not clamp extended
- * component values. Negative extended values use the sign-preserving extension
- * validated during R0.
+ * The conversion does not clamp extended component values. Negative extended
+ * values use the same sign-preserving transfer extension as positive values.
+ *
+ * Params:
+ *     color = Linear-light sRGB value to encode.
+ *
+ * Returns:
+ *     The corresponding encoded sRGB value.
+ *
+ * Standards:
+ *     The nominal transfer follows the sRGB transfer model used by W3C CSS
+ *     Color Module Level 4; color-d extends it sign-preservingly outside the
+ *     nominal display range.
+ *
+ * See_Also:
+ *     toLinear
  */
+
 SRgb!T toSRgb(T)(LinearSRgb!T color)
 @safe pure nothrow @nogc
 {
@@ -175,6 +274,15 @@ SRgb!T toSRgb(T)(LinearSRgb!T color)
         linearToSrgbComponent(color.g),
         linearToSrgbComponent(color.b)
     );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const linear = LinearSRgbd(1.0, 0.0, -1.0);
+    const encoded = linear.toSRgb;
+
+    assert(encoded == SRgbd(1.0, 0.0, -1.0));
 }
 
 @safe pure nothrow @nogc unittest
@@ -206,7 +314,7 @@ static assert(!__traits(compiles, LinearSRgb!ubyte));
 static assert(!__traits(compiles, LinearSRgb!int));
 static assert(!__traits(compiles, LinearSRgb!real));
 
-unittest
+@safe pure nothrow @nogc unittest
 {
     assert(SRgbf.sizeof == 3 * float.sizeof);
     assert(SRgbd.sizeof == 3 * double.sizeof);
@@ -308,6 +416,44 @@ version (unittest)
         1e-15,
         1e-14
     ));
+
+    @safe pure nothrow @nogc unittest
+    {
+        /*
+         * CROSS: runtime may use the LDC intrinsic while CTFE deliberately
+         * retains Phobos. Compare through the public numerical contract rather
+         * than requiring backend-specific bit identity.
+         */
+        enum ctfeEncoded =
+            linearToSrgbComponent(
+                0.21404114048223255
+            );
+
+        const runtimeEncoded =
+            linearToSrgbComponent(
+                0.21404114048223255
+            );
+
+        assert(transferReferenceClose(
+            runtimeEncoded,
+            ctfeEncoded,
+            1e-15,
+            1e-14
+        ));
+
+        enum ctfeExtended =
+            linearToSrgbComponent(1.5168374366863642);
+
+        const runtimeExtended =
+            linearToSrgbComponent(1.5168374366863642);
+
+        assert(transferReferenceClose(
+            runtimeExtended,
+            ctfeExtended,
+            1e-14,
+            1e-14
+        ));
+    }
 
     // CTFE + DERIVED round trip for an ordinary float color.
     enum encodedCtfe = SRgbf(0.691f, 0.139f, 0.259f);
