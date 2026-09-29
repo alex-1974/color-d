@@ -120,8 +120,8 @@ repository. The verified split keeps the production repository and normal DUB
 tag downloads lean while preserving the complete research corpus and its
 provenance.
 
-The migration record and compact research pointer remain maintainer material in
-the production repository.
+A compact provenance pointer remains in [RESEARCH.md](RESEARCH.md); the detailed
+migration/evidence record lives with the research corpus.
 
 Current public mathematical operations are value-based, `@nogc`, and do not
 perform hidden allocation. Batch tone construction writes into caller-owned
