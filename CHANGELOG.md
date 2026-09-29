@@ -7,6 +7,8 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 
 ## Unreleased
 
+## [0.1.1] - 2026-09-29
+
 ### Changed
 
 - preparing v0.1.1 as a documentation and maintenance release with no intended
@@ -74,5 +76,6 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 - CSS parsing/serialization, named colors, HDR, ICC/CMYK, and policy-heavy
   Palette/Theme abstractions.
 
-[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.1.0...develop
+[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.1.1...develop
+[0.1.1]: https://github.com/alex-1974/color-d/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/alex-1974/color-d/releases/tag/v0.1.0
