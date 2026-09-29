@@ -73,10 +73,9 @@ require_fixed 'copyright "Copyright (c) 2026 Alexander"' dub.sdl
 require_fixed 'license "MIT"' dub.sdl
 require_fixed 'Copyright (c) 2026 Alexander' LICENSE
 require_fixed 'Permission is hereby granted, free of charge' LICENSE
-require_fixed 'DMD 2.111.0, 2.112.1, and 2.113.0' README.md
-require_fixed 'LDC 1.41.0, 1.42.0, and 1.43.0' README.md
+require_fixed 'DMD 2.112.1 and 2.113.0' README.md
+require_fixed '1.42.0 and 1.43.0' README.md
 require_fixed 'DMD 2.113.0 and LDC 1.43.0' README.md
-require_fixed '| 2.111 | 2.111.0 | 1.41.0 |' docs/compiler-matrix.md
 require_fixed '| 2.112 | 2.112.1 | 1.42.0 |' docs/compiler-matrix.md
 require_fixed '| 2.113 | 2.113.0 | 1.43.0 |' docs/compiler-matrix.md
 require_fixed "v$version — First public release" ROADMAP.md
