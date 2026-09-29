@@ -3,6 +3,8 @@
 `color-d` is a small, type-safe, allocation-free modern color mathematics
 library for D.
 
+Stable API documentation: https://alex-1974.github.io/color-d/
+
 Development API documentation: https://alex-1974.github.io/color-d/dev/
 
 The library is intended to provide explicit color-space types, correct
@@ -55,51 +57,39 @@ No older minimum D frontend is currently promised. Passing on an older compiler
 does not by itself establish supported compatibility. DMD and LDC are both
 correctness targets; LDC is the current release-performance reference compiler.
 
-The public API is still pre-1.0. R4 real-consumer validation is complete and
-did not demonstrate an API correction requirement. Until v0.1.0 is published,
-the accepted feature scope remains frozen and changes are limited to release
-hardening, reproduced defect fixes, validation/documentation, and confirmed
-toolchain or performance corrections.
+The public API remains pre-1.0, so later 0.x releases may still make breaking
+changes when justified and documented. R4 real-consumer validation completed
+without requiring a provider-side API correction for v0.1.0.
 
 ## Installation with DUB
 
-`color-d` has not published v0.1.0 yet, so there is currently no released
-registry version to depend on. Pre-release consumers should make the source
-they consume explicit.
+The first public release is `v0.1.0`.
 
-For a local workspace checkout, use a path dependency:
-
-```sdl
-dependency "color-d" path="../color-d"
-```
-
-Adjust the path to the checked-out repository. This is the same dependency
-shape exercised by the clean-package external DUB consumer in Fast CI.
-
-For an external reproducible pre-release build, pin an exact reviewed Git
-commit rather than a moving branch:
-
-```sdl
-dependency "color-d" \
-    repository="git+https://github.com/alex-1974/color-d.git" \
-    version="<commit-sha>"
-```
-
-Replace `<commit-sha>` with the exact color-d commit your project has
-validated. DUB repository dependencies use the `version` field as the Git
-commitish; a fixed commit avoids silently following later pre-1.0 API
-corrections.
-
-After v0.1.0 is deliberately released and its DUB-registry publication is
-verified, the normal released dependency will be:
+For normal released-package use through the DUB registry, the dependency form is:
 
 ```sdl
 dependency "color-d" version="~>0.1.0"
 ```
 
-At that point `dub add color-d` may be used to add the latest registry
-release. Until then, do not treat an unpublished registry version as part of
-the supported installation contract.
+The release publication process verifies the tagged source and consumer archive
+before publishing GitHub release assets. DUB registry visibility/resolution is
+verified separately after tag publication; if the registry has not indexed the
+release yet, pin the exact release tag/commit rather than following a moving
+branch.
+
+For a local workspace checkout, a path dependency remains valid:
+
+```sdl
+dependency "color-d" path="../color-d"
+```
+
+For an external Git dependency pinned to the released source:
+
+```sdl
+dependency "color-d" \
+    repository="git+https://github.com/alex-1974/color-d.git" \
+    version="v0.1.0"
+```
 
 ## Release package, repository, and research
 
@@ -255,7 +245,7 @@ correction:
   explicit gamut policy, WCAG contrast, `deltaEOK`, and runtime selection
   among precomputed candidates.
 
-The v0.1 feature scope remains frozen through release hardening and publication.
+The v0.1 feature freeze ended with publication of v0.1.0.
 
 The accepted v0.1 production scope is intentionally smaller than the early
 candidate list. In particular, `SRgb8` / `SRgba8` and HSL/HSV are deferred
@@ -290,8 +280,9 @@ Validated R4 consumers are:
 - `imagery-d`;
 - Dunia's editor theme/style layer.
 
-No public API is stable yet. Until v0.1.0 is published, only release-hardening
-changes and evidence-backed corrections to the accepted contract are in scope.
+The library is still pre-1.0. The v0.1.0 release records the first supported
+public package surface, but later 0.x releases may make evidence-backed breaking
+changes with explicit release notes.
 
 Public API documentation, tests, CTFE coverage and documented `unittest`
 examples are developed together with the production API rather than postponed
