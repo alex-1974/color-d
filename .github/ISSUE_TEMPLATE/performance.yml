@@ -1,6 +1,7 @@
 name: Performance
 description: Report or investigate a measurable performance concern.
 title: ""
+labels: ["type: performance"]
 body:
   - type: textarea
     id: workload
