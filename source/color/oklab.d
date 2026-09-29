@@ -191,8 +191,8 @@ if (is(T == float) || is(T == double))
  *
  * Use this conversion before Oklab-based perceptual calculations. Extended
  * finite values are preserved; the conversion does not clip or gamut-map
- * them. Representable results from extreme finite XYZ inputs are protected
- * against avoidable intermediate overflow.
+ * them. Extreme finite XYZ inputs retain representable Oklab results where
+ * possible.
  *
  * Params:
  *     xyz = CIE XYZ D65 value to convert.
@@ -201,8 +201,8 @@ if (is(T == float) || is(T == double))
  *     The corresponding Oklab value.
  *
  * Standards:
- *     Uses Björn Ottosson's published Oklab XYZ/LMS/Oklab transform,
- *     including the higher-precision sRGB/D65 update validated by color-d.
+ *     Uses Björn Ottosson's published Oklab XYZ/LMS/Oklab transform with the
+ *     higher-precision sRGB/D65 matrix.
  *
  * See_Also:
  *     toXyzD65
