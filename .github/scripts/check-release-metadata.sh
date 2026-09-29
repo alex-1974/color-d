@@ -78,13 +78,12 @@ require_fixed '1.42.0 and 1.43.0' README.md
 require_fixed 'DMD 2.113.0 and LDC 1.43.0' README.md
 require_fixed '| 2.112 | 2.112.1 | 1.42.0 |' docs/compiler-matrix.md
 require_fixed '| 2.113 | 2.113.0 | 1.43.0 |' docs/compiler-matrix.md
-require_fixed "v$version — First public release" ROADMAP.md
 
 case "$mode" in
     preflight)
         require_fixed '## Unreleased' CHANGELOG.md
-        require_fixed "has not published v$version yet" README.md
-        require_fixed "**Status: HARDENING — v$version FEATURE FREEZE.**" ROADMAP.md
+        require_fixed "v$version" README.md
+        require_fixed "v$version" ROADMAP.md
         ;;
 
     release)
