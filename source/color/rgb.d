@@ -114,10 +114,11 @@ private T signOf(T)(T value)
 }
 
 /*
- * Narrow LDC runtime optimization validated by the R0 performance gate.
- *
- * The intrinsic path is used only for the sRGB decode power with a positive
- * base and exponent 2.4. CTFE and non-LDC builds retain std.math.pow.
+ * Keep the LDC intrinsic confined to the runtime transfer-function hot path.
+ * The sRGB decode branch reaches this helper only with a positive power base,
+ * so llvm.pow has the same real-valued domain needed here. CTFE cannot use the
+ * compiler intrinsic and non-LDC builds have no equivalent dependency, so both
+ * retain std.math.pow.
  */
 private auto srgbDecodePow24(T)(T base)
 @safe pure nothrow @nogc
@@ -143,12 +144,11 @@ if (is(Unqual!T == float) || is(Unqual!T == double))
 }
 
 /*
- * Narrow LDC runtime optimization validated by the R4 D-code performance audit.
- *
- * The intrinsic path is used only for the inverse sRGB transfer power with a
- * positive base and exponent 1/2.4. CTFE and non-LDC builds retain
- * std.math.pow. The retained experiment compares both routes against a
- * higher-precision powl reference and preserves special-value behavior.
+ * Keep the LDC intrinsic confined to the runtime inverse-transfer hot path.
+ * The caller supplies the positive magnitude required by the fractional power;
+ * sign is restored outside this helper. CTFE cannot use the compiler intrinsic
+ * and non-LDC builds have no equivalent dependency, so both retain
+ * std.math.pow. Retained tests protect accuracy and special-value behavior.
  */
 private auto srgbEncodePowInv24(T)(T base)
 @safe pure nothrow @nogc
