@@ -1,20 +1,23 @@
 /++
- Encoded and linear-light sRGB value types and transfer conversions.
+ Encoded and linear-light sRGB values.
 
- The two RGB representations are distinct types. Conversions are explicit, preserve extended mathematical values, and do not clip or gamut-map implicitly.
+ Use `SRgb` for nonlinear sRGB channel values such as display- or image-facing
+ data. Use `LinearSRgb` when an operation requires linear light. Convert
+ explicitly with `toLinear` and `toSRgb`; neither conversion clips or
+ gamut-maps extended values.
 +/
 module color.rgb;
 
 private import std.traits : Unqual;
 
 /**
- * Encoded nonlinear sRGB color value.
+ * Stores nonlinear sRGB channel values.
  *
- * `T` must be `float` or `double`. Components are mathematical values;
- * construction does not clamp them to the nominal display gamut.
+ * Use this type for encoded sRGB data. `T` must be `float` or `double`.
+ * Construction stores components unchanged, including values outside [0, 1];
+ * it does not clamp or gamut-map them.
  *
- * The natural floating-point `.init` state contains NaNs and is therefore a
- * detectably invalid/uninitialized semantic color, not implicit black.
+ * The natural `.init` value contains NaNs, so it does not represent black.
  */
 
 struct SRgb(T)
@@ -47,13 +50,13 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * Linear-light sRGB color value.
+ * Stores linear-light sRGB channel values.
  *
- * `T` must be `float` or `double`. Encoded and linear-light sRGB are
- * deliberately distinct types even though they have the same component layout.
+ * Use this type for calculations that require linear light, such as alpha
+ * compositing. `T` must be `float` or `double`. Construction stores
+ * components unchanged, including values outside [0, 1].
  *
- * The natural floating-point `.init` state contains NaNs and is therefore a
- * detectably invalid/uninitialized semantic color.
+ * The natural `.init` value contains NaNs, so it does not represent black.
  */
 
 struct LinearSRgb(T)
@@ -206,10 +209,11 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * Decodes nonlinear sRGB into linear-light sRGB.
+ * Decodes an sRGB value for calculations that require linear light.
  *
- * The conversion does not clamp extended component values. Negative extended
- * values use the same sign-preserving transfer extension as positive values.
+ * Components outside the nominal [0, 1] range remain extended values rather
+ * than being clipped. Negative values use a sign-preserving extension of the
+ * sRGB transfer function.
  *
  * Params:
  *     color = Encoded sRGB value to decode.
@@ -246,10 +250,12 @@ LinearSRgb!T toLinear(T)(SRgb!T color)
 }
 
 /**
- * Encodes linear-light sRGB into nonlinear sRGB.
+ * Encodes a linear-light value as nonlinear sRGB.
  *
- * The conversion does not clamp extended component values. Negative extended
- * values use the same sign-preserving transfer extension as positive values.
+ * Use this when a linear-light result must be returned to an sRGB-facing
+ * consumer. Components outside the nominal [0, 1] range remain extended values
+ * rather than being clipped. Negative values use a sign-preserving extension
+ * of the sRGB transfer function.
  *
  * Params:
  *     color = Linear-light sRGB value to encode.
