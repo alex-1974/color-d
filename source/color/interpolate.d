@@ -67,8 +67,8 @@ private T lerp(T)(
 {
     /*
      * For strictly opposite-sign finite endpoints, forming second - first can
-     * overflow even when the interpolated result is representable. R0.11
-     * validated the weighted-endpoint form for exactly that case.
+     * overflow even when the interpolated result is representable. The
+     * weighted-endpoint form avoids that intermediate overflow.
      *
      * Keep the direct-difference form otherwise: in particular it preserves
      * exact constant interpolation for equal large endpoints, where the pure
@@ -96,8 +96,8 @@ private T lerp(T)(
  *
  * If interpolated alpha is exactly zero, the weighted coordinate is retained
  * without division. At zero alpha the straight coordinate is mathematically
- * powerless, so this provides the deterministic R0.7 representation without
- * introducing division by zero.
+ * powerless, so retaining the weighted coordinate gives a deterministic
+ * representation without introducing division by zero.
  */
 private T interpolateAlphaCoordinate(T)(
     T firstCoordinate,
