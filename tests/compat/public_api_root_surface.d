@@ -87,8 +87,14 @@ void acceptedRootAndUfcsSurface()
     const bool gamutState =
         encodedBack.inGamut;
 
+    const bool linearGamutState =
+        linearBack.inGamut;
+
     const clipped =
         SRgbd(-0.1, 0.5, 1.1).clip;
+
+    const linearClipped =
+        LinearSRgbd(-0.1, 0.5, 1.1).clip;
 
     const localMapped =
         lch.gamutMapLocalMindeToLinearSRgb;
@@ -125,6 +131,18 @@ void acceptedRootAndUfcsSurface()
             0.5
         );
 
+    const linearRectangular =
+        linear.interpolate(
+            linearBack,
+            0.5
+        );
+
+    const labRectangular =
+        lab.interpolate(
+            labBack,
+            0.5
+        );
+
     const polar =
         lch.interpolate(
             Oklchd(
@@ -136,10 +154,47 @@ void acceptedRootAndUfcsSurface()
             HuePath.shorter
         );
 
+    const alphaEncoded =
+        Alpha!SRgbd(
+            encoded,
+            0.5
+        );
+
+    const alphaEncodedInterpolated =
+        alphaEncoded.interpolate(
+            alphaEncoded,
+            0.5
+        );
+
     const alphaInterpolated =
         straight.interpolate(
             straightBack,
             0.5
+        );
+
+    const alphaLab =
+        Alpha!Oklabd(
+            lab,
+            0.5
+        );
+
+    const alphaLabInterpolated =
+        alphaLab.interpolate(
+            alphaLab,
+            0.5
+        );
+
+    const alphaLchForInterpolation =
+        Alpha!Oklchd(
+            lch,
+            0.5
+        );
+
+    const alphaLchInterpolated =
+        alphaLchForInterpolation.interpolate(
+            alphaLchForInterpolation,
+            0.5,
+            HuePath.shorter
         );
 
     const luminance =
@@ -148,6 +203,14 @@ void acceptedRootAndUfcsSurface()
     const contrast =
         encoded.wcag2ContrastRatio(
             SRgbd(1.0, 1.0, 1.0)
+        );
+
+    const linearLuminance =
+        linear.wcag2RelativeLuminance;
+
+    const linearContrast =
+        linear.wcag2ContrastRatio(
+            LinearSRgbd(1.0, 1.0, 1.0)
         );
 
     const luminanceValue =
@@ -216,16 +279,33 @@ void acceptedRootAndUfcsSurface()
     assert(luminanceValue == luminanceValue || luminanceValue != luminanceValue);
     assert(contrastValue == contrastValue || contrastValue != contrastValue);
     assert(gamutState || !gamutState);
+    assert(linearGamutState || !linearGamutState);
     assert(clipped.r == clipped.r || clipped.r != clipped.r);
+    assert(linearClipped.r == linearClipped.r ||
+           linearClipped.r != linearClipped.r);
     assert(localMapped.r == localMapped.r || localMapped.r != localMapped.r);
     assert(rayMapped.r == rayMapped.r || rayMapped.r != rayMapped.r);
     assert(composed.alpha == composed.alpha || composed.alpha != composed.alpha);
     assert(rectangular.r == rectangular.r || rectangular.r != rectangular.r);
+    assert(linearRectangular.r == linearRectangular.r ||
+           linearRectangular.r != linearRectangular.r);
+    assert(labRectangular.l == labRectangular.l ||
+           labRectangular.l != labRectangular.l);
     assert(polar.l == polar.l || polar.l != polar.l);
+    assert(alphaEncodedInterpolated.alpha ==
+               alphaEncodedInterpolated.alpha ||
+           alphaEncodedInterpolated.alpha !=
+               alphaEncodedInterpolated.alpha);
     assert(alphaInterpolated.alpha == alphaInterpolated.alpha ||
            alphaInterpolated.alpha != alphaInterpolated.alpha);
+    assert(alphaLabInterpolated.alpha == alphaLabInterpolated.alpha ||
+           alphaLabInterpolated.alpha != alphaLabInterpolated.alpha);
+    assert(alphaLchInterpolated.alpha == alphaLchInterpolated.alpha ||
+           alphaLchInterpolated.alpha != alphaLchInterpolated.alpha);
     assert(luminance.valid || !luminance.valid);
     assert(contrast.valid || !contrast.valid);
+    assert(linearLuminance.valid || !linearLuminance.valid);
+    assert(linearContrast.valid || !linearContrast.valid);
     assert(difference == difference || difference != difference);
     assert(schedule.length == 5);
     assert(runtimeBatchOk);

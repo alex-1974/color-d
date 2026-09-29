@@ -1,7 +1,9 @@
 /++
- Perceptual color-difference measurements.
+ Measure perceptual distance between Oklab colors.
 
- The public deltaEOK operation measures Euclidean distance directly in Oklab and does not perform hidden conversion, clipping, gamut mapping, or perceptual classification.
+ Use `deltaEOK` when both colors are already in Oklab and you need their
+ Euclidean perceptual distance. The operation does not convert colors, resolve
+ alpha, clip, gamut-map, or decide whether a difference is noticeable.
 +/
 module color.difference;
 
@@ -17,8 +19,10 @@ private import std.math :
 
 
 /**
- * Measures Euclidean color difference directly in Oklab.
+ * Measures the perceptual distance between two Oklab colors.
  *
+ * Use this to compare colors that are already expressed in Oklab. A result of
+ * zero means identical Oklab coordinates; larger values mean greater distance.
  * Finite extended coordinates are accepted. The operation performs no hidden
  * conversion, clipping, gamut mapping, alpha resolution, or just-noticeable
  * difference classification.
@@ -35,8 +39,7 @@ private import std.math :
  *
  * Standards:
  *     DeltaEOK follows the Euclidean Oklab definition described by W3C CSS
- *     Color Module Level 4. The formula and special-value policy were
- *     independently validated by color-d R0.10.
+ *     Color Module Level 4.
  */
 
 T deltaEOK(T)(

@@ -1,0 +1,110 @@
+name: Compiler compatibility matrix
+
+on:
+  schedule:
+    - cron: "41 2 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compiler-matrix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compatibility:
+    name: Compatibility / ${{ matrix.compiler }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: dmd-2.111.0
+            supported: false
+          - compiler: dmd-2.112.1
+            supported: true
+          - compiler: dmd-2.113.0
+            supported: true
+          - compiler: ldc-1.41.0
+            supported: false
+          - compiler: ldc-1.42.0
+            supported: true
+          - compiler: ldc-1.43.0
+            supported: true
+
+    continue-on-error: ${{ !matrix.supported }}
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v7
+        with:
+          ref: develop
+
+      - name: Install D toolchain
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      - name: Toolchain versions
+        run: |
+          "$DC" --version
+          dub --version
+
+      - name: Debug unittests
+        run: dub test --compiler="$DC" --build=debug --force
+
+      - name: Release unittests
+        run: dub test --compiler="$DC" --build=release --force
+
+      - name: Public API compile contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          for probe in named_arguments public_api_root_surface public_api_direct_modules
+          do
+              "$DC" -c -I"$GITHUB_WORKSPACE/source" -i                   -of="$tmp/$probe.o"                   "$GITHUB_WORKSPACE/tests/compat/$probe.d"
+          done
+
+      - name: Public special-value semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" -I"$GITHUB_WORKSPACE/source" -i               -of="$tmp/special-values"               "$GITHUB_WORKSPACE/tests/numerical/special_value_semantics.d"
+
+          "$tmp/special-values"
+
+      - name: TC-0001 DMD wrong-code canary
+        if: startsWith(matrix.compiler, 'dmd-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" -of="$tmp/tc0001"               "$GITHUB_WORKSPACE/tests/toolchain/tc0001_static_array_return_canary.d"
+
+          set +e
+          "$tmp/tc0001"
+          status=$?
+          set -e
+
+          case "$status" in
+              0)
+                  echo "::warning::TC-0001 no longer reproduces on ${{ matrix.compiler }}; re-evaluate the production workaround."
+                  ;;
+              1)
+                  echo "::warning::TC-0001 reproduces on ${{ matrix.compiler }} as recorded."
+                  ;;
+              *)
+                  echo "TC-0001 canary exited unexpectedly with status $status" >&2
+                  exit "$status"
+                  ;;
+          esac

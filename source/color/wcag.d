@@ -1,7 +1,9 @@
 /++
- WCAG 2 relative-luminance and contrast measurements for sRGB.
+ Measure WCAG 2 relative luminance and contrast for sRGB.
 
- Standards-facing measurements validate the finite normalized sRGB domain and return an explicit validity-bearing scalar result. Alpha must be resolved before measurement.
+ Use these functions after colors have been reduced to opaque, normalized sRGB
+ or linear-light sRGB. Each result carries validity so out-of-domain input
+ cannot look like an ordinary measurement. Alpha must be resolved first.
 +/
 module color.wcag;
 
@@ -12,17 +14,14 @@ private import color.rgb :
 
 
 /**
- * Result of a standards-facing WCAG 2 measurement.
+ * Holds a WCAG 2 measurement together with its validity state.
  *
- * The representation occupies exactly one scalar value.
+ * Read `valid` before using `value` when input may be outside the WCAG
+ * domain. Valid measurements expose their numeric result through `value`;
+ * invalid input produces an invalid measurement whose value is NaN.
  *
- * A finite scalar represents a valid measurement. NaN represents invalid
- * input. Callers can therefore inspect `valid` without a separate status field,
- * while ignoring validity cannot turn invalid input into an ordinary plausible
- * measurement.
- *
- * Construction is intentionally controlled by this module. WCAG measurement
- * functions validate their input domain before creating a valid result.
+ * Callers receive this type from the WCAG measurement functions rather than
+ * constructing validated measurements directly.
  *
  * The natural floating-point `.init` state is NaN and is therefore invalid.
  */
@@ -55,11 +54,29 @@ if (is(T == float) || is(T == double))
         return _value;
     }
 
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        import color.rgb : SRgbd;
+
+        const result = SRgbd(0, 0, 0).wcag2RelativeLuminance;
+        assert(result.value == 0);
+    }
+
     /// Whether this object contains a valid WCAG 2 measurement.
     @property bool valid() const
     @safe pure nothrow @nogc
     {
         return _value == _value;
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        import color.rgb : SRgbd;
+
+        assert(SRgbd(0, 0, 0).wcag2RelativeLuminance.valid);
+        assert(!SRgbd(-0.1, 0, 0).wcag2RelativeLuminance.valid);
     }
 }
 
@@ -143,9 +160,10 @@ private T contrastFromLuminance(T)(T first, T second)
 
 
 /**
- * Measures WCAG 2 relative luminance from encoded sRGB.
+ * Computes WCAG 2 relative luminance from encoded sRGB.
  *
- * Input components must be finite and in `[0, 1]`. Invalid input produces an
+ * Use this overload for ordinary encoded sRGB input. Components must be finite
+ * and from 0 through 1 inclusive. Invalid input produces an
  * invalid `Wcag2Measurement` whose value is NaN. Alpha-bearing input is not
  * accepted and no clipping or gamut mapping is performed.
  *
@@ -193,9 +211,10 @@ Wcag2Measurement!T wcag2RelativeLuminance(T)(SRgb!T color)
 
 
 /**
- * Measures WCAG 2 relative luminance from linear-light sRGB.
+ * Computes WCAG 2 relative luminance from linear-light sRGB.
  *
- * Input components must be finite and in `[0, 1]`. This overload represents
+ * Use this overload when transfer-function decoding has already been done.
+ * Components must be finite and from 0 through 1 inclusive. This represents
  * the same WCAG sRGB measurement after transfer-function decoding has already
  * been performed explicitly.
  *
@@ -221,11 +240,24 @@ Wcag2Measurement!T wcag2RelativeLuminance(T)(LinearSRgb!T color)
     );
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    import color.rgb : LinearSRgbd;
+
+    const black = LinearSRgbd(0, 0, 0).wcag2RelativeLuminance;
+    const white = LinearSRgbd(1, 1, 1).wcag2RelativeLuminance;
+
+    assert(black.valid && black.value == 0);
+    assert(white.valid && white.value == 1);
+}
+
 
 /**
- * Measures the WCAG 2 contrast ratio between two encoded-sRGB colors.
+ * Computes the WCAG 2 contrast ratio between two encoded-sRGB colors.
  *
- * Both colors must contain finite normalized components in `[0, 1]`. Invalid
+ * Use this after any alpha has been resolved. Both colors must contain finite
+ * normalized components from 0 through 1 inclusive. Invalid
  * input produces an invalid measurement. No clipping, gamut mapping, alpha
  * compositing, or accessibility-threshold classification is applied.
  *
@@ -283,9 +315,11 @@ Wcag2Measurement!T wcag2ContrastRatio(T)(
 
 
 /**
- * Measures the WCAG 2 contrast ratio between two linear-light sRGB colors.
+ * Computes the WCAG 2 contrast ratio between two linear-light sRGB colors.
  *
- * Both colors must contain finite components in `[0, 1]`. Invalid input
+ * Use this when both colors have already been decoded to linear light and any
+ * alpha has been resolved. Components must be finite and from 0 through 1
+ * inclusive. Invalid input
  * produces an invalid measurement. No hidden conversion, clipping, gamut
  * mapping, alpha compositing, or threshold policy is applied.
  *
@@ -320,6 +354,19 @@ Wcag2Measurement!T wcag2ContrastRatio(T)(
             relativeLuminanceUnchecked(second)
         )
     );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    import color.rgb : LinearSRgbd;
+
+    const contrast = LinearSRgbd(0, 0, 0).wcag2ContrastRatio(
+        LinearSRgbd(1, 1, 1)
+    );
+
+    assert(contrast.valid);
+    assert(contrast.value == 21);
 }
 
 

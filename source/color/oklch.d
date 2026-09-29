@@ -1,7 +1,10 @@
 /++
- OKLCH values, Oklab-family hue semantics, and raw component operations.
+ OKLCH values, degree-based hue handling, and component replacement.
 
- Hue storage is degree-based and intentionally unbounded. Canonicalization, component replacement, and Oklab/OKLCH conversion remain explicit operations.
+ Use OKLCH when perceptual lightness, chroma, and hue are more convenient than
+ Oklab's Cartesian axes. Hue storage is deliberately raw and unbounded.
+ Normalization, canonicalization, component replacement, and conversion remain
+ explicit operations.
 +/
 module color.oklch;
 
@@ -106,13 +109,14 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * Hue value for the Oklab family.
+ * Stores an Oklab-family hue in degrees.
  *
- * Public/default units are degrees. The stored angle is raw and unbounded:
- * construction does not normalize complete revolutions.
+ * Use the normalized views when an algorithm needs a conventional angular
+ * interval. The stored value itself remains raw and may contain any number of
+ * complete revolutions.
  *
- * `T` must be `float` or `double`. The natural floating-point `.init` state
- * contains NaN and is therefore detectably invalid/uninitialized.
+ * `T` must be `float` or `double`. The natural `.init` value contains
+ * NaN and is not a usable hue.
  */
 
 struct OklabHue(T)
@@ -141,43 +145,82 @@ if (is(T == float) || is(T == double))
         return OklabHue(value);
     }
 
-    /// Return the stored degree value without normalization.
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const hue = OklabHued.fromDegrees(390.0);
+        assert(hue.rawDegrees == 390.0);
+    }
+
+    /// Returns the stored degree value without normalization.
     @property T rawDegrees() const
     @safe pure nothrow @nogc
     {
         return degrees_;
     }
 
-    /// Return the equivalent hue from 0 degrees inclusive to 360 degrees exclusive.
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const hue = OklabHued.fromDegrees(-30.0);
+        assert(hue.rawDegrees == -30.0);
+    }
+
+    /// Returns the equivalent hue from 0 degrees inclusive to 360 degrees exclusive.
     @property T positiveDegrees() const
     @safe pure nothrow @nogc
     {
         return normalizePositiveDegrees(degrees_);
     }
 
-    /// Return the equivalent hue above -180 degrees and at most 180 degrees.
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const hue = OklabHued.fromDegrees(390.0);
+        assert(hue.positiveDegrees == 30.0);
+    }
+
+    /// Returns the equivalent hue above -180 degrees and at most 180 degrees.
     @property T signedDegrees() const
     @safe pure nothrow @nogc
     {
         return normalizeSignedDegrees(degrees_);
     }
 
-    /// Return the raw stored hue converted to radians.
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const hue = OklabHued.fromDegrees(330.0);
+        assert(hue.signedDegrees == -30.0);
+    }
+
+    /// Returns the raw stored hue converted to radians.
     @property T radians() const
     @safe pure nothrow @nogc
     {
         return degreesToRadians(degrees_);
     }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        import std.math : PI;
+
+        const hue = OklabHued.fromDegrees(180.0);
+        assert(hue.radians == PI);
+    }
 }
 
 /**
- * OKLCH color value, the cylindrical form of Oklab.
+ * Stores a color as Oklab lightness, chroma, and hue.
  *
- * Lightness and chroma are stored as mathematical values. Chroma is not
- * silently clamped or canonicalized, and hue preserves its raw degree value.
+ * Use OKLCH when editing or interpolating perceptual lightness, colorfulness,
+ * or hue directly. Lightness and chroma are raw mathematical values; chroma is
+ * not silently clamped or canonicalized, and hue preserves its raw degree
+ * value.
  *
- * `T` must be `float` or `double`. The natural floating-point `.init` state
- * contains NaNs and is therefore detectably invalid/uninitialized.
+ * `T` must be `float` or `double`. The natural `.init` value contains
+ * NaNs and is not a usable color.
  */
 
 struct Oklch(T)
@@ -196,9 +239,10 @@ if (is(T == float) || is(T == double))
     alias Scalar = T;
 
     /**
-     * Whether chroma is exactly zero.
+     * Reports whether chroma is exactly zero.
      *
-     * Near-achromatic policy is deliberately separate.
+     * Use this when exact achromaticity matters. For a caller-selected
+     * tolerance, use `isNearAchromatic` instead.
      */
     @property bool isAchromatic() const
     @safe pure nothrow @nogc
@@ -206,10 +250,18 @@ if (is(T == float) || is(T == double))
         return c == cast(T)0;
     }
 
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const gray = Oklchd(0.5, 0.0, OklabHued.fromDegrees(120.0));
+        assert(gray.isAchromatic);
+    }
+
     /**
- * Tests caller-selected near-achromaticity.
+ * Tests chroma against a caller-selected near-achromatic threshold.
  *
- * The library does not impose a global chroma epsilon.
+ * Use this when exact zero is too strict for the caller's task. The library
+ * does not impose a global chroma epsilon.
  *
  * Params:
  *     epsilon = Non-negative caller-selected chroma magnitude threshold.
@@ -235,20 +287,22 @@ if (is(T == float) || is(T == double))
         return magnitude <= epsilon;
     }
 
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const color = Oklchd(0.5, 1e-4, OklabHued.fromDegrees(120.0));
+        assert(color.isNearAchromatic(1e-3));
+        assert(!color.isNearAchromatic(1e-5));
+    }
+
     /**
-     * Return an equivalent representation with non-negative chroma.
+     * Returns an equivalent representation with non-negative chroma.
      *
-     * Negative chroma is represented by flipping its sign and rotating hue
-     * by 180 degrees.
-     *
-     * Raw hue revolutions are preserved when adding 180 degrees is exactly
-     * representable in `T`. For very large finite raw hue values where that
-     * addition would lose the required angular rotation through floating-point
-     * rounding, the hue is first reduced to its positive-degree equivalent and
-     * then rotated. The fallback hue is deliberately not wrapped after the
-     * 180-degree addition.
-     *
-     * Non-finite hue values remain non-finite rather than being repaired.
+     * Use this before operations that require canonical OKLCH. Negative chroma
+     * becomes positive and hue rotates by 180 degrees. Ordinary raw hue
+     * revolutions are preserved; very large finite hues may be reduced before
+     * rotation when floating-point precision cannot represent the raw
+     * 180-degree increment. Non-finite hue remains non-finite.
  *
  * Returns:
  *     An equivalent OKLCH representation with non-negative chroma.
@@ -300,6 +354,31 @@ if (is(T == float) || is(T == double))
             )
         );
     }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const raw = Oklchd(-0.1, -0.2, OklabHued.fromDegrees(30.0));
+        const canonical = raw.canonicalized;
+
+        assert(canonical.l == raw.l);
+        assert(canonical.c == 0.2);
+        assert(canonical.h.rawDegrees == 210.0);
+    }
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const color = Oklchd(
+        0.55,
+        0.12,
+        OklabHued.fromDegrees(250.0)
+    );
+
+    assert(color.l == 0.55);
+    assert(color.c == 0.12);
+    assert(color.h.rawDegrees == 250.0);
 }
 
 /// Oklab-family hue with `float` storage.
@@ -755,15 +834,12 @@ Oklch!T withHue(T)(
 }
 
 /**
- * Converts Cartesian Oklab to its cylindrical OKLCH representation.
+ * Converts Cartesian Oklab to lightness, chroma, and hue.
  *
- * Non-achromatic results use non-negative chroma and hue from 0 degrees
- * inclusive to 360 degrees exclusive. Chroma uses an overflow/underflow-safe
- * Euclidean magnitude fallback when the direct squared magnitude leaves the
- * ordinary finite range, so representable extreme finite magnitudes are not
- * lost merely through intermediate squaring.
- * Exactly achromatic Oklab uses the deterministic numeric representation
- * `C = 0, h = 0°`.
+ * Use this when chroma or hue is easier to work with directly. Non-achromatic
+ * results have non-negative chroma and hue from 0° inclusive to 360° exclusive. Exactly achromatic
+ * Oklab is represented as `C = 0, h = 0°`. Extreme finite components are
+ * handled without avoidable loss from intermediate magnitude calculations.
  *
  * Params:
  *     color = Oklab value to convert.
@@ -825,11 +901,12 @@ Oklch!T toOklch(T)(Oklab!T color)
 }
 
 /**
- * Converts OKLCH to Cartesian Oklab.
+ * Converts OKLCH to Cartesian Oklab coordinates.
  *
- * Complete hue revolutions are reduced before trigonometric evaluation,
- * preserving the represented direction without mutating the stored OKLCH value.
- * Negative chroma remains valid raw mathematical input.
+ * Use this when an OKLCH value must enter an Oklab-based calculation or
+ * conversion path. Complete hue revolutions represent the same direction and
+ * do not modify the stored OKLCH value. Negative chroma remains valid raw
+ * mathematical input.
  *
  * Params:
  *     color = OKLCH value to convert.

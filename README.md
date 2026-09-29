@@ -46,16 +46,17 @@ Core principles:
 
 ## Support and compatibility
 
-The current pre-1.0 development matrix is:
+The current v0.1.x release matrix covers DMD 2.112.1 and 2.113.0 plus LDC
+1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0, DMD 2.111.0, and LDC
+1.41.0 are diagnostic points rather than supported release compilers.
 
-| Toolchain | Tested configuration |
-|---|---|
-| DMD | 2.113.0 on Ubuntu 24.04 x86-64 |
-| LDC | 1.43.0 on Ubuntu 24.04 x86-64 |
+Fast CI uses the current pair, DMD 2.113.0 and LDC 1.43.0. Broader compatibility
+qualification is kept separate from the daily development gate. DMD and LDC are
+both correctness targets; LDC is the current release-performance reference
+compiler.
 
-No older minimum D frontend is currently promised. Passing on an older compiler
-does not by itself establish supported compatibility. DMD and LDC are both
-correctness targets; LDC is the current release-performance reference compiler.
+See [Compiler matrix](docs/compiler-matrix.md) for exact-version policy,
+reproducible local commands, and compiler-specific evidence.
 
 The public API remains pre-1.0, so later 0.x releases may still make breaking
 changes when justified and documented. R4 real-consumer validation completed
@@ -63,19 +64,12 @@ without requiring a provider-side API correction for v0.1.0.
 
 ## Installation with DUB
 
-The first public release is `v0.1.0`.
-
-For normal released-package use through the DUB registry, the dependency form is:
+`v0.1.1` is the current release and resolves through the DUB registry. For normal use,
+add the released package as a DUB dependency:
 
 ```sdl
-dependency "color-d" version="~>0.1.0"
+dependency "color-d" version="~>0.1.1"
 ```
-
-The release publication process verifies the tagged source and consumer archive
-before publishing GitHub release assets. DUB registry visibility/resolution is
-verified separately after tag publication; if the registry has not indexed the
-release yet, pin the exact release tag/commit rather than following a moving
-branch.
 
 For a local workspace checkout, a path dependency remains valid:
 
@@ -88,7 +82,7 @@ For an external Git dependency pinned to the released source:
 ```sdl
 dependency "color-d" \
     repository="git+https://github.com/alex-1974/color-d.git" \
-    version="v0.1.0"
+    version="v0.1.1"
 ```
 
 ## Release package, repository, and research
@@ -226,68 +220,24 @@ part of the consumer archive:
 
 ## Project status
 
-R0 research and architecture are complete, and **R1 — mathematical core
-production API** is complete as of 2026-09-26. The promoted production core now
-covers the accepted float/double value types, explicit conversion chain, sRGB
-transfer functions, strict sRGB gamut diagnostics and explicit hard clipping.
+**v0.1.0 was released on 2026-09-29** and is available through the DUB
+registry. It is the first supported public package surface for color-d.
 
-R1 mathematical core, R2 alpha/interpolation, and R3 perceptual utilities are
-complete. The accepted R1–R3 production feature scope for v0.1 is now closed.
-Detailed closeout evidence is maintainer material in the production repository.
+The R0 research/architecture programme and R1–R4 production, utility, and
+real-consumer validation phases are complete. Those phase names now describe
+historical development of v0.1.0 rather than current release work. Both R4
+consumers — `imagery-d` and Dunia's theme/style layer — exercised the public
+API without requiring a provider-side API correction.
 
-R4 real-consumer validation is complete. Both initial independent consumers
-used the public API successfully without requiring a provider-side API
-correction:
+Current work targets **v0.1.1 — Documentation and Maintenance**. This patch
+release improves public DDox examples and wording, source-level implementation
+rationale, repository documentation, contract evidence, cleanup, and toolchain
+consistency. It does not intentionally change public numerical semantics or add
+a new feature family.
 
-- `imagery-d` validated typed encoded/linear sRGB transfer inside a real
-  region/layout-neutral image-processing path;
-- Dunia, the OSM editor application, validated CTFE/runtime theme construction,
-  explicit gamut policy, WCAG contrast, `deltaEOK`, and runtime selection
-  among precomputed candidates.
+Deferred candidates such as packed `SRgb8` / `SRgba8`, HSL/HSV, wider-gamut
+spaces, CSS support, and palette/theme abstractions remain candidates only.
+They are not commitments for v0.1.1 or any particular later release.
 
-The v0.1 feature freeze ended with publication of v0.1.0.
-
-The accepted v0.1 production scope is intentionally smaller than the early
-candidate list. In particular, `SRgb8` / `SRgba8` and HSL/HSV are deferred
-until concrete consumer evidence justifies them.
-
-The current first-release target is:
-
-```text
-v0.1.0 — First public release
-```
-
-Production and stabilization sequence:
-
-```text
-R1  mathematical core
-R2  alpha and interpolation
-R3  perceptual utilities
-R4  real consumer validation
-    - imagery-d
-    - OSM editor theme/style
-↓
-v0.1.0 release hardening and publication
-```
-
-R1--R3 have promoted the accepted validated R0 semantics into deliberate
-production modules. R4 consumer validation is complete, so v0.1 is now in release hardening and
-publication. No feature-scope reopening or API correction was required by the
-accepted consumer evidence.
-
-Validated R4 consumers are:
-
-- `imagery-d`;
-- Dunia's editor theme/style layer.
-
-The library is still pre-1.0. The v0.1.0 release records the first supported
-public package surface, but later 0.x releases may make evidence-backed breaking
-changes with explicit release notes.
-
-Public API documentation, tests, CTFE coverage and documented `unittest`
-examples are developed together with the production API rather than postponed
-to release cleanup.
-
-See the [documentation index](docs/README.md) and the development DDox API
-documentation linked at the top of this README. Release planning and
-publication engineering remain repository-only maintainer material.
+The library remains pre-1.0, so later 0.x releases may still make
+well-justified, documented breaking changes.

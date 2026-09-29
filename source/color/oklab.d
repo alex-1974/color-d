@@ -1,7 +1,9 @@
 /++
- Oklab values and explicit conversion to and from CIE XYZ D65.
+ Oklab values and conversion to and from CIE XYZ D65.
 
- The module preserves extended mathematical values and supports the same semantic conversion API at runtime and during CTFE.
+ Use Oklab when a calculation benefits from perceptual lightness and Cartesian
+ opponent-color components. Convert explicitly through XYZ D65; conversions
+ preserve extended mathematical values and are available at runtime and CTFE.
 +/
 module color.oklab;
 
@@ -11,13 +13,13 @@ private import color.xyz :
     XyzD65d;
 
 /**
- * Oklab color value.
+ * Stores a color in Cartesian Oklab coordinates.
  *
- * `T` must be `float` or `double`. Components are mathematical values;
- * construction does not clamp or canonicalize them.
+ * Use Oklab for perceptual calculations that need separate lightness and
+ * opponent-color axes. `T` must be `float` or `double`. Construction
+ * stores components unchanged; it does not clamp or canonicalize them.
  *
- * The natural floating-point `.init` state contains NaNs and is therefore a
- * detectably invalid/uninitialized semantic color.
+ * The natural `.init` value contains NaNs and is not a usable color.
  */
 
 struct Oklab(T)
@@ -34,6 +36,16 @@ if (is(T == float) || is(T == double))
 
     /// Scalar component type.
     alias Scalar = T;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const lab = Oklabd(0.60, 0.10, -0.05);
+
+    assert(lab.l == 0.60);
+    assert(lab.a == 0.10);
+    assert(lab.b == -0.05);
 }
 
 /// Oklab with `float` components.
@@ -175,12 +187,12 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * Converts CIE XYZ D65 to Oklab.
+ * Converts CIE XYZ D65 to perceptual Oklab coordinates.
  *
- * Extended finite values are preserved. Negative LMS intermediates use a
- * sign-preserving real cube root. Extreme finite XYZ values that would
- * overflow the direct LMS intermediate use a scale-equivalent fallback so a
- * representable Oklab result remains finite.
+ * Use this conversion before Oklab-based perceptual calculations. Extended
+ * finite values are preserved; the conversion does not clip or gamut-map
+ * them. Extreme finite XYZ inputs retain representable Oklab results where
+ * possible.
  *
  * Params:
  *     xyz = CIE XYZ D65 value to convert.
@@ -189,8 +201,8 @@ if (is(T == float) || is(T == double))
  *     The corresponding Oklab value.
  *
  * Standards:
- *     Uses Björn Ottosson's published Oklab XYZ/LMS/Oklab transform,
- *     including the higher-precision sRGB/D65 update validated by color-d.
+ *     Uses Björn Ottosson's published Oklab XYZ/LMS/Oklab transform with the
+ *     higher-precision sRGB/D65 matrix.
  *
  * See_Also:
  *     toXyzD65
@@ -259,6 +271,19 @@ Oklab!T toOklab(T)(XyzD65!T xyz)
     return toOklabScaledFinite(xyz);
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    import std.math : fabs;
+
+    const xyz = XyzD65d(0.125, 0.25, 0.50);
+    const roundTrip = xyz.toOklab.toXyzD65;
+
+    assert(fabs(roundTrip.x - xyz.x) < 1e-12);
+    assert(fabs(roundTrip.y - xyz.y) < 1e-12);
+    assert(fabs(roundTrip.z - xyz.z) < 1e-12);
+}
+
 @safe pure nothrow @nogc unittest
 {
     const extremeDouble =
@@ -283,24 +308,12 @@ Oklab!T toOklab(T)(XyzD65!T xyz)
     assert(isFiniteScalar(extremeFloat.a));
     assert(isFiniteScalar(extremeFloat.b));
 }
-
-///
-@safe pure nothrow @nogc unittest
-{
-    import std.math : fabs;
-
-    const xyz = XyzD65d(0.125, 0.25, 0.50);
-    const roundTrip = xyz.toOklab.toXyzD65;
-
-    assert(fabs(roundTrip.x - xyz.x) < 1e-12);
-    assert(fabs(roundTrip.y - xyz.y) < 1e-12);
-    assert(fabs(roundTrip.z - xyz.z) < 1e-12);
-}
-
 /**
- * Converts Oklab to CIE XYZ D65.
+ * Converts Oklab to the CIE XYZ D65 connection space.
  *
- * Extended values are preserved and no clipping or gamut mapping is performed.
+ * Use this when an Oklab result must continue through an XYZ-based conversion
+ * path. Extended values are preserved; no clipping or gamut mapping is
+ * performed.
  *
  * Params:
  *     lab = Oklab value to convert.

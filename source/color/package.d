@@ -1,9 +1,10 @@
 /++
  Public entry module for color-d.
 
- color-d is a small, type-safe, allocation-free library for color mathematics.
- It keeps color spaces and policy choices visible in the type system instead of
- hiding them behind one generic color value.
+ Use `import color;` for the complete public color-math API. color-d keeps
+ color spaces and policy choices visible in the type system instead of hiding
+ them behind one generic color value, and its current mathematical operations
+ are value-based and allocation-free.
 
  Quick_Start:
      A common display-oriented path starts with encoded sRGB, converts to a
@@ -119,8 +120,8 @@
  Documentation:
      Start with the repository README and `docs/tutorial/getting-started.md`
      for task-oriented guidance. DDox pages describe exact declaration
-     contracts and include executable documented-unittest examples where a
-     compact example helps.
+     contracts. Every public callable has a directly associated executable
+     documented-unittest example showing its normal use.
 
      Research and experiment history are engineering evidence, not consumer API
      documentation and not release-package content.

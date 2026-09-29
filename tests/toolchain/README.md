@@ -21,5 +21,8 @@ Fast CI treats exit status 1 as the known reproduced defect and status 0 as a
 signal to re-evaluate the production workaround. Any other exit status is a CI
 failure.
 
-The research copy is intentionally retained until the external research
-migration tracked by issue #107 has been independently verified.
+The production canary remains intentionally retained because the supported
+DMD 2.113.0 matrix still reproduces the defect it guards. Historical reduction
+and investigation evidence lives in the research repository; removal of this
+canary requires a supported-compiler run in which it passes, followed by
+re-evaluation of the corresponding production workaround.

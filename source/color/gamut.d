@@ -1,7 +1,10 @@
 /++
- sRGB gamut diagnostics, hard clipping, and explicit perceptual gamut mapping.
+ Diagnose and handle colors outside the sRGB gamut.
 
- Clipping and perceptual mapping are distinct operations. Perceptual mapping requires an explicit algorithm choice; the module defines no default mapper.
+ Use `inGamut` to test target-space coordinates, `clip` for simple hard
+ clipping, or choose an explicit perceptual mapper for OKLCH colors. Clipping
+ and perceptual mapping are different operations; this module deliberately has
+ no default mapping policy.
 +/
 module color.gamut;
 
@@ -77,9 +80,10 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * Tests strict membership in the encoded-sRGB target gamut.
+ * Reports whether an encoded sRGB value is directly representable in sRGB.
  *
- * All three components must be finite and in `[0, 1]`; no tolerance is implied.
+ * All three components must be finite and from 0 through 1 inclusive; no
+ * tolerance is applied.
  *
  * Params:
  *     color = Encoded sRGB value to test.
@@ -105,9 +109,10 @@ bool inGamut(T)(SRgb!T color)
 }
 
 /**
- * Tests strict membership in the linear-sRGB target gamut.
+ * Reports whether a linear-light sRGB value is directly representable in sRGB.
  *
- * All three components must be finite and in `[0, 1]`; no tolerance is implied.
+ * All three components must be finite and from 0 through 1 inclusive; no
+ * tolerance is applied.
  *
  * Params:
  *     color = Linear-light sRGB value to test.
@@ -125,10 +130,19 @@ bool inGamut(T)(LinearSRgb!T color)
         inUnitInterval(color.b);
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    assert(LinearSRgbd(0.1, 0.5, 1.0).inGamut);
+    assert(!LinearSRgbd(0.1, 1.1, 0.5).inGamut);
+}
+
 /**
- * Hard-clips encoded sRGB components to `[0, 1]`.
+ * Forces finite encoded sRGB components into the representable sRGB range.
  *
- * Finite values below zero become zero and finite values above one become one.
+ * Use hard clipping when saturation at the nearest component boundary is the
+ * intended policy. Finite values below zero become zero and values above one
+ * become one.
  * NaN and infinities remain visible rather than being silently repaired.
  *
  * Params:
@@ -157,9 +171,11 @@ SRgb!T clip(T)(SRgb!T color)
 }
 
 /**
- * Hard-clips linear-light sRGB components to `[0, 1]`.
+ * Forces finite linear-light sRGB components into the representable range.
  *
- * Finite values below zero become zero and finite values above one become one.
+ * Use hard clipping when component saturation is preferable to perceptual
+ * gamut mapping. Finite values below zero become zero and values above one
+ * become one.
  * NaN and infinities remain visible rather than being silently repaired.
  *
  * Params:
@@ -177,6 +193,14 @@ LinearSRgb!T clip(T)(LinearSRgb!T color)
         clampFiniteUnit(color.g),
         clampFiniteUnit(color.b)
     );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const clipped = LinearSRgbd(-0.25, 0.50, 1.25).clip;
+
+    assert(clipped == LinearSRgbd(0.0, 0.50, 1.0));
 }
 
 
@@ -208,9 +232,10 @@ private LinearSRgb!T oklabToLinearSRgb(T)(Oklab!T value)
 
     /*
      * Ray Trace already owns a dedicated first-ray overflow fallback for huge
-     * finite chroma. Keeping float on the direct inverse matrix here preserves
-     * the R0.8-validated mapping hot path without weakening the robust public
-     * XYZ conversion. Double retains the promoted dominant-factor route.
+     * finite chroma. Using the direct inverse matrix for float avoids paying
+     * for the public XYZ recovery path inside this mapping hot path. Double
+     * keeps the robust public route because its promoted evaluation is cheap
+     * enough here and avoids a second scalar-specific numerical path.
      */
     static if (is(T == float))
         return linearSRgbFromXyzDirect(xyz);
@@ -303,8 +328,9 @@ private T rayEpsilon(T)()
 @safe pure nothrow @nogc
 {
     /*
-     * R0.8 validated these as Ray Trace interior/progress tolerances for the
-     * respective scalar types. They are algorithm-local numerical controls,
+     * These margins keep a traced point away from the exact cube faces so the
+     * next iteration can make numerical progress instead of repeatedly landing
+     * on the same boundary. They are scalar-specific, algorithm-local controls,
      * not a public or library-wide comparison epsilon.
      */
     static if (is(T == float))
@@ -487,10 +513,10 @@ RayIntersection!T intersectUnitRgbCube(T)(
 /*
  * Intersect the unit linear-sRGB cube using an explicit ray direction.
  *
- * This is intentionally separate from intersectUnitRgbCube(). The ordinary
- * Ray Trace hot path retains the R0.8-validated endpoint implementation.
- * This helper exists only for the first-ray overflow fallback, where the
- * mathematically valid endpoint cannot itself be represented as finite RGB.
+ * Keep this separate from the endpoint-based ordinary path: constructing an
+ * endpoint is cheaper and sufficient for normal chroma, while the direction
+ * form is required when huge finite chroma makes that endpoint overflow before
+ * the ray can reach the finite unit cube.
  */
 private RayIntersection!T intersectUnitRgbCubeDirection(T)(
     LinearSRgb!T start,
@@ -745,8 +771,9 @@ private T binaryMidpoint(T)(
 @safe pure nothrow @nogc
 {
     /*
-     * Preserve the R0.8 arithmetic for ordinary values. Only switch to the
-     * overflow-safe form when low + high itself cannot be represented.
+     * Keep (low + high) / 2 for ordinary values because its established
+     * rounding is part of the mapper's numerical behavior. Switch forms only
+     * when the sum would overflow even though the midpoint is representable.
      */
     if (
         low > cast(T)0 &&
@@ -961,7 +988,8 @@ private LinearSRgb!T gamutMapRayTraceImpl(T)(
     LinearSRgb!T last =
         originRgb;
 
-    // R0.8 validated the bounded four-intersection form.
+    // Four intersections bound runtime while allowing successive rays to
+    // settle inside the cube after the first boundary hit.
     foreach (i; 0 .. 4)
     {
         if (i > 0)
@@ -1006,10 +1034,10 @@ private LinearSRgb!T gamutMapRayTraceImpl(T)(
              * A finite OKLCH value can have such large chroma that the
              * mathematically valid fixed-L/fixed-hue RGB endpoint overflows.
              *
-             * Preserve the ordinary R0.8 path whenever that endpoint is
+             * Keep the cheaper endpoint path whenever its RGB endpoint is
              * representable. Only the first failed intersection of a finite,
-             * positive-canonical input receives the scaled-direction
-             * fallback.
+             * positive-canonical input receives the scaled-direction fallback;
+             * later iterations already operate on bounded intersection data.
              */
             if (
                 i == 0 &&
@@ -1064,10 +1092,10 @@ private LinearSRgb!T gamutMapRayTraceImpl(T)(
 
 
 /**
- * Perceptually maps an OKLCH color into linear sRGB using Local MINDE.
+ * Maps an OKLCH color into linear sRGB with the Local MINDE strategy.
  *
- * Local MINDE is the perceptual/reference-oriented mapping strategy. Negative
- * finite chroma is canonicalized before mapping. Lightness at or above 1 maps
+ * Choose Local MINDE when you want the reference-oriented perceptual mapping
+ * strategy. Negative finite chroma is canonicalized before mapping. Lightness at or above 1 maps
  * to white and lightness at or below 0 maps to black. Already-in-gamut colors
  * take the identity path after explicit conversion.
  *
@@ -1082,7 +1110,7 @@ private LinearSRgb!T gamutMapRayTraceImpl(T)(
  *
  * Standards:
  *     Implements the Local MINDE SDR RGB gamut-mapping strategy described by
- *     the W3C CSS Color Module Level 4 model and validated by color-d R0.8.
+ *     W3C CSS Color Module Level 4.
  *
  * Allocation:
  *     Does not allocate.
@@ -1153,9 +1181,9 @@ LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
 
 
 /**
- * Perceptually maps an OKLCH color into linear sRGB using Ray Trace.
+ * Maps an OKLCH color into linear sRGB with the Ray Trace strategy.
  *
- * Ray Trace is the bounded-cost/performance-oriented mapping strategy.
+ * Choose Ray Trace when you want the bounded-cost mapping strategy.
  * Negative finite chroma is canonicalized before mapping. Lightness at or
  * above 1 maps to white and lightness at or below 0 maps to black.
  * Already-in-gamut colors take the identity path after explicit conversion.
@@ -1171,7 +1199,7 @@ LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
  *
  * Standards:
  *     Implements the Ray Trace SDR RGB gamut-mapping strategy described by
- *     the W3C CSS Color Module Level 4 model and validated by color-d R0.8.
+ *     W3C CSS Color Module Level 4.
  *
  * Allocation:
  *     Does not allocate.
@@ -1265,6 +1293,22 @@ Alpha!(LinearSRgb!T) gamutMapLocalMindeToLinearSRgb(T)(
         ),
         value.alpha
     );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    import color.oklch : OklabHued, Oklchd;
+
+    const value = Alpha!Oklchd(
+        Oklchd(0.70, 0.30, OklabHued.fromDegrees(40.0)),
+        0.40
+    );
+
+    const mapped = value.gamutMapLocalMindeToLinearSRgb;
+
+    assert(mapped.alpha == 0.40);
+    assert(mapped.color.inGamut);
 }
 
 
