@@ -39,6 +39,16 @@ if (is(T == float) || is(T == double))
     alias Scalar = T;
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const xyz = XyzD65d(0.25, 0.50, 0.75);
+
+    assert(xyz.x == 0.25);
+    assert(xyz.y == 0.50);
+    assert(xyz.z == 0.75);
+}
+
 /// XYZ D65 with `float` components.
 alias XyzD65f = XyzD65!float;
 
