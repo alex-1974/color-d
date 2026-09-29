@@ -208,9 +208,8 @@ if (is(T == float) || is(T == double))
  * Converts linear-light sRGB to CIE XYZ D65.
  *
  * Use this conversion when an operation needs XYZ D65 coordinates. Extended
- * values are transformed without gamut clipping. As with ordinary
- * floating-point matrix arithmetic, extreme magnitudes can produce non-finite
- * results.
+ * values are transformed without gamut clipping. Extremely large component
+ * magnitudes can produce non-finite results.
  *
  * Params:
  *     rgb = Linear-light sRGB value to convert.
@@ -262,9 +261,8 @@ XyzD65!T toXyzD65(T)(LinearSRgb!T rgb)
  *
  * Use this conversion when XYZ D65 data must enter linear-light sRGB
  * calculations. Extended values are transformed without gamut clipping.
- * Finite extreme inputs are handled defensively to avoid avoidable
- * intermediate overflow; the result is not promised to be bit-identical to a
- * particular matrix-evaluation order.
+ * Extreme finite inputs retain representable results where possible; callers
+ * should not rely on one particular floating-point evaluation order.
  *
  * Params:
  *     xyz = CIE XYZ D65 value to convert.
