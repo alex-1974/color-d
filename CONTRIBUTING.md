@@ -56,7 +56,7 @@ public-import contracts.
 Public behavior should arrive together with:
 
 - useful Ddoc;
-- documented `unittest` examples where the API benefits from one;
+- a documented `unittest` example for every public callable;
 - semantic/unit/regression tests;
 - compile-negative tests when illegal source is part of the contract;
 - CHANGELOG entries when user-visible;
@@ -122,7 +122,7 @@ ranges, allocation, and provenance only where relevant.
 
 ### Executable examples
 
-A compact public example should normally be a **documented unittest** directly
+Every public callable must have a compact **documented unittest** directly
 after the declaration it demonstrates:
 
 ```d
@@ -139,7 +139,7 @@ after the declaration it demonstrates:
 The leading `///` is deliberate: Ddoc/DDox includes that unittest in the
 declaration's example section, while CI compiles and runs the same code.
 
-Examples are teaching code, not exhaustive regression suites. Keep them small,
+One example is required per public callable. Examples are teaching code, not exhaustive regression suites. Keep them small,
 name values by meaning, and comment the semantic reason for a non-obvious step.
 Put numerical corpora, toolchain canaries, and edge-case regression machinery
 in ordinary unittests or dedicated test/evidence code so the generated API
