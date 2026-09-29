@@ -17,15 +17,11 @@ private import color.rgb :
  * Holds a WCAG 2 measurement together with its validity state.
  *
  * Read `valid` before using `value` when input may be outside the WCAG
- * domain. The representation occupies exactly one scalar value.
+ * domain. Valid measurements expose their numeric result through `value`;
+ * invalid input produces an invalid measurement whose value is NaN.
  *
- * A finite scalar represents a valid measurement. NaN represents invalid
- * input. Callers can therefore inspect `valid` without a separate status field,
- * while ignoring validity cannot turn invalid input into an ordinary plausible
- * measurement.
- *
- * Construction is intentionally controlled by this module. WCAG measurement
- * functions validate their input domain before creating a valid result.
+ * Callers receive this type from the WCAG measurement functions rather than
+ * constructing validated measurements directly.
  *
  * The natural floating-point `.init` state is NaN and is therefore invalid.
  */
