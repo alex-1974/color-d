@@ -1,7 +1,9 @@
 /++
- Oklab values and explicit conversion to and from CIE XYZ D65.
+ Oklab values and conversion to and from CIE XYZ D65.
 
- The module preserves extended mathematical values and supports the same semantic conversion API at runtime and during CTFE.
+ Use Oklab when a calculation benefits from perceptual lightness and Cartesian
+ opponent-color components. Convert explicitly through XYZ D65; conversions
+ preserve extended mathematical values and are available at runtime and CTFE.
 +/
 module color.oklab;
 
@@ -11,13 +13,13 @@ private import color.xyz :
     XyzD65d;
 
 /**
- * Oklab color value.
+ * Stores a color in Cartesian Oklab coordinates.
  *
- * `T` must be `float` or `double`. Components are mathematical values;
- * construction does not clamp or canonicalize them.
+ * Use Oklab for perceptual calculations that need separate lightness and
+ * opponent-color axes. `T` must be `float` or `double`. Construction
+ * stores components unchanged; it does not clamp or canonicalize them.
  *
- * The natural floating-point `.init` state contains NaNs and is therefore a
- * detectably invalid/uninitialized semantic color.
+ * The natural `.init` value contains NaNs and is not a usable color.
  */
 
 struct Oklab(T)
@@ -175,12 +177,12 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * Converts CIE XYZ D65 to Oklab.
+ * Converts CIE XYZ D65 to perceptual Oklab coordinates.
  *
- * Extended finite values are preserved. Negative LMS intermediates use a
- * sign-preserving real cube root. Extreme finite XYZ values that would
- * overflow the direct LMS intermediate use a scale-equivalent fallback so a
- * representable Oklab result remains finite.
+ * Use this conversion before Oklab-based perceptual calculations. Extended
+ * finite values are preserved; the conversion does not clip or gamut-map
+ * them. Representable results from extreme finite XYZ inputs are protected
+ * against avoidable intermediate overflow.
  *
  * Params:
  *     xyz = CIE XYZ D65 value to convert.
@@ -298,9 +300,11 @@ Oklab!T toOklab(T)(XyzD65!T xyz)
 }
 
 /**
- * Converts Oklab to CIE XYZ D65.
+ * Converts Oklab to the CIE XYZ D65 connection space.
  *
- * Extended values are preserved and no clipping or gamut mapping is performed.
+ * Use this when an Oklab result must continue through an XYZ-based conversion
+ * path. Extended values are preserved; no clipping or gamut mapping is
+ * performed.
  *
  * Params:
  *     lab = Oklab value to convert.
