@@ -10,17 +10,17 @@ from urllib.parse import unquote, urlsplit
 
 PUBLIC_MODULES = (
     "color.html",
-    "color_alpha.html",
-    "color_composite.html",
-    "color_difference.html",
-    "color_gamut.html",
-    "color_interpolate.html",
-    "color_oklab.html",
-    "color_oklch.html",
-    "color_rgb.html",
-    "color_tone.html",
-    "color_wcag.html",
-    "color_xyz.html",
+    "color/alpha.html",
+    "color/composite.html",
+    "color/difference.html",
+    "color/gamut.html",
+    "color/interpolate.html",
+    "color/oklab.html",
+    "color/oklch.html",
+    "color/rgb.html",
+    "color/tone.html",
+    "color/wcag.html",
+    "color/xyz.html",
 )
 
 
