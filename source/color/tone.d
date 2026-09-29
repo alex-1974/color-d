@@ -1,7 +1,10 @@
 /++
- Low-level schedules and batch operations for OKLCH tone construction.
+ Build raw OKLCH tone schedules without imposing palette policy.
 
- The module provides raw mathematical building blocks only. Gamut mapping, seed anchoring, aesthetic curves, and semantic palette roles remain caller policy.
+ Use `linearSchedule` to create fixed-size scalar schedules and the batch
+ functions to apply lightness/chroma schedules to a seed hue. Gamut mapping,
+ seed anchoring, aesthetic curves, and semantic palette roles remain caller
+ decisions.
 +/
 module color.tone;
 
@@ -44,8 +47,9 @@ if (is(T == float) || is(T == double))
 
 
 /**
- * Generates an inclusive linear schedule between two finite endpoints.
+ * Creates a fixed-size linear schedule including both endpoints.
  *
+ * Use this for compile-time-sized lightness, chroma, or other scalar schedules.
  * The first and last elements are exactly `start` and `end`. Ascending,
  * descending, and constant schedules are supported. Values are not restricted
  * to a display interval such as `[0, 1]`.
@@ -135,9 +139,10 @@ if (
 
 
 /**
- * Writes a raw OKLCH tone family into compile-time-sized caller storage.
+ * Applies fixed-size lightness and chroma schedules to an OKLCH seed hue.
  *
- * The lightness schedule, chroma schedule, and output have the same static
+ * Use this when schedule cardinality is known statically and output storage is
+ * caller-owned. The lightness schedule, chroma schedule, and output have the same static
  * cardinality. Each element applies the supplied raw lightness and chroma to
  * the seed while preserving its stored hue. No clamping, canonicalization,
  * anchoring, gamut mapping, or semantic palette policy is applied.
@@ -231,9 +236,10 @@ if (is(T == float) || is(T == double))
 
 
 /**
- * Writes a runtime-sized raw OKLCH tone family into caller-owned storage.
+ * Applies runtime-sized lightness and chroma schedules to an OKLCH seed hue.
  *
- * The operation succeeds only when the lightness, chroma, and output slices
+ * Use this when schedule length is known only at runtime. The operation
+ * succeeds only when the lightness, chroma, and output slices
  * have equal length. On mismatch it returns `false` and performs no writes.
  * An empty input/output triple is a successful empty operation.
  *
