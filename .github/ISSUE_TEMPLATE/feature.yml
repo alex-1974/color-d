@@ -1,6 +1,7 @@
 name: Feature
 description: Propose consumer-justified public functionality.
 title: ""
+labels: ["type: feature"]
 body:
   - type: textarea
     id: need

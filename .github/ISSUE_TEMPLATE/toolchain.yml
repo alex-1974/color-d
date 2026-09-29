@@ -1,6 +1,7 @@
 name: Toolchain problem
 description: Report a DMD, LDC, Phobos, druntime, DUB, or CI tooling issue.
 title: ""
+labels: ["toolchain"]
 body:
   - type: dropdown
     id: class
