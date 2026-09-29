@@ -167,6 +167,20 @@ During review, check both:
 - does the example compile?
 - is it attached to the declaration a reader will expect?
 
+### DDox renderer limitation
+
+The documented unittest remains the source-level documentation contract even
+when DDox does not render every example separately. The current DDox/DMD
+documentation pipeline can omit examples for some struct members and can
+collapse examples in some overload groups.
+
+Do not restructure the public API or duplicate examples merely to work around
+that renderer behavior. CI validates stable properties of the generated site,
+such as public module pages and local links, while source review verifies the
+one-documented-unittest-per-public-callable rule. Treat a future renderer that
+restores complete example association as a tooling improvement to re-audit,
+not as a reason to weaken the source-level contract.
+
 ## 9. Use each documentation form for one job
 
 ### README
