@@ -7,6 +7,10 @@ under **Unreleased**.
 
 ## Unreleased
 
+No unreleased user-visible changes are recorded after v0.1.0.
+
+## [0.1.0] - 2026-09-29
+
 ### Added
 
 - typed computational color spaces for encoded sRGB, linear-light sRGB, XYZ D65,
@@ -56,4 +60,5 @@ under **Unreleased**.
 - CSS parsing/serialization, named colors, HDR, ICC/CMYK, and policy-heavy
   Palette/Theme abstractions.
 
-[Unreleased]: https://github.com/alex-1974/color-d/compare/main...develop
+[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.1.0...develop
+[0.1.0]: https://github.com/alex-1974/color-d/releases/tag/v0.1.0
