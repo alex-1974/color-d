@@ -1,6 +1,7 @@
 name: Research
 description: Investigate a question before production adoption.
 title: ""
+labels: ["type: research"]
 body:
   - type: textarea
     id: question
