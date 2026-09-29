@@ -64,11 +64,11 @@ without requiring a provider-side API correction for v0.1.0.
 
 ## Installation with DUB
 
-`v0.1.0` is released and resolves through the DUB registry. For normal use,
+`v0.1.1` is the current release and resolves through the DUB registry. For normal use,
 add the released package as a DUB dependency:
 
 ```sdl
-dependency "color-d" version="~>0.1.0"
+dependency "color-d" version="~>0.1.1"
 ```
 
 For a local workspace checkout, a path dependency remains valid:
@@ -82,7 +82,7 @@ For an external Git dependency pinned to the released source:
 ```sdl
 dependency "color-d" \
     repository="git+https://github.com/alex-1974/color-d.git" \
-    version="v0.1.0"
+    version="v0.1.1"
 ```
 
 ## Release package, repository, and research
