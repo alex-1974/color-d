@@ -8,7 +8,7 @@ The current planned first public release is:
 v0.1.0 — First public release
 ```
 
-GitHub milestone `v0.1.0 — First public release` is the concrete release target.
+GitHub milestone `v0.1.0` is the concrete release target.
 
 The R0–R4 names below describe development phases and promotion/validation
 gates leading to that release. They are not separate package releases.
@@ -256,17 +256,15 @@ promoted surface.
 
 ## R4 — First consumer integration
 
-**Status: COMPLETE — 2026-09-28. v0.1.0 FEATURE FREEZE REMAINS ACTIVE.**
+**Status: COMPLETE — 2026-09-28. v0.1.0 RELEASED.**
 
-The accepted R1–R3 production feature scope remains frozen for v0.1.0. R4
+The accepted R1–R3 production feature scope was frozen for v0.1.0. R4
 validated that frozen surface through two real consumers. Neither consumer
 demonstrated a need to reopen feature scope or correct the public API.
 
-Allowed work during the freeze is limited to consumer-driven corrections,
-defect fixes, validation/tests, documentation, CI/package/release hardening,
-security/toolchain adaptation, and evidence-driven performance fixes. New
-feature families or speculative convenience APIs are deferred unless an
-explicit release-scope decision reopens the freeze.
+The v0.1 feature freeze ended with publication of v0.1.0. New work now follows
+the normal post-release `develop` workflow; deferred feature families remain
+outside v0.1.0 and require their own evidence and planning before adoption.
 
 The durable freeze policy and exception process are recorded in
 [`docs/maintainer/v0.1-feature-freeze.md`](docs/maintainer/v0.1-feature-freeze.md).
@@ -285,19 +283,18 @@ hardening may therefore proceed without reopening the v0.1 feature scope.
 ## v0.1.0 — Release hardening and publication
 
 Tracked by GitHub issue #14 and milestone
-`v0.1.0 — First public release`.
+`v0.1.0`.
 
-**Status: HARDENING — v0.1.0 FEATURE FREEZE.**
+**Status: COMPLETE — v0.1.0 RELEASED.**
 
-The v0.1.0 feature scope is frozen. Release hardening is stabilization of the
-already accepted R1–R3 scope, not a late feature-development phase. The freeze
-remains active through publication; see
+The v0.1.0 feature scope remained frozen through release hardening and
+publication. That freeze ended with v0.1.0; its historical policy is retained in
 [`docs/maintainer/v0.1-feature-freeze.md`](docs/maintainer/v0.1-feature-freeze.md).
 
 Release hardening follows completion of the accepted R1–R3 production scope
 and both R4 consumer-validation paths.
 
-The final gate covers:
+The completed release gate covered:
 
 - public root/direct-module surface audit;
 - tested DMD/LDC support statement;
