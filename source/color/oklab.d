@@ -38,6 +38,16 @@ if (is(T == float) || is(T == double))
     alias Scalar = T;
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const lab = Oklabd(0.60, 0.10, -0.05);
+
+    assert(lab.l == 0.60);
+    assert(lab.a == 0.10);
+    assert(lab.b == -0.05);
+}
+
 /// Oklab with `float` components.
 alias Oklabf = Oklab!float;
 
@@ -261,6 +271,19 @@ Oklab!T toOklab(T)(XyzD65!T xyz)
     return toOklabScaledFinite(xyz);
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    import std.math : fabs;
+
+    const xyz = XyzD65d(0.125, 0.25, 0.50);
+    const roundTrip = xyz.toOklab.toXyzD65;
+
+    assert(fabs(roundTrip.x - xyz.x) < 1e-12);
+    assert(fabs(roundTrip.y - xyz.y) < 1e-12);
+    assert(fabs(roundTrip.z - xyz.z) < 1e-12);
+}
+
 @safe pure nothrow @nogc unittest
 {
     const extremeDouble =
@@ -285,20 +308,6 @@ Oklab!T toOklab(T)(XyzD65!T xyz)
     assert(isFiniteScalar(extremeFloat.a));
     assert(isFiniteScalar(extremeFloat.b));
 }
-
-///
-@safe pure nothrow @nogc unittest
-{
-    import std.math : fabs;
-
-    const xyz = XyzD65d(0.125, 0.25, 0.50);
-    const roundTrip = xyz.toOklab.toXyzD65;
-
-    assert(fabs(roundTrip.x - xyz.x) < 1e-12);
-    assert(fabs(roundTrip.y - xyz.y) < 1e-12);
-    assert(fabs(roundTrip.z - xyz.z) < 1e-12);
-}
-
 /**
  * Converts Oklab to the CIE XYZ D65 connection space.
  *
