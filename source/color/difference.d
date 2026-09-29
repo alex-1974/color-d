@@ -39,8 +39,7 @@ private import std.math :
  *
  * Standards:
  *     DeltaEOK follows the Euclidean Oklab definition described by W3C CSS
- *     Color Module Level 4. The formula and special-value policy were
- *     independently validated by color-d R0.10.
+ *     Color Module Level 4.
  */
 
 T deltaEOK(T)(
