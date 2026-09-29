@@ -25,14 +25,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - compiler: dmd-2.111.0
-            consumer_build: debug
           - compiler: dmd-2.112.1
             consumer_build: debug
           - compiler: dmd-2.113.0
             consumer_build: debug
-          - compiler: ldc-1.41.0
-            consumer_build: release
           - compiler: ldc-1.42.0
             consumer_build: release
           - compiler: ldc-1.43.0

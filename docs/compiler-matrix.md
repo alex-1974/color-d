@@ -9,12 +9,14 @@ The v0.1.x release line is qualified against:
 
 | Frontend generation | DMD | LDC |
 | --- | --- | --- |
-| 2.111 | 2.111.0 | 1.41.0 |
 | 2.112 | 2.112.1 | 1.42.0 |
 | 2.113 | 2.113.0 | 1.43.0 |
 
 DMD 2.112.0 is retained as a diagnostic point when a result differs inside the
-2.112 line. It is not an additional supported release compiler.
+2.112 line. DMD 2.111.0 and LDC 1.41.0 are retained as legacy diagnostic
+canaries: their Phobos `cbrt` is not `pure`, so they cannot satisfy color-d's
+public `pure` contract for Oklab conversion. These diagnostic versions are not
+supported release compilers.
 
 The normal Fast CI intentionally uses only the current supported pair,
 DMD 2.113.0 and LDC 1.43.0. The broader matrix is a scheduled and manually

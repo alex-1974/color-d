@@ -20,13 +20,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler:
-          - dmd-2.111.0
-          - dmd-2.112.1
-          - dmd-2.113.0
-          - ldc-1.41.0
-          - ldc-1.42.0
-          - ldc-1.43.0
+        include:
+          - compiler: dmd-2.111.0
+            supported: false
+          - compiler: dmd-2.112.1
+            supported: true
+          - compiler: dmd-2.113.0
+            supported: true
+          - compiler: ldc-1.41.0
+            supported: false
+          - compiler: ldc-1.42.0
+            supported: true
+          - compiler: ldc-1.43.0
+            supported: true
+
+    continue-on-error: ${{ !matrix.supported }}
 
     steps:
       - name: Checkout develop

@@ -46,9 +46,9 @@ Core principles:
 
 ## Support and compatibility
 
-The current v0.1.x release matrix covers DMD 2.111.0, 2.112.1, and 2.113.0,
-plus LDC 1.41.0, 1.42.0, and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0 is a
-diagnostic point rather than an additional supported compiler.
+The current v0.1.x release matrix covers DMD 2.112.1 and 2.113.0 plus LDC
+1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0, DMD 2.111.0, and LDC
+1.41.0 are diagnostic points rather than supported release compilers.
 
 Fast CI uses the current pair, DMD 2.113.0 and LDC 1.43.0. Broader compatibility
 qualification is kept separate from the daily development gate. DMD and LDC are
