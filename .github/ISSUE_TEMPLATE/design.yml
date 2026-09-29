@@ -1,6 +1,7 @@
 name: Design decision
 description: Track an architectural or API decision.
 title: ""
+labels: ["type: design"]
 body:
   - type: textarea
     id: context
