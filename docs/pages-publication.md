@@ -1,6 +1,6 @@
 # Documentation publication
 
-The public GitHub Pages layout follows the workspace documentation trust model:
+The public GitHub Pages layout is:
 
 ```text
 /              latest stable documentation
@@ -8,19 +8,23 @@ The public GitHub Pages layout follows the workspace documentation trust model:
 /vX.Y.Z/       immutable versioned release documentation
 ```
 
-Before the first public release, the root page is a landing page that explicitly
-states that no stable release has been published. It links to `/dev/`.
+Since v0.1.0, the root contains the latest qualified release documentation.
+Each release also remains available under its immutable versioned path, while
+`/dev/` follows `develop`.
 
-The `develop` workflow updates only the development documentation model. The
-first release workflow in #14 must extend publication so that:
+The publication workflows preserve these boundaries:
 
-1. the release tag builds immutable `/vX.Y.Z/` documentation;
-2. the same qualified release becomes the root/latest-stable documentation;
-3. later `develop` publication does not redefine a released version;
+1. a qualified release tag builds immutable `/vX.Y.Z/` documentation;
+2. that qualified release becomes the root/latest-stable documentation;
+3. later `develop` publication updates only `/dev/` and reconstructs stable
+   documentation from published release artifacts;
 4. release/version metadata and documentation remain consistent.
 
-GitHub Pages is configured to use **GitHub Actions** as its publishing source.
-A separate branch/Jekyll Pages publisher would compete with the DDox deployment
-and must remain disabled. This repository setting is verified by observing a
-normal `develop` push: only the explicit documentation workflow should publish
-Pages.
+Before any release exists, the same assembly machinery falls back to the
+repository landing page and links users to `/dev/`. This remains a tested
+bootstrap case rather than the current project state.
+
+GitHub Pages uses **GitHub Actions** as its publishing source. A separate
+branch/Jekyll publisher would compete with the DDox deployment and must remain
+disabled. The `docs-pages.yml` workflow is the sole Pages publisher for normal
+`develop` updates and release publication.
