@@ -366,12 +366,8 @@ jobs:
               ROADMAP.md \
               RESEARCH.md \
               dscanner.ini \
-              docs/RESEARCH_DOCUMENTS.md \
               docs/adr/ \
               docs/pages-publication.md \
-              docs/research/ \
-              docs/spec/ \
-              experiments/ \
               tests/
           do
               if grep -Fq "$forbidden" "$tmp/files.txt"; then

@@ -41,6 +41,9 @@ under **Unreleased**.
 - current public feature scope is closed for v0.1; R4 real-consumer validation
   completed successfully with `imagery-d` and the Dunia editor/theme consumer,
   with no provider-side API correction required;
+- detailed research, experiments, benchmark evidence, and historical design
+  material moved to the `color-d-research` companion repository so production
+  GitHub/DUB tag downloads stay lean while provenance remains preserved;
 - the tested pre-1.0 toolchain matrix is DMD 2.113.0 and LDC 1.43.0 on
   Ubuntu 24.04 x86-64;
 - no older minimum D frontend is currently promised.

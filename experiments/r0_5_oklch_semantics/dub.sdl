@@ -1,7 +1,0 @@
-name "color-d-r0-5-oklch-semantics"
-description "color-d R0.5: Oklab/OKLCH and hue semantics"
-authors "Alexander"
-license "MIT"
-
-targetType "executable"
-sourcePaths "source"

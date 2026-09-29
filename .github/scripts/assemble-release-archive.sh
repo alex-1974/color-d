@@ -106,13 +106,9 @@ reject_prefix DESIGN_PRINCIPLES.md
 reject_prefix ROADMAP.md
 reject_prefix RESEARCH.md
 reject_prefix dscanner.ini
-reject_prefix docs/RESEARCH_DOCUMENTS.md
 reject_prefix docs/maintainer
 reject_prefix docs/adr
 reject_prefix docs/pages-publication.md
-reject_prefix docs/research
-reject_prefix docs/spec
-reject_prefix experiments
 reject_prefix tests
 
 verify_dir="$(mktemp -d)"
