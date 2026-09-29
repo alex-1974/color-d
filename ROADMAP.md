@@ -7,11 +7,9 @@ The R0–R4 sections below are retained as the historical development and
 validation path that produced that release; they are not current package
 release targets.
 
-The current maintenance target is:
+**v0.1.1 — Documentation and Maintenance** is complete and ready for release.
 
-```text
-v0.1.1 — Documentation and Maintenance
-```
+**Status: COMPLETE — v0.1.1 RELEASED.**
 
 v0.1.1 is deliberately limited to documentation quality, executable public
 examples, source rationale, contract evidence, repository cleanup, and
