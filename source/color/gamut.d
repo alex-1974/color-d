@@ -1090,9 +1090,8 @@ private LinearSRgb!T gamutMapRayTraceImpl(T)(
 /**
  * Maps an OKLCH color into linear sRGB with the Local MINDE strategy.
  *
- * Choose Local MINDE when the perceptual/reference-oriented mapping strategy is
- * desired. Negative
- * finite chroma is canonicalized before mapping. Lightness at or above 1 maps
+ * Choose Local MINDE when you want the reference-oriented perceptual mapping
+ * strategy. Negative finite chroma is canonicalized before mapping. Lightness at or above 1 maps
  * to white and lightness at or below 0 maps to black. Already-in-gamut colors
  * take the identity path after explicit conversion.
  *
@@ -1107,7 +1106,7 @@ private LinearSRgb!T gamutMapRayTraceImpl(T)(
  *
  * Standards:
  *     Implements the Local MINDE SDR RGB gamut-mapping strategy described by
- *     the W3C CSS Color Module Level 4 model and validated by color-d R0.8.
+ *     W3C CSS Color Module Level 4.
  *
  * Allocation:
  *     Does not allocate.
@@ -1180,8 +1179,7 @@ LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
 /**
  * Maps an OKLCH color into linear sRGB with the Ray Trace strategy.
  *
- * Choose Ray Trace when the bounded-cost/performance-oriented mapping strategy
- * is desired.
+ * Choose Ray Trace when you want the bounded-cost mapping strategy.
  * Negative finite chroma is canonicalized before mapping. Lightness at or
  * above 1 maps to white and lightness at or below 0 maps to black.
  * Already-in-gamut colors take the identity path after explicit conversion.
@@ -1197,7 +1195,7 @@ LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
  *
  * Standards:
  *     Implements the Ray Trace SDR RGB gamut-mapping strategy described by
- *     the W3C CSS Color Module Level 4 model and validated by color-d R0.8.
+ *     W3C CSS Color Module Level 4.
  *
  * Allocation:
  *     Does not allocate.
