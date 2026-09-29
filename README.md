@@ -120,7 +120,7 @@ repository. The verified split keeps the production repository and normal DUB
 tag downloads lean while preserving the complete research corpus and its
 provenance.
 
-A compact provenance pointer remains in [RESEARCH.md](RESEARCH.md); the detailed
+A compact provenance pointer remains in [RESEARCH.md](https://github.com/alex-1974/color-d/blob/develop/RESEARCH.md); the detailed
 migration/evidence record lives with the research corpus.
 
 Current public mathematical operations are value-based, `@nogc`, and do not
@@ -183,7 +183,7 @@ documentation, tests, accepted ADRs, and release metadata. A consumer should
 not need research history in order to understand or use the library.
 
 Repository-level research provenance is summarized in
-[RESEARCH.md](RESEARCH.md).
+[RESEARCH.md](https://github.com/alex-1974/color-d/blob/develop/RESEARCH.md).
 
 ## Workspace role
 
