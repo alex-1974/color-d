@@ -46,16 +46,17 @@ Core principles:
 
 ## Support and compatibility
 
-The current pre-1.0 development matrix is:
+The current v0.1.x release matrix covers DMD 2.111.0, 2.112.1, and 2.113.0,
+plus LDC 1.41.0, 1.42.0, and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0 is a
+diagnostic point rather than an additional supported compiler.
 
-| Toolchain | Tested configuration |
-|---|---|
-| DMD | 2.113.0 on Ubuntu 24.04 x86-64 |
-| LDC | 1.43.0 on Ubuntu 24.04 x86-64 |
+Fast CI uses the current pair, DMD 2.113.0 and LDC 1.43.0. Broader compatibility
+qualification is kept separate from the daily development gate. DMD and LDC are
+both correctness targets; LDC is the current release-performance reference
+compiler.
 
-No older minimum D frontend is currently promised. Passing on an older compiler
-does not by itself establish supported compatibility. DMD and LDC are both
-correctness targets; LDC is the current release-performance reference compiler.
+See [Compiler matrix](docs/compiler-matrix.md) for exact-version policy,
+reproducible local commands, and compiler-specific evidence.
 
 The public API remains pre-1.0, so later 0.x releases may still make breaking
 changes when justified and documented. R4 real-consumer validation completed
