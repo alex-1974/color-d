@@ -407,52 +407,500 @@ jobs:
 
           trap cleanup EXIT
 
-          bash .github/scripts/check-release-metadata.sh \
+          if grep -Eq \
+              '^## \\[0\\.1\\.0\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}
+          grep -Fq '### Added' "$tmp/release-notes.md"
+          grep -Fq '### Deferred' "$tmp/release-notes.md"
+
+          mkdir -p "$tmp/artifacts-a"
+          mkdir -p "$tmp/artifacts-b"
+
+          bash .github/scripts/assemble-release-archive.sh \
               0.1.0 \
-              preflight \
-              "$GITHUB_WORKSPACE"
+              "$tmp/artifacts-a" \
+              HEAD
+
+          bash .github/scripts/assemble-release-archive.sh \
+              0.1.0 \
+              "$tmp/artifacts-b" \
+              HEAD
+
+          bash .github/scripts/assemble-ddox-archive.sh \
+              0.1.0 \
+              docs \
+              "$tmp/artifacts-a"
+
+          bash .github/scripts/assemble-ddox-archive.sh \
+              0.1.0 \
+              docs \
+              "$tmp/artifacts-b"
+
+          for file in \
+              color-d-0.1.0.tar.gz \
+              color-d-0.1.0.metadata.txt \
+              color-d-0.1.0.ddox.tar.gz
+          do
+              test -s "$tmp/artifacts-a/$file"
+              cmp "$tmp/artifacts-a/$file" "$tmp/artifacts-b/$file"
+          done
+
+          grep -Fq \
+              "commit=$(git rev-parse HEAD)" \
+              "$tmp/artifacts-a/color-d-0.1.0.metadata.txt"
+
+          (
+              cd "$tmp/artifacts-a"
+
+              sha256sum \
+                  color-d-0.1.0.tar.gz \
+                  color-d-0.1.0.metadata.txt \
+                  color-d-0.1.0.ddox.tar.gz \
+                  > SHA256SUMS
+
+              sha256sum -c SHA256SUMS
+          )
+
+          git -c user.name=color-d-ci \
+              -c user.email=ci@example.invalid \
+              tag -a "$annotated_tag" -m "release dry-run tag" HEAD
+
+          bash .github/scripts/verify-release-tag.sh \
+              "$annotated_tag" \
+              HEAD
+
+          git tag -d "$annotated_tag"
+
+          git tag "$lightweight_tag" HEAD
+
+          if bash .github/scripts/verify-release-tag.sh \
+              "$lightweight_tag" \
+              HEAD
+          then
+              echo "Lightweight release tag unexpectedly passed" >&2
+              exit 1
+          fi
+
+          git tag -d "$lightweight_tag"
+
+          bash .github/scripts/fetch-release-docs.sh \
+              "$GITHUB_REPOSITORY" \
+              "$tmp/fetched-release-docs"
+
+      - name: Pages release-layout dry-run
+        if: matrix.compiler == 'dmd-2.113.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          mkdir -p "$tmp/dev-docs"
+          mkdir -p "$tmp/no-releases"
+
+          printf '%s\n' '<html>development-docs</html>' \
+              > "$tmp/dev-docs/index.html"
+
+          bash .github/scripts/assemble-pages-site.sh \
+              "$tmp/dev-docs" \
+              "$tmp/no-releases" \
+              "$tmp/pre-release-site" \
+              .github/pages/index.html
+
+          cmp \
+              .github/pages/index.html \
+              "$tmp/pre-release-site/index.html"
+
+          grep -Fq \
+              'development-docs' \
+              "$tmp/pre-release-site/dev/index.html"
+
+          mkdir -p "$tmp/releases/v0.1.0"
+          mkdir -p "$tmp/releases/v0.10.0"
+
+          printf '%s\n' '<html>stable-0.1.0</html>' \
+              > "$tmp/releases/v0.1.0/index.html"
+
+          printf '%s\n' '<html>stable-0.10.0</html>' \
+              > "$tmp/releases/v0.10.0/index.html"
+
+          printf '%s\n' 'old-version' \
+              > "$tmp/releases/v0.1.0/version-marker.txt"
+
+          printf '%s\n' 'latest-version' \
+              > "$tmp/releases/v0.10.0/version-marker.txt"
+
+          bash .github/scripts/assemble-pages-site.sh \
+              "$tmp/dev-docs" \
+              "$tmp/releases" \
+              "$tmp/released-site" \
+              .github/pages/index.html
+
+          grep -Fq \
+              'stable-0.10.0' \
+              "$tmp/released-site/index.html"
+
+          grep -Fq \
+              'stable-0.1.0' \
+              "$tmp/released-site/v0.1.0/index.html"
+
+          grep -Fq \
+              'stable-0.10.0' \
+              "$tmp/released-site/v0.10.0/index.html"
+
+          grep -Fq \
+              'development-docs' \
+              "$tmp/released-site/dev/index.html"
+
+          grep -Fq \
+              'latest-version' \
+              "$tmp/released-site/version-marker.txt"
+
+          grep -Fq \
+              'old-version' \
+              "$tmp/released-site/v0.1.0/version-marker.txt"
+
+          mkdir -p "$tmp/invalid-releases/v0.1"
+          printf '%s\n' '<html>invalid</html>' \
+              > "$tmp/invalid-releases/v0.1/index.html"
+
+          if bash .github/scripts/assemble-pages-site.sh \
+              "$tmp/dev-docs" \
+              "$tmp/invalid-releases" \
+              "$tmp/invalid-site" \
+              .github/pages/index.html
+          then
+              echo "Invalid versioned documentation directory unexpectedly passed" >&2
+              exit 1
+          fi
+
+      - name: Clean-package external DUB consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          mkdir -p "$tmp/package"
+          mkdir -p "$tmp/consumer/source"
+
+          git archive --format=tar HEAD |
+              tar -xf - -C "$tmp/package"
+
+          cat > "$tmp/consumer/dub.json" <<JSON
+          {
+            "name": "color-d-clean-package-consumer",
+            "targetType": "executable",
+            "dependencies": {
+              "color-d": {
+                "path": "$tmp/package"
+              }
+            }
+          }
+          JSON
+
+          cat > "$tmp/consumer/source/app.d" <<'D'
+          import color;
+
+          void main()
+          {
+              const encoded =
+                  SRgbd(
+                      0.82,
+                      0.25,
+                      0.12
+                  );
+
+              const perceptual =
+                  encoded
+                  .toLinear
+                  .toXyzD65
+                  .toOklab
+                  .toOklch;
+
+              const mapped =
+                  perceptual
+                  .withLightness(0.70)
+                  .withChroma(0.16)
+                  .gamutMapRayTraceToLinearSRgb;
+
+              assert(mapped.inGamut);
+
+              double[3] lightnesses =
+                  [0.20, 0.50, 0.80];
+
+              double[3] chromas =
+                  [0.04, 0.10, 0.06];
+
+              Oklchd[3] tones;
+
+              assert(
+                  perceptual
+                  .tryTonesAtLightnessAndChromaInto(
+                      lightnesses[],
+                      chromas[],
+                      tones[]
+                  )
+              );
+
+              assert(tones[2].l == 0.80);
+              assert(tones[2].c == 0.06);
+          }
+          D
+
+          (
+              cd "$tmp/consumer"
+              dub build --compiler="$DC" --build=release
+              ./color-d-clean-package-consumer
+          )
+
+      - name: Linear schedule qualifier probe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -c \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of="$tmp/linear-schedule-qualifiers.o" \
+              "$GITHUB_WORKSPACE/tests/compat/linear_schedule_qualifier_probe.d"
+
+      - name: Named-argument compatibility probe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -c \
+              -I"$GITHUB_WORKSPACE/source" \
+              -i \
+              -of="$tmp/named-arguments.o" \
+              "$GITHUB_WORKSPACE/tests/compat/named_arguments.d"
+
+      - name: Public API surface compatibility probes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          for probe in \
+              public_api_root_surface \
+              public_api_direct_modules
+          do
+              "$DC" \
+                  -c \
+                  -I"$GITHUB_WORKSPACE/source" \
+                  -i \
+                  -of="$tmp/$probe.o" \
+                  "$GITHUB_WORKSPACE/tests/compat/$probe.d"
+          done
+
+      - name: TC-0001 DMD wrong-code canary
+        if: matrix.compiler == 'dmd-2.113.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          "$DC" \
+              -of="$tmp/tc0001" \
+              "$GITHUB_WORKSPACE/tests/toolchain/tc0001_static_array_return_canary.d"
+
+          set +e
+          "$tmp/tc0001" > "$tmp/output.txt" 2>&1
+          status=$?
+          set -e
+
+          cat "$tmp/output.txt"
+
+          case "$status" in
+              0)
+                  echo "::notice::TC-0001 canary now passes; re-evaluate and remove the workaround if the supported compiler has fixed the defect."
+                  ;;
+              1)
+                  echo "::warning::TC-0001 still reproduces on the supported DMD; retain the ref-output/ref-const-input workaround."
+                  ;;
+              *)
+                  echo "TC-0001 canary exited unexpectedly with status $status" >&2
+                  exit "$status"
+                  ;;
+          esac
+
+      - name: External import compile smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          cat > "$tmp/root.d" <<'D'
+          import color;
+
+          enum mapped =
+              Oklchd(
+                  0.70,
+                  0.30,
+                  OklabHued.fromDegrees(40.0)
+              )
+              .gamutMapRayTraceToLinearSRgb();
+
+          static assert(mapped.inGamut);
+
+          bool toneBatchCtfe()
+          @safe pure nothrow @nogc
+          {
+              const seed =
+                  Oklchd(
+                      0.50,
+                      0.10,
+                      OklabHued.fromDegrees(210.0)
+                  );
+
+              const double[3] lightnesses =
+                  [0.20, 0.50, 0.80];
+
+              const double[3] chromas =
+                  [0.04, 0.10, 0.06];
+
+              Oklchd[3] tones;
+
+              tonesAtLightnessAndChromaInto(
+                  seed,
+                  lightnesses,
+                  chromas,
+                  tones
+              );
+
+              return
+                  tones[0].l == 0.20 &&
+                  tones[1].c == 0.10 &&
+                  tones[2].c == 0.06;
+          }
+
+          static assert(toneBatchCtfe());
+
+          void main()
+          {
+              double[2] lightnesses =
+                  [0.25, 0.75];
+
+              double[2] chromas =
+                  [0.05, 0.15];
+
+              Oklchd[2] output;
+
+              assert(
+                  tryTonesAtLightnessAndChromaInto(
+                      Oklchd(
+                          0.50,
+                          0.10,
+                          OklabHued.fromDegrees(210.0)
+                      ),
+                      lightnesses[],
+                      chromas[],
+                      output[]
+                  )
+              );
+          }
+          D
+
+          cat > "$tmp/direct.d" <<'D'
+          import color.rgb;
+          import color.xyz;
+          import color.oklab;
+          import color.oklch;
+          import color.gamut;
+          import color.alpha;
+          import color.composite;
+          import color.interpolate;
+          import color.difference;
+          import color.wcag;
+          import color.tone;
+
+          void main()
+          {
+          }
+          D
+
+          "$DC"               -c               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/root.o"               "$tmp/root.d"
+
+          "$DC"               -c               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/direct.o"               "$tmp/direct.d"
+ \
+              CHANGELOG.md
+          then
+              echo "release metadata state=published"
+
+              bash .github/scripts/check-release-metadata.sh \
+                  0.1.0 \
+                  release \
+                  "$GITHUB_WORKSPACE"
+
+              release_metadata_root="$GITHUB_WORKSPACE"
+          else
+              echo "release metadata state=preflight"
+
+              bash .github/scripts/check-release-metadata.sh \
+                  0.1.0 \
+                  preflight \
+                  "$GITHUB_WORKSPACE"
+
+              mkdir -p "$tmp/release-metadata"
+              cp README.md ROADMAP.md CHANGELOG.md LICENSE dub.sdl \
+                  "$tmp/release-metadata/"
+
+              sed -i \
+                  's/has not published v0.1.0 yet/has published v0.1.0/' \
+                  "$tmp/release-metadata/README.md"
+
+              sed -i \
+                  's/\*\*Status: HARDENING — v0\.1\.0 FEATURE FREEZE\.\*\*/**Status: COMPLETE — v0.1.0 RELEASED.**/' \
+                  "$tmp/release-metadata/ROADMAP.md"
+
+              awk '
+                  { print }
+                  /^## Unreleased$/ {
+                      print ""
+                      print "## [0.1.0] - 2026-09-28"
+                  }
+              ' "$tmp/release-metadata/CHANGELOG.md" \
+                  > "$tmp/release-metadata/CHANGELOG.next"
+
+              mv \
+                  "$tmp/release-metadata/CHANGELOG.next" \
+                  "$tmp/release-metadata/CHANGELOG.md"
+
+              bash .github/scripts/check-release-metadata.sh \
+                  0.1.0 \
+                  release \
+                  "$tmp/release-metadata"
+
+              release_metadata_root="$tmp/release-metadata"
+          fi
 
           if bash .github/scripts/check-release-metadata.sh \
               0.1 \
-              preflight \
-              "$GITHUB_WORKSPACE"
+              release \
+              "$release_metadata_root"
           then
               echo "Invalid release version unexpectedly passed" >&2
               exit 1
           fi
 
-          mkdir -p "$tmp/release-metadata"
-          cp README.md ROADMAP.md CHANGELOG.md LICENSE dub.sdl \
-              "$tmp/release-metadata/"
-
-          sed -i \
-              's/has not published v0.1.0 yet/has published v0.1.0/' \
-              "$tmp/release-metadata/README.md"
-
-          sed -i \
-              's/\*\*Status: HARDENING — v0\.1\.0 FEATURE FREEZE\.\*\*/**Status: COMPLETE — v0.1.0 RELEASED.**/' \
-              "$tmp/release-metadata/ROADMAP.md"
-
-          awk '
-              { print }
-              /^## Unreleased$/ {
-                  print ""
-                  print "## [0.1.0] - 2026-09-28"
-              }
-          ' "$tmp/release-metadata/CHANGELOG.md" \
-              > "$tmp/release-metadata/CHANGELOG.next"
-
-          mv \
-              "$tmp/release-metadata/CHANGELOG.next" \
-              "$tmp/release-metadata/CHANGELOG.md"
-
-          bash .github/scripts/check-release-metadata.sh \
-              0.1.0 \
-              release \
-              "$tmp/release-metadata"
-
           python3 .github/scripts/extract-release-notes.py \
-              "$tmp/release-metadata/CHANGELOG.md" \
+              "$release_metadata_root/CHANGELOG.md" \
               0.1.0 \
               "$tmp/release-notes.md"
 
