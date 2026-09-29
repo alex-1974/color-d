@@ -1,7 +1,10 @@
 /++
- Explicit same-space and alpha-aware color interpolation.
+ Color interpolation with explicit color-space and hue semantics.
 
- Rectangular interpolation preserves the supplied color space. OKLCH interpolation additionally requires an explicit hue path; no operation chooses a different space or gamut policy implicitly.
+ Use the overload matching the space in which you want the transition to occur.
+ Rectangular interpolation stays in that space. OKLCH interpolation requires an
+ explicit hue path. Alpha-aware overloads weight coordinates by opacity. No
+ overload silently converts color spaces, clips, or gamut-maps.
 +/
 module color.interpolate;
 
@@ -20,10 +23,12 @@ private import color.oklch :
     Oklch;
 
 /**
- * Hue trajectory used by polar OKLCH interpolation.
+ * Chooses how OKLCH interpolation travels between two hue angles.
  *
- * The four policies follow CSS-style angular interpolation semantics. Raw
- * stored-hue interpolation is deliberately not represented by this enum.
+ * Use `shorter` for the shortest arc, `longer` for the complementary arc,
+ * or `increasing`/`decreasing` when angular direction matters. The policies
+ * follow CSS-style angular interpolation semantics; raw stored hue is not an
+ * interpolation policy.
  *
  * `HuePath.init` is `HuePath.shorter`. This is a valid interpolation policy
  * and is part of the public value-type contract.
@@ -193,9 +198,10 @@ private OklabHue!T interpolateHue(T)(
 }
 
 /**
- * Interpolates encoded sRGB component-wise in encoded-sRGB coordinates.
+ * Blends two encoded sRGB values component by component.
  *
- * Both endpoints remain encoded sRGB. The factor is not clamped, so values
+ * Use this when encoded-sRGB interpolation itself is desired. Both endpoints
+ * remain encoded sRGB. The factor is not clamped, so values
  * outside `[0, 1]` extrapolate. No linear-light conversion, clipping, gamut
  * mapping, or other display policy is applied.
  *
@@ -237,9 +243,10 @@ SRgb!T interpolate(T)(
 }
 
 /**
- * Interpolates linear-light sRGB component-wise.
+ * Blends two linear-light sRGB values component by component.
  *
- * Both endpoints remain linear-light sRGB. The factor is not clamped, so
+ * Use this for interpolation in linear light. Both endpoints remain
+ * linear-light sRGB. The factor is not clamped, so
  * values outside `[0, 1]` extrapolate. Extended-range values are preserved;
  * no encoding, clipping, or gamut mapping is applied.
  *
@@ -284,9 +291,10 @@ LinearSRgb!T interpolate(T)(
 }
 
 /**
- * Interpolates Oklab component-wise in rectangular coordinates.
+ * Blends two colors in rectangular Oklab coordinates.
  *
- * Lightness and both opponent coordinates are interpolated directly. The
+ * Use this when the transition should follow Oklab's lightness and opponent
+ * axes directly. Lightness and both opponent coordinates are interpolated. The
  * factor is not clamped, so values outside `[0, 1]` extrapolate. No OKLCH
  * conversion, hue policy, clipping, or gamut mapping is applied.
  *
@@ -331,8 +339,9 @@ Oklab!T interpolate(T)(
 }
 
 /**
- * Interpolates two OKLCH colors using an explicit polar hue path.
+ * Blends two colors in OKLCH using an explicit route around the hue circle.
  *
+ * Use this for polar perceptual interpolation when hue trajectory matters.
  * Lightness and chroma are interpolated linearly; hue follows `path`.
  * Negative chroma is canonicalized before interpolation. When exactly one
  * canonicalized endpoint is achromatic, its interpolation hue is borrowed

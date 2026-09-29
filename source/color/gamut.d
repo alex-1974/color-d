@@ -1,7 +1,10 @@
 /++
- sRGB gamut diagnostics, hard clipping, and explicit perceptual gamut mapping.
+ Diagnose and handle colors outside the sRGB gamut.
 
- Clipping and perceptual mapping are distinct operations. Perceptual mapping requires an explicit algorithm choice; the module defines no default mapper.
+ Use `inGamut` to test target-space coordinates, `clip` for simple hard
+ clipping, or choose an explicit perceptual mapper for OKLCH colors. Clipping
+ and perceptual mapping are different operations; this module deliberately has
+ no default mapping policy.
 +/
 module color.gamut;
 
@@ -77,9 +80,10 @@ if (is(T == float) || is(T == double))
 }
 
 /**
- * Tests strict membership in the encoded-sRGB target gamut.
+ * Reports whether an encoded sRGB value is directly representable in sRGB.
  *
- * All three components must be finite and in `[0, 1]`; no tolerance is implied.
+ * All three components must be finite and from 0 through 1 inclusive; no
+ * tolerance is applied.
  *
  * Params:
  *     color = Encoded sRGB value to test.
@@ -105,9 +109,10 @@ bool inGamut(T)(SRgb!T color)
 }
 
 /**
- * Tests strict membership in the linear-sRGB target gamut.
+ * Reports whether a linear-light sRGB value is directly representable in sRGB.
  *
- * All three components must be finite and in `[0, 1]`; no tolerance is implied.
+ * All three components must be finite and from 0 through 1 inclusive; no
+ * tolerance is applied.
  *
  * Params:
  *     color = Linear-light sRGB value to test.
@@ -125,10 +130,19 @@ bool inGamut(T)(LinearSRgb!T color)
         inUnitInterval(color.b);
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    assert(LinearSRgbd(0.1, 0.5, 1.0).inGamut);
+    assert(!LinearSRgbd(0.1, 1.1, 0.5).inGamut);
+}
+
 /**
- * Hard-clips encoded sRGB components to `[0, 1]`.
+ * Forces finite encoded sRGB components into the representable sRGB range.
  *
- * Finite values below zero become zero and finite values above one become one.
+ * Use hard clipping when saturation at the nearest component boundary is the
+ * intended policy. Finite values below zero become zero and values above one
+ * become one.
  * NaN and infinities remain visible rather than being silently repaired.
  *
  * Params:
@@ -157,9 +171,11 @@ SRgb!T clip(T)(SRgb!T color)
 }
 
 /**
- * Hard-clips linear-light sRGB components to `[0, 1]`.
+ * Forces finite linear-light sRGB components into the representable range.
  *
- * Finite values below zero become zero and finite values above one become one.
+ * Use hard clipping when component saturation is preferable to perceptual
+ * gamut mapping. Finite values below zero become zero and values above one
+ * become one.
  * NaN and infinities remain visible rather than being silently repaired.
  *
  * Params:
@@ -177,6 +193,14 @@ LinearSRgb!T clip(T)(LinearSRgb!T color)
         clampFiniteUnit(color.g),
         clampFiniteUnit(color.b)
     );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const clipped = LinearSRgbd(-0.25, 0.50, 1.25).clip;
+
+    assert(clipped == LinearSRgbd(0.0, 0.50, 1.0));
 }
 
 
@@ -1064,9 +1088,10 @@ private LinearSRgb!T gamutMapRayTraceImpl(T)(
 
 
 /**
- * Perceptually maps an OKLCH color into linear sRGB using Local MINDE.
+ * Maps an OKLCH color into linear sRGB with the Local MINDE strategy.
  *
- * Local MINDE is the perceptual/reference-oriented mapping strategy. Negative
+ * Choose Local MINDE when the perceptual/reference-oriented mapping strategy is
+ * desired. Negative
  * finite chroma is canonicalized before mapping. Lightness at or above 1 maps
  * to white and lightness at or below 0 maps to black. Already-in-gamut colors
  * take the identity path after explicit conversion.
@@ -1153,9 +1178,10 @@ LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
 
 
 /**
- * Perceptually maps an OKLCH color into linear sRGB using Ray Trace.
+ * Maps an OKLCH color into linear sRGB with the Ray Trace strategy.
  *
- * Ray Trace is the bounded-cost/performance-oriented mapping strategy.
+ * Choose Ray Trace when the bounded-cost/performance-oriented mapping strategy
+ * is desired.
  * Negative finite chroma is canonicalized before mapping. Lightness at or
  * above 1 maps to white and lightness at or below 0 maps to black.
  * Already-in-gamut colors take the identity path after explicit conversion.
@@ -1265,6 +1291,22 @@ Alpha!(LinearSRgb!T) gamutMapLocalMindeToLinearSRgb(T)(
         ),
         value.alpha
     );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    import color.oklch : OklabHued, Oklchd;
+
+    const value = Alpha!Oklchd(
+        Oklchd(0.70, 0.30, OklabHued.fromDegrees(40.0)),
+        0.40
+    );
+
+    const mapped = value.gamutMapLocalMindeToLinearSRgb;
+
+    assert(mapped.alpha == 0.40);
+    assert(mapped.color.inGamut);
 }
 
 
