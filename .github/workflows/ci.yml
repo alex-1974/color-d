@@ -407,8 +407,15 @@ jobs:
 
           trap cleanup EXIT
 
-          if grep -Eq \
-              '^## \\[0\\.1\\.0\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}
+          bash .github/scripts/check-release-metadata.sh 0.1.0 release "$GITHUB_WORKSPACE"
+
+          if bash .github/scripts/check-release-metadata.sh 0.1 release "$GITHUB_WORKSPACE"
+          then
+              echo "Invalid release version unexpectedly passed" >&2
+              exit 1
+          fi
+
+          python3 .github/scripts/extract-release-notes.py CHANGELOG.md 0.1.0 "$tmp/release-notes.md"
           grep -Fq '### Added' "$tmp/release-notes.md"
           grep -Fq '### Deferred' "$tmp/release-notes.md"
 
