@@ -1,6 +1,7 @@
 name: Bug
 description: Report incorrect behavior in color-d.
 title: ""
+labels: ["type: bug"]
 body:
   - type: markdown
     attributes:
