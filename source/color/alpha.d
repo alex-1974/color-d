@@ -1,7 +1,9 @@
 /++
- Straight-alpha and premultiplied color value types.
+ Straight-alpha and premultiplied color values.
 
- Alpha is orthogonal to the wrapped color space. Premultiplication is restricted to linear-light sRGB and never happens implicitly.
+ Use `Alpha` when opacity accompanies a computational color value without
+ changing its color-space coordinates. Use `Premultiplied` for linear-light
+ compositing. Conversion between the two representations is always explicit.
 +/
 module color.alpha;
 
@@ -39,11 +41,11 @@ private enum bool isSupportedPremultipliedColor(Color) =
     isInstanceOf!(LinearSRgb, Color);
 
 /**
- * Straight-alpha color value.
+ * Stores a computational color together with straight alpha.
  *
- * Alpha is orthogonal to the wrapped computational color space. Construction
- * stores supplied values unchanged: alpha is not clamped and the color is not
- * converted, clipped, or gamut-mapped.
+ * Use straight alpha when color coordinates and opacity should remain
+ * independent. Construction stores supplied values unchanged: alpha is not
+ * clamped and the color is not converted, clipped, or gamut-mapped.
  *
  * `Color` must be one of the supported computational color value types. The
  * natural `.init` state is detectably invalid because its floating components
@@ -63,10 +65,10 @@ if (isSupportedAlphaColor!Color)
     Scalar alpha;
 
     /**
-     * Whether alpha lies in the strict semantic interval [0, 1].
+     * Reports whether alpha is a usable opacity from 0 through 1.
      *
-     * NaN and infinities are invalid automatically under ordered comparison.
-     * No tolerance or clamping policy is implied.
+     * Returns `false` for values below 0, above 1, NaN, and infinities.
+     * The check does not clamp or otherwise modify the value.
      */
     @property bool isValidAlpha() const
     @safe pure nothrow @nogc
@@ -74,6 +76,13 @@ if (isSupportedAlphaColor!Color)
         return
             alpha >= cast(Scalar)0 &&
             alpha <= cast(Scalar)1;
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const value = Alpha!SRgbf(SRgbf(0.2f, 0.4f, 0.8f), 0.5f);
+        assert(value.isValidAlpha);
     }
 }
 
@@ -91,13 +100,13 @@ if (isSupportedAlphaColor!Color)
 }
 
 /**
- * Premultiplied-alpha color representation.
+ * Stores premultiplied linear-light sRGB and its alpha.
  *
- * This type is deliberately distinct from `Alpha!Color`. The public
- * premultiplied representation is restricted to linear-light sRGB.
+ * Use this representation for compositing. It is deliberately distinct from
+ * straight `Alpha!Color` so the two forms cannot be mixed accidentally.
  *
- * Direct construction is an unchecked representation claim: callers must
- * supply coordinates already multiplied by the associated alpha. The natural
+ * Direct construction does not perform premultiplication: callers must supply
+ * coordinates that are already multiplied by the associated alpha. The natural
  * `.init` state is detectably invalid because its floating components are NaN.
  */
 
@@ -114,9 +123,10 @@ if (isSupportedPremultipliedColor!Color)
     Scalar alpha;
 
     /**
-     * Whether alpha lies in the strict semantic interval [0, 1].
+     * Reports whether alpha is a usable opacity from 0 through 1.
      *
-     * The representation does not silently clamp invalid alpha values.
+     * Returns `false` for values below 0, above 1, NaN, and infinities.
+     * The representation does not clamp invalid alpha values.
      */
     @property bool isValidAlpha() const
     @safe pure nothrow @nogc
@@ -124,6 +134,16 @@ if (isSupportedPremultipliedColor!Color)
         return
             alpha >= cast(Scalar)0 &&
             alpha <= cast(Scalar)1;
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const value = Premultiplied!LinearSRgbf(
+            LinearSRgbf(0.1f, 0.2f, 0.4f),
+            0.5f
+        );
+        assert(value.isValidAlpha);
     }
 }
 
@@ -141,11 +161,11 @@ if (isSupportedPremultipliedColor!Color)
 }
 
 /**
- * Converts straight linear-light sRGB to premultiplied alpha.
+ * Prepares straight linear-light sRGB for premultiplied-alpha compositing.
  *
- * Each RGB coordinate is multiplied by alpha; alpha itself is preserved.
+ * Each RGB coordinate is multiplied by alpha and alpha itself is preserved.
  * No validation, clipping, gamut mapping, or color-space conversion occurs.
- * At zero alpha, finite hidden straight RGB collapses to zero.
+ * At zero alpha, finite hidden straight RGB becomes transparent black.
  *
  * Params:
  *     value = Straight-alpha linear-light sRGB value.
@@ -187,11 +207,11 @@ Premultiplied!(LinearSRgb!T) premultiply(T)(
 }
 
 /**
- * Converts premultiplied linear-light sRGB back to straight alpha.
+ * Converts a premultiplied result back to straight linear-light sRGB.
  *
- * For nonzero alpha, RGB coordinates are divided by alpha. For zero alpha,
- * straight RGB cannot be reconstructed and canonical transparent black is
- * returned without division by zero.
+ * Use this after compositing when a consumer needs straight alpha. For nonzero
+ * alpha, RGB coordinates are divided by alpha. At zero alpha the hidden
+ * straight RGB is unrecoverable, so the function returns transparent black.
  *
  * Params:
  *     value = Premultiplied linear-light sRGB value.
