@@ -407,14 +407,25 @@ jobs:
 
           trap cleanup EXIT
 
+          if grep -Fq \
+              '**Status: COMPLETE — v0.1.0 RELEASED.**' \
+              ROADMAP.md
+          then
+              current_metadata_mode=release
+          else
+              current_metadata_mode=preflight
+          fi
+
+          echo "current release metadata mode=$current_metadata_mode"
+
           bash .github/scripts/check-release-metadata.sh \
               0.1.0 \
-              preflight \
+              "$current_metadata_mode" \
               "$GITHUB_WORKSPACE"
 
           if bash .github/scripts/check-release-metadata.sh \
               0.1 \
-              preflight \
+              "$current_metadata_mode" \
               "$GITHUB_WORKSPACE"
           then
               echo "Invalid release version unexpectedly passed" >&2
@@ -425,26 +436,29 @@ jobs:
           cp README.md ROADMAP.md CHANGELOG.md LICENSE dub.sdl \
               "$tmp/release-metadata/"
 
-          sed -i \
-              's/has not published v0.1.0 yet/has published v0.1.0/' \
-              "$tmp/release-metadata/README.md"
+          if [[ "$current_metadata_mode" == preflight ]]
+          then
+              sed -i \
+                  's/has not published v0.1.0 yet/has published v0.1.0/' \
+                  "$tmp/release-metadata/README.md"
 
-          sed -i \
-              's/\*\*Status: HARDENING — v0\.1\.0 FEATURE FREEZE\.\*\*/**Status: COMPLETE — v0.1.0 RELEASED.**/' \
-              "$tmp/release-metadata/ROADMAP.md"
+              sed -i \
+                  's/\*\*Status: HARDENING — v0\.1\.0 FEATURE FREEZE\.\*\*/**Status: COMPLETE — v0.1.0 RELEASED.**/' \
+                  "$tmp/release-metadata/ROADMAP.md"
 
-          awk '
-              { print }
-              /^## Unreleased$/ {
-                  print ""
-                  print "## [0.1.0] - 2026-09-28"
-              }
-          ' "$tmp/release-metadata/CHANGELOG.md" \
-              > "$tmp/release-metadata/CHANGELOG.next"
+              awk '
+                  { print }
+                  /^## Unreleased$/ {
+                      print ""
+                      print "## [0.1.0] - 2026-09-28"
+                  }
+              ' "$tmp/release-metadata/CHANGELOG.md" \
+                  > "$tmp/release-metadata/CHANGELOG.next"
 
-          mv \
-              "$tmp/release-metadata/CHANGELOG.next" \
-              "$tmp/release-metadata/CHANGELOG.md"
+              mv \
+                  "$tmp/release-metadata/CHANGELOG.next" \
+                  "$tmp/release-metadata/CHANGELOG.md"
+          fi
 
           bash .github/scripts/check-release-metadata.sh \
               0.1.0 \
