@@ -152,7 +152,7 @@ if (is(T == float) || is(T == double))
         assert(hue.rawDegrees == 390.0);
     }
 
-    /// Return the stored degree value without normalization.
+    /// Returns the stored degree value without normalization.
     @property T rawDegrees() const
     @safe pure nothrow @nogc
     {
@@ -166,7 +166,7 @@ if (is(T == float) || is(T == double))
         assert(hue.rawDegrees == -30.0);
     }
 
-    /// Return the equivalent hue from 0 degrees inclusive to 360 degrees exclusive.
+    /// Returns the equivalent hue from 0 degrees inclusive to 360 degrees exclusive.
     @property T positiveDegrees() const
     @safe pure nothrow @nogc
     {
@@ -180,7 +180,7 @@ if (is(T == float) || is(T == double))
         assert(hue.positiveDegrees == 30.0);
     }
 
-    /// Return the equivalent hue above -180 degrees and at most 180 degrees.
+    /// Returns the equivalent hue above -180 degrees and at most 180 degrees.
     @property T signedDegrees() const
     @safe pure nothrow @nogc
     {
@@ -194,7 +194,7 @@ if (is(T == float) || is(T == double))
         assert(hue.signedDegrees == -30.0);
     }
 
-    /// Return the raw stored hue converted to radians.
+    /// Returns the raw stored hue converted to radians.
     @property T radians() const
     @safe pure nothrow @nogc
     {
@@ -239,9 +239,10 @@ if (is(T == float) || is(T == double))
     alias Scalar = T;
 
     /**
-     * Whether chroma is exactly zero.
+     * Reports whether chroma is exactly zero.
      *
-     * Near-achromatic policy is deliberately separate.
+     * Use this when exact achromaticity matters. For a caller-selected
+     * tolerance, use `isNearAchromatic` instead.
      */
     @property bool isAchromatic() const
     @safe pure nothrow @nogc
@@ -257,9 +258,10 @@ if (is(T == float) || is(T == double))
     }
 
     /**
- * Tests caller-selected near-achromaticity.
+ * Tests chroma against a caller-selected near-achromatic threshold.
  *
- * The library does not impose a global chroma epsilon.
+ * Use this when exact zero is too strict for the caller's task. The library
+ * does not impose a global chroma epsilon.
  *
  * Params:
  *     epsilon = Non-negative caller-selected chroma magnitude threshold.
@@ -294,19 +296,13 @@ if (is(T == float) || is(T == double))
     }
 
     /**
-     * Return an equivalent representation with non-negative chroma.
+     * Returns an equivalent representation with non-negative chroma.
      *
-     * Negative chroma is represented by flipping its sign and rotating hue
-     * by 180 degrees.
-     *
-     * Raw hue revolutions are preserved when adding 180 degrees is exactly
-     * representable in `T`. For very large finite raw hue values where that
-     * addition would lose the required angular rotation through floating-point
-     * rounding, the hue is first reduced to its positive-degree equivalent and
-     * then rotated. The fallback hue is deliberately not wrapped after the
-     * 180-degree addition.
-     *
-     * Non-finite hue values remain non-finite rather than being repaired.
+     * Use this before operations that require canonical OKLCH. Negative chroma
+     * becomes positive and hue rotates by 180 degrees. Ordinary raw hue
+     * revolutions are preserved; very large finite hues may be reduced before
+     * rotation when floating-point precision cannot represent the raw
+     * 180-degree increment. Non-finite hue remains non-finite.
  *
  * Returns:
  *     An equivalent OKLCH representation with non-negative chroma.
