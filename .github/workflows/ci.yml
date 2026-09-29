@@ -435,12 +435,12 @@ jobs:
               HEAD
 
           bash .github/scripts/assemble-ddox-archive.sh \
-              0.1.0 \
+              0.1.1 \
               docs \
               "$tmp/artifacts-a"
 
           bash .github/scripts/assemble-ddox-archive.sh \
-              0.1.0 \
+              0.1.1 \
               docs \
               "$tmp/artifacts-b"
 
