@@ -98,10 +98,10 @@ if (is(T == float) || is(T == double))
 /*
  * Package-internal direct inverse-matrix evaluator.
  *
- * This is intentionally not part of the public robust XYZ conversion contract.
- * color.gamut uses it for its R0.8-validated float mapping hot path, where the
- * mapper owns its own overflow handling. External callers must use
- * toLinearSRgb(), which retains the extreme-finite fallback.
+ * This deliberately bypasses the public conversion's extreme-finite recovery.
+ * color.gamut uses it only where the mapping algorithm owns overflow handling
+ * and benefits from the shorter float hot path. External callers must use
+ * toLinearSRgb(), which retains the robust fallback.
  */
 package(color) LinearSRgb!T toLinearSRgbDirect(T)(XyzD65!T xyz)
 @safe pure nothrow @nogc

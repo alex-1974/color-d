@@ -29,6 +29,12 @@ private T interpolateFiniteSchedule(T)(
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {
+    /*
+     * Opposite-sign finite endpoints can overflow in end - start even when
+     * every requested schedule value is representable. Use weighted endpoints
+     * only for that case; the direct form retains better exactness for equal
+     * and nearby same-sign values.
+     */
     const bool oppositeSigns =
         (start < cast(T)0 && end > cast(T)0) ||
         (start > cast(T)0 && end < cast(T)0);
