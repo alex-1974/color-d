@@ -39,17 +39,20 @@ only contributes to it.
 
 ## Required checks
 
-Before opening or merging a normal PR:
+Before opening or merging a normal PR, test the current supported compiler pair
+explicitly:
 
 ```bash
-dub test --compiler=dmd --build=debug --force
-dub test --compiler=dmd --build=release --force
-dub test --compiler=ldc2 --build=debug --force
-dub test --compiler=ldc2 --build=release --force
+dub test --compiler=dmd-2.113.0 --build=debug --force
+dub test --compiler=dmd-2.113.0 --build=release --force
+dub test --compiler=ldc-1.43.0 --build=debug --force
+dub test --compiler=ldc-1.43.0 --build=release --force
 ```
 
-The repository Fast CI also checks DDox, CTFE/runtime behavior, and external
-public-import contracts.
+The repository Fast CI uses the same current pair and also checks DDox,
+CTFE/runtime behavior, and external public-import contracts. The scheduled
+compatibility matrix and the release gate cover the broader supported v0.1.x
+matrix documented in [docs/compiler-matrix.md](docs/compiler-matrix.md).
 
 ## Public API changes
 
