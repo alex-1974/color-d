@@ -21,17 +21,47 @@ committed scope is deliberately small:
   clipping behavior;
 - compact hexadecimal sRGB/RGBA parsing and serialization, provided the API
   remains unambiguous and does not grow into a general CSS parser;
+- consumer-driven research and promotion of three generic color-math capabilities
+  identified by Dunia theme construction: sRGB gamut-boundary queries,
+  CIE/Delta-E measurement support, and color-vision-deficiency transforms;
 - real-consumer validation against Dunia/editor and/or imagery workflows;
 - the normal documentation, compiler, package, and release qualification gates.
 
 The release does **not** introduce a second floating-point RGBA computational
 model. Existing alpha and premultiplied-alpha semantics remain authoritative.
 
+The three Dunia-driven color-math candidates are committed to v0.2.0 as
+research-and-promotion gates rather than preselected APIs. Each is promoted only
+if the investigation establishes a generic, independently validated color-d
+contract; otherwise v0.2.0 records the reason for deferral or consumer-local
+ownership.
+
 HSL/HSV, semantic Theme/Palette objects, general CSS Color parsing, wide-gamut
-spaces, and other candidate families are not committed to v0.2.0. Promotion of
-those features requires separate evidence.
+spaces, and other candidate families remain outside the committed v0.2.0 scope
+unless separately promoted by evidence.
 
 Detailed v0.2.0 work is tracked by GitHub milestone `v0.2.0`.
+
+## v0.2.0 consumer-driven color-math promotion
+
+Dunia theme construction has identified three additional mathematical
+capabilities that are both concretely consumer-driven and plausibly generic:
+
+- sRGB gamut-boundary queries, such as maximum representable OKLCH chroma for
+  a given lightness and hue;
+- the minimum CIELAB/CIELCh/Delta-E surface justified by the consumer need and
+  standards/interoperability evidence;
+- validated color-vision-deficiency transformations suitable for measuring
+  transformed theme colors.
+
+These are committed to v0.2.0 as **research-and-promotion gates**. The release
+does not pre-commit an API, algorithm, CIE feature subset, or CVD model.
+Research must establish the generic mathematical contract and independent
+validation first. A candidate that cannot meet that bar is explicitly deferred
+rather than forced into the library.
+
+Application thresholds, semantic theme roles, OSM meaning, and helpers such as
+`isColorBlindSafe()` remain consumer policy.
 
 ## Investigation candidates after v0.1
 
@@ -47,8 +77,6 @@ value and the correct `color-d` boundary.
 - CSS Color parsing and serialization beyond the compact hexadecimal v0.2.0
   boundary, including `rgb()`, `hsl()`, `oklab()`, and `oklch()`.
 - Display-P3 and later Rec.2020 where real wide-gamut consumers justify them.
-- CIELAB / LCh and CIEDE2000 where interoperability or standards-facing
-  measurement requires them.
 - Okhsl / Okhsv if perceptual picker/editing workflows demonstrate an advantage.
 - named colors only if a standards/configuration consumer requires the data and
   ownership boundary is clear.
@@ -74,7 +102,10 @@ Investigate:
 
 ### Accessibility and analysis
 
-- color-vision-deficiency simulation and distinguishability analysis;
+CVD transformations required by Dunia theme validation are part of the v0.2.0
+research-and-promotion gate. Consumer-owned accessibility thresholds and
+policy remain outside color-d.
+
 - APCA and emerging accessibility measurements, with standards maturity and
   provenance checked before public API adoption;
 - scientific and categorical palette analysis/generation where a generic
