@@ -1,27 +1,128 @@
 # color-d Roadmap
 
-## Current release work
+## Current release
 
-**v0.1.0 — First public release** was published on 2026-09-29 and is complete.
-The R0–R4 sections below are retained as the historical development and
-validation path that produced that release; they are not current package
-release targets.
+**v0.1.1 — Documentation and Maintenance** was published on 2026-09-29 and is complete.
 
-The current maintenance target is:
+The next planned feature release is:
 
 ```text
-v0.1.1 — Documentation and Maintenance
+v0.2.0 — Practical Color Storage and Interop
 ```
 
-v0.1.1 is deliberately limited to documentation quality, executable public
-examples, source rationale, contract evidence, repository cleanup, and
-compatible toolchain/quality-gate maintenance. It does not add a new color
-space, storage family, palette/theme policy abstraction, or intentionally
-change public numerical semantics.
+v0.2.0 turns the existing floating-point color-math core into a more practical
+boundary for GUI, imagery, rendering, file, and configuration consumers. Its
+committed scope is deliberately small:
 
-Detailed v0.1.1 work is tracked by GitHub milestone `v0.1.1` and its issues.
-Deferred feature families remain candidates only; they are not promises for
-v0.1.1 or a later release.
+- compact encoded-sRGB storage with `SRgb8`;
+- compact encoded-sRGB plus straight-alpha storage with `SRgba8`;
+- explicit conversion between packed storage and the existing computational
+  `SRgb!T` model, including documented quantization, rounding, range, and
+  clipping behavior;
+- compact hexadecimal sRGB/RGBA parsing and serialization, provided the API
+  remains unambiguous and does not grow into a general CSS parser;
+- consumer-driven research and promotion of three generic color-math capabilities
+  identified by Dunia theme construction: sRGB gamut-boundary queries,
+  CIE/Delta-E measurement support, and color-vision-deficiency transforms;
+- real-consumer validation against Dunia/editor and/or imagery workflows;
+- the normal documentation, compiler, package, and release qualification gates.
+
+The release does **not** introduce a second floating-point RGBA computational
+model. Existing alpha and premultiplied-alpha semantics remain authoritative.
+
+The three Dunia-driven color-math candidates are committed to v0.2.0 as
+research-and-promotion gates rather than preselected APIs. Each is promoted only
+if the investigation establishes a generic, independently validated color-d
+contract; otherwise v0.2.0 records the reason for deferral or consumer-local
+ownership.
+
+HSL/HSV, semantic Theme/Palette objects, general CSS Color parsing, wide-gamut
+spaces, and other candidate families remain outside the committed v0.2.0 scope
+unless separately promoted by evidence.
+
+Detailed v0.2.0 work is tracked by GitHub milestone `v0.2.0`.
+
+## v0.2.0 consumer-driven color-math promotion
+
+Dunia theme construction has identified three additional mathematical
+capabilities that are both concretely consumer-driven and plausibly generic:
+
+- sRGB gamut-boundary queries, such as maximum representable OKLCH chroma for
+  a given lightness and hue;
+- the minimum CIELAB/CIELCh/Delta-E surface justified by the consumer need and
+  standards/interoperability evidence;
+- validated color-vision-deficiency transformations suitable for measuring
+  transformed theme colors.
+
+These are committed to v0.2.0 as **research-and-promotion gates**. The release
+does not pre-commit an API, algorithm, CIE feature subset, or CVD model.
+Research must establish the generic mathematical contract and independent
+validation first. A candidate that cannot meet that bar is explicitly deferred
+rather than forced into the library.
+
+Application thresholds, semantic theme roles, OSM meaning, and helpers such as
+`isColorBlindSafe()` remain consumer policy.
+
+## Investigation candidates after v0.1
+
+The following are research and design candidates, not release commitments.
+They should be promoted only when consumer evidence establishes both their
+value and the correct `color-d` boundary.
+
+### Common color-library surface
+
+- HSL / HSV: establish hue semantics for achromatic colors, extended-value
+  behavior, conversion paths, CTFE behavior, interpolation expectations, and
+  concrete consumer demand before promotion.
+- CSS Color parsing and serialization beyond the compact hexadecimal v0.2.0
+  boundary, including `rgb()`, `hsl()`, `oklab()`, and `oklch()`.
+- Display-P3 and later Rec.2020 where real wide-gamut consumers justify them.
+- Okhsl / Okhsv if perceptual picker/editing workflows demonstrate an advantage.
+- named colors only if a standards/configuration consumer requires the data and
+  ownership boundary is clear.
+
+### Theme, palette, and editor primitives
+
+The accepted architecture remains that `color-d` owns reusable color
+mathematics, not application theme roles or OSM semantics. Research should
+therefore ask which generic primitives are missing rather than introducing a
+policy-heavy `Theme`, `Palette`, `ThemeBuilder`, or `PaletteBuilder`.
+
+Investigate:
+
+- compile-time construction and validation of fixed GUI theme data from ordinary
+  D values and fixed-size arrays;
+- reusable contrast- and perceptual-distance-based candidate selection;
+- foreground/background distinguishability primitives for adaptive overlays;
+- N-step gradients and fixed-cardinality palette generation where these are
+  more than composition of existing interpolation/tone operations;
+- Light, Dark, and High-Contrast consumer validation in the Dunia/OSM editor;
+- how established theme systems derive and validate colors, without importing
+  their framework-specific policy into `color-d`.
+
+### Accessibility and analysis
+
+CVD transformations required by Dunia theme validation are part of the v0.2.0
+research-and-promotion gate. Consumer-owned accessibility thresholds and
+policy remain outside color-d.
+
+- APCA and emerging accessibility measurements, with standards maturity and
+  provenance checked before public API adoption;
+- scientific and categorical palette analysis/generation where a generic
+  mathematical contract can be established.
+
+### Rendering and interchange
+
+- GPU/renderer-friendly interop and whether existing value/static-array forms
+  already suffice before adding new public representation types;
+- blend modes beyond source-over, separating color mathematics from renderer
+  policy;
+- HDR color models and transfer functions;
+- ICC / CMYK and color-management boundaries.
+
+These candidates intentionally have no promised release version or priority.
+Research may reject a candidate, keep it consumer-local, or promote only a
+smaller reusable primitive.
 
 ## Historical v0.1.0 development path
 
