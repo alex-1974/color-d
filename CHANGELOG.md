@@ -7,6 +7,13 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 
 ## Unreleased
 
+### Added
+
+- explicit D50 CIELAB values with XYZ D65 conversion and linear Bradford
+  adaptation;
+- Delta E 1976 and CIEDE2000 measurements as separately named generic
+  operations, without application thresholds or automatic metric selection.
+
 ### Changed
 
 - preparing v0.1.1 as a documentation and maintenance release with no intended
