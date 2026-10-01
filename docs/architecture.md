@@ -33,6 +33,7 @@ Supported direct modules are:
 ```text
 color.rgb
 color.xyz
+color.cielab
 color.oklab
 color.oklch
 color.alpha
