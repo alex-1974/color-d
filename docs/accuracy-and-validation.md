@@ -100,6 +100,11 @@ corpora. They do not claim exhaustive proof over all finite IEEE values.
   R0.9; WCAG relative luminance is deliberately distinct from XYZ D65 Y.
 - `deltaEOK` is Euclidean Oklab distance as described by CSS Color 4 and
   independently validated in R0.10.
+- CIE 1976 L*a*b* and Delta E 1976 follow ISO/CIE 11664-4. The production
+  `CieLabD50` type makes the D50 reference white explicit; XYZ D65 ↔ CIELAB
+  conversion includes the explicit linear Bradford adaptation.
+- CIEDE2000 follows ISO/CIE 11664-6 and is validated against the Sharma/Wu/Dalal
+  supplementary reference data.
 
 ## Evidence
 
