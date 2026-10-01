@@ -34,6 +34,8 @@ private import color.oklab :
 
 private import color.oklch :
     Oklch,
+    OklabHue,
+    OklabHued,
     oklabFromOklch = toOklab;
 
 private import std.math :
@@ -1090,6 +1092,302 @@ private LinearSRgb!T gamutMapRayTraceImpl(T)(
     return originRgb.clip;
 }
 
+
+
+private enum srgbChromaBoundaryIterations = 24;
+
+private bool validBoundaryInput(T)(
+    T lightness,
+    OklabHue!T hue
+)
+@safe pure nothrow @nogc
+{
+    return
+        isFiniteScalar(lightness) &&
+        lightness >= cast(T)0 &&
+        lightness <= cast(T)1 &&
+        isFiniteScalar(hue.rawDegrees);
+}
+
+/**
+ * Holds a maximum directly representable OKLCH chroma measurement for sRGB.
+ *
+ * A valid value is the in-gamut side of a fixed-lightness/fixed-hue numerical
+ * boundary search. The measurement is not a gamut-mapping operation: it does
+ * not modify a color and does not choose a perceptual mapping policy.
+ *
+ * Invalid input produces an invalid measurement whose value is NaN.
+ * Validated values are created only by maxChromaInSRgb.
+ *
+ * T must be float or double.
+ */
+struct SRgbChromaLimit(T)
+if (is(T == float) || is(T == double))
+{
+    alias Scalar = T;
+
+    private T _value;
+
+    private this(T value)
+    @safe pure nothrow @nogc
+    {
+        _value = value;
+    }
+
+    /// Maximum validated OKLCH chroma for the measured fixed-L/fixed-h ray.
+    @property T value() const
+    @safe pure nothrow @nogc
+    {
+        return _value;
+    }
+
+    /// Whether the measurement input was valid and a boundary was established.
+    @property bool valid() const
+    @safe pure nothrow @nogc
+    {
+        return _value == _value;
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        enum result =
+            maxChromaInSRgb(
+                0.5,
+                OklabHued.fromDegrees(0.0)
+            );
+
+        static assert(result.valid);
+        static assert(result.value > 0.0);
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        enum invalid = SRgbChromaLimit!double.init;
+
+        static assert(!invalid.valid);
+        static assert(invalid.value != invalid.value);
+    }
+}
+
+private SRgbChromaLimit!T makeSRgbChromaLimit(T)(T value)
+@safe pure nothrow @nogc
+{
+    return SRgbChromaLimit!T(value);
+}
+
+/**
+ * Measures the maximum directly representable OKLCH chroma in sRGB for fixed
+ * lightness and hue.
+ *
+ * The query starts at the achromatic in-gamut point C=0, brackets the first
+ * sRGB boundary along the canonical non-negative OKLCH chroma ray, and performs
+ * a fixed 24-step binary search. It returns the in-gamut side of the final
+ * bracket.
+ *
+ * This is boundary measurement, not gamut mapping. No clipping, perceptual
+ * mapping, theme policy, allocation, or consumer-specific threshold is
+ * applied.
+ *
+ * lightness must be finite and in [0, 1]. L=0 and L=1 return exactly zero.
+ * hue must contain a finite raw degree value; equivalent hue revolutions
+ * represent the same direction.
+ *
+ * Invalid input produces an invalid SRgbChromaLimit whose value is NaN.
+ *
+ * The numerical search is intentionally simple and deterministic. Twenty-four
+ * iterations were selected by the R5.1-R5.7 independent research programme:
+ * they provide a bounded approximation while preserving the strict in-gamut
+ * side of the bracket for both float and double. The iteration count is an
+ * implementation detail, not part of the API contract.
+ *
+ * Params:
+ *     lightness = Fixed OKLCH lightness in [0, 1].
+ *     hue = Fixed Oklab-family hue.
+ *
+ * Returns:
+ *     A validated sRGB chroma limit, or an invalid measurement for invalid
+ *     input.
+ */
+SRgbChromaLimit!T maxChromaInSRgb(T)(
+    T lightness,
+    OklabHue!T hue
+)
+@safe pure nothrow @nogc
+{
+    if (!validBoundaryInput(lightness, hue))
+        return makeSRgbChromaLimit!T(T.nan);
+
+    if (
+        lightness == cast(T)0 ||
+        lightness == cast(T)1
+    )
+    {
+        return makeSRgbChromaLimit!T(cast(T)0);
+    }
+
+    T low = cast(T)0;
+    T high = cast(T)0.125;
+
+    while (
+        oklchToLinearSRgb(
+            Oklch!T(
+                lightness,
+                high,
+                hue
+            )
+        ).inGamut
+    )
+    {
+        low = high;
+        const T next = high * cast(T)2;
+
+        if (!isFiniteScalar(next))
+            return makeSRgbChromaLimit!T(T.nan);
+
+        high = next;
+    }
+
+    foreach (_; 0 .. srgbChromaBoundaryIterations)
+    {
+        const T middle =
+            low +
+            (high - low) / cast(T)2;
+
+        if (
+            middle == low ||
+            middle == high
+        )
+        {
+            break;
+        }
+
+        const bool middleInGamut =
+            oklchToLinearSRgb(
+                Oklch!T(
+                    lightness,
+                    middle,
+                    hue
+                )
+            ).inGamut;
+
+        if (middleInGamut)
+            low = middle;
+        else
+            high = middle;
+    }
+
+    return makeSRgbChromaLimit!T(low);
+}
+
+/// Basic valid boundary and strict in-gamut contract.
+@safe pure nothrow @nogc unittest
+{
+    enum result =
+        maxChromaInSRgb(
+            0.5,
+            OklabHued.fromDegrees(264.0)
+        );
+
+    static assert(result.valid);
+
+    const auto rgb =
+        oklchToLinearSRgb(
+            Oklchd(
+                0.5,
+                result.value,
+                OklabHued.fromDegrees(264.0)
+            )
+        );
+
+    assert(rgb.inGamut);
+}
+
+/// Endpoints collapse to the achromatic boundary.
+@safe pure nothrow @nogc unittest
+{
+    enum black =
+        maxChromaInSRgb(
+            0.0,
+            OklabHued.fromDegrees(123.0)
+        );
+
+    enum white =
+        maxChromaInSRgb(
+            1.0,
+            OklabHued.fromDegrees(123.0)
+        );
+
+    static assert(black.valid && black.value == 0.0);
+    static assert(white.valid && white.value == 0.0);
+}
+
+/// Invalid lightness and hue are reported rather than silently clamped.
+@safe pure nothrow @nogc unittest
+{
+    enum below =
+        maxChromaInSRgb(
+            -0.01,
+            OklabHued.fromDegrees(0.0)
+        );
+
+    enum above =
+        maxChromaInSRgb(
+            1.01,
+            OklabHued.fromDegrees(0.0)
+        );
+
+    enum nanL =
+        maxChromaInSRgb(
+            double.nan,
+            OklabHued.fromDegrees(0.0)
+        );
+
+    enum nanH =
+        maxChromaInSRgb(
+            0.5,
+            OklabHued.fromDegrees(double.nan)
+        );
+
+    static assert(!below.valid);
+    static assert(!above.valid);
+    static assert(!nanL.valid);
+    static assert(!nanH.valid);
+}
+
+/// Equivalent hue revolutions represent the same boundary.
+@safe pure nothrow @nogc unittest
+{
+    enum a =
+        maxChromaInSRgb(
+            0.5,
+            OklabHued.fromDegrees(40.0)
+        );
+
+    enum b =
+        maxChromaInSRgb(
+            0.5,
+            OklabHued.fromDegrees(400.0)
+        );
+
+    enum c =
+        maxChromaInSRgb(
+            0.5,
+            OklabHued.fromDegrees(-320.0)
+        );
+
+    static assert(a.valid && b.valid && c.valid);
+    static assert(a.value == b.value);
+    static assert(a.value == c.value);
+}
+
+/// The public result is compact and naturally invalid before validation.
+@safe pure nothrow @nogc unittest
+{
+    static assert(SRgbChromaLimit!float.sizeof == float.sizeof);
+    static assert(SRgbChromaLimit!double.sizeof == double.sizeof);
+}
 
 /**
  * Maps an OKLCH color into linear sRGB with the Local MINDE strategy.
