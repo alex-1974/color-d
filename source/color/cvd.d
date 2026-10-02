@@ -583,42 +583,11 @@ LinearSRgb!T brettel1997Dichromat(T)(
 )
 @safe pure nothrow @nogc
 {
-    Matrix3!double matrix;
-
-    final switch (deficiency)
-    {
-        case CvdDeficiency.protan:
-            matrix =
-                color.r * cast(T)0.00048 +
-                color.g * cast(T)0.00393 -
-                color.b * cast(T)0.00441 >= cast(T)0
-                    ? brettelProtan1
-                    : brettelProtan2;
-            break;
-
-        case CvdDeficiency.deutan:
-            matrix =
-                -color.r * cast(T)0.00281 -
-                color.g * cast(T)0.00611 +
-                color.b * cast(T)0.00892 >= cast(T)0
-                    ? brettelDeutan1
-                    : brettelDeutan2;
-            break;
-
-        case CvdDeficiency.tritan:
-            matrix =
-                color.r * cast(T)0.03901 -
-                color.g * cast(T)0.02788 -
-                color.b * cast(T)0.01113 >= cast(T)0
-                    ? brettelTritan1
-                    : brettelTritan2;
-            break;
-    }
-
-    return applyMatrix(
-        castMatrix!T(matrix),
-        color
-    );
+    return
+        prepareBrettel1997Dichromat!T(
+            deficiency
+        )
+        .apply(color);
 }
 
 ///
@@ -673,20 +642,11 @@ LinearSRgb!T vienot1999Dichromat(T)(
 )
 @safe pure nothrow @nogc
 {
-    final switch (deficiency)
-    {
-        case RedGreenCvdDeficiency.protan:
-            return applyMatrix(
-                castMatrix!T(vienotProtan),
-                color
-            );
-
-        case RedGreenCvdDeficiency.deutan:
-            return applyMatrix(
-                castMatrix!T(vienotDeutan),
-                color
-            );
-    }
+    return
+        prepareVienot1999Dichromat!T(
+            deficiency
+        )
+        .apply(color);
 }
 
 ///
@@ -785,6 +745,141 @@ private Matrix3!T matrixAtSeverity(T, alias table)(T severity)
 
 
 /**
+ * Prepared Machado 2009 protan/deutan transform for repeated application.
+ *
+ * A valid value contains one severity-interpolated 3x3 matrix in the consumer
+ * scalar type. Use `tryPrepareMachado2009` to construct it from runtime
+ * severity input.
+ *
+ * `.init` is the documented invalid state. Its matrix coefficients are NaN,
+ * so applying it produces NaN components rather than a plausible transformed
+ * color.
+ */
+struct PreparedMachado2009(T)
+if (is(T == float) || is(T == double))
+{
+    private Matrix3!T matrix;
+
+    /// Applies the prepared transform to one linear-light sRGB color.
+    LinearSRgb!T apply(
+        LinearSRgb!T color
+    ) const
+    @safe pure nothrow @nogc
+    {
+        return applyMatrix(
+            matrix,
+            color
+        );
+    }
+
+    /**
+     * Applies the prepared transform to fixed-cardinality caller-owned storage.
+     *
+     * Exact in-place use is supported.
+     *
+     * Allocation:
+     *     Does not allocate.
+     *
+     * Complexity:
+     *     O(N).
+     */
+    void applyInto(size_t N)(
+        ref const LinearSRgb!T[N] input,
+        ref LinearSRgb!T[N] output
+    ) const
+    @safe pure nothrow @nogc
+    {
+        applyMatrixIntoExact(
+            matrix,
+            input[],
+            output[]
+        );
+    }
+
+    /**
+     * Applies the prepared transform to runtime-sized caller-owned storage.
+     *
+     * Returns `false` and performs no writes on a length mismatch. Exact
+     * in-place use is supported.
+     *
+     * Allocation:
+     *     Does not allocate.
+     *
+     * Complexity:
+     *     O(N) on success and O(1) on a length mismatch.
+     */
+    bool tryApplyInto(
+        const(LinearSRgb!T)[] input,
+        LinearSRgb!T[] output
+    ) const
+    @safe pure nothrow @nogc
+    {
+        if (input.length != output.length)
+            return false;
+
+        applyMatrixIntoExact(
+            matrix,
+            input,
+            output
+        );
+
+        return true;
+    }
+}
+
+
+/**
+ * Prepares a Machado 2009 protan/deutan transform for repeated use.
+ *
+ * Severity uses the Machado model's own [0, 1] scale. On success, `prepared`
+ * receives the interpolated matrix and the function returns `true`.
+ *
+ * Invalid severity, including NaN and infinity, returns `false`. Because the
+ * destination is an `out` parameter, it is reset to
+ * `PreparedMachado2009!T.init` on entry and therefore remains in the
+ * documented invalid state after failure.
+ */
+bool tryPrepareMachado2009(T)(
+    RedGreenCvdDeficiency deficiency,
+    T severity,
+    out PreparedMachado2009!T prepared
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    if (!validMachadoSeverity(severity))
+        return false;
+
+    final switch (deficiency)
+    {
+        case RedGreenCvdDeficiency.protan:
+            prepared =
+                PreparedMachado2009!T(
+                    matrixAtSeverity!(
+                        T,
+                        machadoProtanTable
+                    )(
+                        severity
+                    )
+                );
+            return true;
+
+        case RedGreenCvdDeficiency.deutan:
+            prepared =
+                PreparedMachado2009!T(
+                    matrixAtSeverity!(
+                        T,
+                        machadoDeutanTable
+                    )(
+                        severity
+                    )
+                );
+            return true;
+    }
+}
+
+
+/**
  * Applies the Machado, Oliveira & Fernandes (2009) severity-dependent CVD
  * model for protan or deutan deficiency.
  *
@@ -825,27 +920,18 @@ LinearSRgb!T machado2009(T)(
 )
 @safe pure nothrow @nogc
 {
-    if (!validMachadoSeverity(severity))
-        return LinearSRgb!T.init;
+    PreparedMachado2009!T prepared;
 
-    final switch (deficiency)
+    if (!tryPrepareMachado2009(
+        deficiency,
+        severity,
+        prepared
+    ))
     {
-        case RedGreenCvdDeficiency.protan:
-            return applyMatrix(
-                matrixAtSeverity!(T, machadoProtanTable)(
-                    severity
-                ),
-                color
-            );
-
-        case RedGreenCvdDeficiency.deutan:
-            return applyMatrix(
-                matrixAtSeverity!(T, machadoDeutanTable)(
-                    severity
-                ),
-                color
-            );
+        return LinearSRgb!T.init;
     }
+
+    return prepared.apply(color);
 }
 
 ///
