@@ -82,6 +82,12 @@
      Oklab `deltaEOK`. Measurement functions report mathematical results;
      application accessibility policy remains outside the library.
 
+ Cvd_Transforms:
+     Model-specific Brettel 1997, Viénot 1999, and Machado 2009 color-vision-
+     deficiency transformations operate explicitly in linear-light sRGB.
+     They do not classify accessibility or apply gamut policy. Machado severity
+     remains model-specific rather than becoming a generic CVD parameter.
+
  Error_Model:
      color-d distinguishes three kinds of state:
 
@@ -146,7 +152,7 @@
  See_Also:
      color.rgb, color.xyz, color.oklab, color.oklch, color.alpha,
      color.composite, color.interpolate, color.gamut, color.wcag,
-     color.difference, color.tone,
+     color.difference, color.tone, color.cvd,
      https://github.com/alex-1974/color-d
 +/
 module color;
@@ -163,3 +169,4 @@ public import color.interpolate;
 public import color.difference;
 public import color.wcag;
 public import color.tone;
+public import color.cvd;
