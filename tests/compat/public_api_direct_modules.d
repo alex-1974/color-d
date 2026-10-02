@@ -11,6 +11,7 @@ static import color.gamut;
 static import color.wcag;
 static import color.difference;
 static import color.tone;
+static import color.cvd;
 
 /*
  * Every documented direct module remains independently addressable. Calls use
@@ -155,6 +156,25 @@ void acceptedDirectModuleSurface()
             lch
         );
 
+    const brettel =
+        color.cvd.brettel1997Dichromat(
+            linear,
+            color.cvd.CvdDeficiency.protan
+        );
+
+    const vienot =
+        color.cvd.vienot1999Dichromat(
+            linear,
+            color.cvd.RedGreenCvdDeficiency.deutan
+        );
+
+    const machado =
+        color.cvd.machado2009(
+            linear,
+            color.cvd.RedGreenCvdDeficiency.protan,
+            0.5
+        );
+
     const luminance =
         color.wcag.wcag2RelativeLuminance(
             encoded
@@ -215,6 +235,9 @@ void acceptedDirectModuleSurface()
     assert(clipped.r == clipped.r || clipped.r != clipped.r);
     assert(localMapped.r == localMapped.r || localMapped.r != localMapped.r);
     assert(rayMapped.r == rayMapped.r || rayMapped.r != rayMapped.r);
+    assert(brettel.r == brettel.r || brettel.r != brettel.r);
+    assert(vienot.g == vienot.g || vienot.g != vienot.g);
+    assert(machado.b == machado.b || machado.b != machado.b);
     assert(luminance.valid || !luminance.valid);
     assert(contrast.valid || !contrast.valid);
     assert(difference == difference || difference != difference);
@@ -319,5 +342,15 @@ void toneDoesNotReexportOklch()
 
     static assert(!__traits(compiles,
         Oklch!double.init
+    ));
+}
+
+
+void cvdDoesNotReexportRgb()
+{
+    import color.cvd;
+
+    static assert(!__traits(compiles,
+        LinearSRgbd.init
     ));
 }

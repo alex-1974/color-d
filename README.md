@@ -22,7 +22,7 @@ Primary initial consumers are:
 Use `color-d` when a D program needs explicit color-space mathematics rather
 than framework-specific styling objects. Typical use cases include typed
 sRGB/XYZ/Oklab/OKLCH conversion, linear-light alpha compositing, perceptual
-interpolation, explicit sRGB gamut handling, WCAG 2 measurements, and
+interpolation, explicit sRGB gamut handling, model-specific color-vision-deficiency transformations, WCAG 2 measurements, and
 compile-time construction of fixed color data.
 
 The library deliberately does not own application theme roles, OSM semantics,

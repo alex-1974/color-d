@@ -12,7 +12,11 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 - explicit D50 CIELAB values with XYZ D65 conversion and linear Bradford
   adaptation;
 - Delta E 1976 and CIEDE2000 measurements as separately named generic
-  operations, without application thresholds or automatic metric selection.
+  operations, without application thresholds or automatic metric selection;
+- model-specific linear-sRGB color-vision-deficiency transforms for Brettel
+  1997 dichromacy, Viénot 1999 protan/deutan simulation, and Machado 2009
+  protan/deutan severity, without accessibility classification or implicit
+  gamut policy.
 
 ### Changed
 
