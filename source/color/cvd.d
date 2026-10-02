@@ -1028,6 +1028,303 @@ version (unittest)
         assert(close(actual.b, expected.b, tolerance));
     }
 
+
+    private bool equivalentComponent(T)(
+        T actual,
+        T expected
+    )
+    @safe pure nothrow @nogc
+    {
+        if (isNaN(expected))
+            return isNaN(actual);
+
+        if (isInfinity(expected))
+            return actual == expected;
+
+        if (isNaN(actual) || isInfinity(actual))
+            return false;
+
+        const T tolerance =
+            is(T == float)
+                ? cast(T)2e-6
+                : cast(T)1e-12;
+
+        return fabs(actual - expected) <= tolerance;
+    }
+
+
+    private bool equivalentColor(T)(
+        LinearSRgb!T actual,
+        LinearSRgb!T expected
+    )
+    @safe pure nothrow @nogc
+    {
+        return
+            equivalentComponent(actual.r, expected.r) &&
+            equivalentComponent(actual.g, expected.g) &&
+            equivalentComponent(actual.b, expected.b);
+    }
+
+
+    private bool preparedBatchProbe(T)()
+    @safe pure nothrow @nogc
+    {
+        LinearSRgb!T[4] input =
+        [
+            LinearSRgb!T(
+                cast(T)0.2,
+                cast(T)0.4,
+                cast(T)0.7
+            ),
+            LinearSRgb!T(
+                cast(T)-0.25,
+                cast(T)1.25,
+                cast(T)2.0
+            ),
+            LinearSRgb!T(
+                T.nan,
+                cast(T)0.25,
+                cast(T)0.75
+            ),
+            LinearSRgb!T(
+                T.infinity,
+                cast(T)0.25,
+                -T.infinity
+            )
+        ];
+
+        foreach (index; 0u .. 3u)
+        {
+            const deficiency =
+                cast(CvdDeficiency)index;
+
+            const prepared =
+                prepareBrettel1997Dichromat!T(
+                    deficiency
+                );
+
+            LinearSRgb!T[4] output;
+
+            prepared.applyInto(
+                input,
+                output
+            );
+
+            foreach (i; 0 .. input.length)
+            {
+                if (!equivalentColor(
+                    output[i],
+                    input[i].brettel1997Dichromat(
+                        deficiency
+                    )
+                ))
+                {
+                    return false;
+                }
+            }
+
+            auto inPlace = input;
+
+            prepared.applyInto(
+                inPlace,
+                inPlace
+            );
+
+            if (inPlace != output)
+                return false;
+
+            auto runtimeInPlace = input;
+
+            if (!prepared.tryApplyInto(
+                runtimeInPlace[],
+                runtimeInPlace[]
+            ))
+            {
+                return false;
+            }
+
+            if (runtimeInPlace != output)
+                return false;
+        }
+
+        foreach (index; 0u .. 2u)
+        {
+            const deficiency =
+                cast(RedGreenCvdDeficiency)index;
+
+            const prepared =
+                prepareVienot1999Dichromat!T(
+                    deficiency
+                );
+
+            LinearSRgb!T[4] output;
+
+            prepared.applyInto(
+                input,
+                output
+            );
+
+            foreach (i; 0 .. input.length)
+            {
+                if (!equivalentColor(
+                    output[i],
+                    input[i].vienot1999Dichromat(
+                        deficiency
+                    )
+                ))
+                {
+                    return false;
+                }
+            }
+
+            auto inPlace = input;
+
+            prepared.applyInto(
+                inPlace,
+                inPlace
+            );
+
+            if (inPlace != output)
+                return false;
+
+            PreparedMachado2009!T machado;
+
+            if (!tryPrepareMachado2009(
+                deficiency,
+                cast(T)0.65,
+                machado
+            ))
+            {
+                return false;
+            }
+
+            LinearSRgb!T[4] machadoOutput;
+
+            machado.applyInto(
+                input,
+                machadoOutput
+            );
+
+            foreach (i; 0 .. input.length)
+            {
+                if (!equivalentColor(
+                    machadoOutput[i],
+                    input[i].machado2009(
+                        deficiency,
+                        cast(T)0.65
+                    )
+                ))
+                {
+                    return false;
+                }
+            }
+
+            auto machadoInPlace = input;
+
+            if (!machado.tryApplyInto(
+                machadoInPlace[],
+                machadoInPlace[]
+            ))
+            {
+                return false;
+            }
+
+            if (machadoInPlace != machadoOutput)
+                return false;
+        }
+
+        const sentinel =
+            LinearSRgb!T(
+                cast(T)0.11,
+                cast(T)0.22,
+                cast(T)0.33
+            );
+
+        LinearSRgb!T[2] mismatch =
+        [
+            sentinel,
+            sentinel
+        ];
+
+        const vienot =
+            prepareVienot1999Dichromat!T(
+                RedGreenCvdDeficiency.protan
+            );
+
+        if (vienot.tryApplyInto(
+            input[0 .. 1],
+            mismatch[]
+        ))
+        {
+            return false;
+        }
+
+        if (
+            mismatch[0] != sentinel ||
+            mismatch[1] != sentinel
+        )
+        {
+            return false;
+        }
+
+        PreparedMachado2009!T invalidPrepared;
+
+        if (tryPrepareMachado2009(
+            RedGreenCvdDeficiency.protan,
+            cast(T)-0.01,
+            invalidPrepared
+        ))
+        {
+            return false;
+        }
+
+        const invalidColor =
+            invalidPrepared.apply(input[0]);
+
+        if (
+            !isNaN(invalidColor.r) ||
+            !isNaN(invalidColor.g) ||
+            !isNaN(invalidColor.b)
+        )
+        {
+            return false;
+        }
+
+        const invalidVienot =
+            PreparedVienot1999Dichromat!T.init
+            .apply(input[0]);
+
+        const invalidBrettel =
+            PreparedBrettel1997Dichromat!T.init
+            .apply(input[0]);
+
+        if (
+            !isNaN(invalidVienot.r) ||
+            !isNaN(invalidBrettel.r)
+        )
+        {
+            return false;
+        }
+
+        LinearSRgb!T[0] emptyInput;
+        LinearSRgb!T[0] emptyOutput;
+
+        return vienot.tryApplyInto(
+            emptyInput[],
+            emptyOutput[]
+        );
+    }
+
+    @safe pure nothrow @nogc unittest
+    {
+        static assert(preparedBatchProbe!float());
+        static assert(preparedBatchProbe!double());
+
+        assert(preparedBatchProbe!float());
+        assert(preparedBatchProbe!double());
+    }
+
+
     @safe pure nothrow @nogc unittest
     {
         // Fixed independent reference vectors from R7.4.1.
