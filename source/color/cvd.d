@@ -90,7 +90,7 @@ private struct Matrix3(T)
 
 
 private LinearSRgb!T applyMatrix(T)(
-    Matrix3!T matrix,
+    const Matrix3!T matrix,
     LinearSRgb!T color
 )
 @safe pure nothrow @nogc
@@ -108,6 +108,98 @@ private LinearSRgb!T applyMatrix(T)(
         matrix.m21 * color.g +
         matrix.m22 * color.b
     );
+}
+
+
+pragma(inline, true)
+private void writeMatrix(T)(
+    ref LinearSRgb!T output,
+    const ref Matrix3!T matrix,
+    T r,
+    T g,
+    T b
+)
+@safe pure nothrow @nogc
+{
+    output.r =
+        matrix.m00 * r +
+        matrix.m01 * g +
+        matrix.m02 * b;
+
+    output.g =
+        matrix.m10 * r +
+        matrix.m11 * g +
+        matrix.m12 * b;
+
+    output.b =
+        matrix.m20 * r +
+        matrix.m21 * g +
+        matrix.m22 * b;
+}
+
+
+pragma(inline, true)
+private void applyMatrixIntoExact(T)(
+    const ref Matrix3!T matrix,
+    const(LinearSRgb!T)[] input,
+    LinearSRgb!T[] output
+)
+@safe pure nothrow @nogc
+{
+    assert(input.length == output.length);
+
+    foreach (i, ref color; input)
+    {
+        const T r = color.r;
+        const T g = color.g;
+        const T b = color.b;
+
+        writeMatrix(
+            output[i],
+            matrix,
+            r,
+            g,
+            b
+        );
+    }
+}
+
+
+pragma(inline, true)
+private void applyBrettelIntoExact(T)(
+    const ref Matrix3!T first,
+    const ref Matrix3!T second,
+    T nr,
+    T ng,
+    T nb,
+    const(LinearSRgb!T)[] input,
+    LinearSRgb!T[] output
+)
+@safe pure nothrow @nogc
+{
+    assert(input.length == output.length);
+
+    foreach (i, ref color; input)
+    {
+        const T r = color.r;
+        const T g = color.g;
+        const T b = color.b;
+
+        const matrix =
+            r * nr +
+            g * ng +
+            b * nb >= cast(T)0
+                ? first
+                : second;
+
+        writeMatrix(
+            output[i],
+            matrix,
+            r,
+            g,
+            b
+        );
+    }
 }
 
 
@@ -206,6 +298,262 @@ private enum Matrix3!double vienotDeutan =
          0.29275, 0.70725, 0.0,
         -0.02234, 0.02234, 1.0
     );
+
+
+/**
+ * Prepared Brettel 1997 full-dichromat transform for repeated application.
+ *
+ * The value owns only the two typed projection matrices and separation-plane
+ * coefficients required by the selected deficiency. It allocates nothing and
+ * carries no image, storage, threading, or gamut policy.
+ *
+ * Obtain a valid value with `prepareBrettel1997Dichromat`. `.init` is a
+ * detectably invalid transform whose floating-point coefficients are NaN;
+ * applying it produces NaN components rather than a plausible simulation.
+ */
+struct PreparedBrettel1997Dichromat(T)
+if (is(T == float) || is(T == double))
+{
+    private Matrix3!T first;
+    private Matrix3!T second;
+    private T nr;
+    private T ng;
+    private T nb;
+
+    /**
+     * Applies the prepared transform to one linear-light sRGB color.
+     */
+    LinearSRgb!T apply(
+        LinearSRgb!T color
+    ) const
+    @safe pure nothrow @nogc
+    {
+        const matrix =
+            color.r * nr +
+            color.g * ng +
+            color.b * nb >= cast(T)0
+                ? first
+                : second;
+
+        return applyMatrix(
+            matrix,
+            color
+        );
+    }
+
+    /**
+     * Applies the prepared transform to fixed-cardinality caller-owned storage.
+     *
+     * Exact in-place use is supported. Distinct source and destination arrays
+     * are also supported.
+     *
+     * Allocation:
+     *     Does not allocate.
+     *
+     * Complexity:
+     *     O(N).
+     */
+    void applyInto(size_t N)(
+        ref const LinearSRgb!T[N] input,
+        ref LinearSRgb!T[N] output
+    ) const
+    @safe pure nothrow @nogc
+    {
+        applyBrettelIntoExact(
+            first,
+            second,
+            nr,
+            ng,
+            nb,
+            input[],
+            output[]
+        );
+    }
+
+    /**
+     * Applies the prepared transform to runtime-sized caller-owned storage.
+     *
+     * Returns `false` and performs no writes when the input/output lengths do
+     * not match. An empty pair is a successful empty operation. Exact in-place
+     * use is supported.
+     *
+     * Allocation:
+     *     Does not allocate.
+     *
+     * Complexity:
+     *     O(N) on success and O(1) on a length mismatch.
+     */
+    bool tryApplyInto(
+        const(LinearSRgb!T)[] input,
+        LinearSRgb!T[] output
+    ) const
+    @safe pure nothrow @nogc
+    {
+        if (input.length != output.length)
+            return false;
+
+        applyBrettelIntoExact(
+            first,
+            second,
+            nr,
+            ng,
+            nb,
+            input,
+            output
+        );
+
+        return true;
+    }
+}
+
+
+/**
+ * Prepares one Brettel 1997 full-dichromat transform for repeated use.
+ */
+PreparedBrettel1997Dichromat!T prepareBrettel1997Dichromat(T)(
+    CvdDeficiency deficiency
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    final switch (deficiency)
+    {
+        case CvdDeficiency.protan:
+            return PreparedBrettel1997Dichromat!T(
+                castMatrix!T(brettelProtan1),
+                castMatrix!T(brettelProtan2),
+                cast(T)0.00048,
+                cast(T)0.00393,
+                cast(T)-0.00441
+            );
+
+        case CvdDeficiency.deutan:
+            return PreparedBrettel1997Dichromat!T(
+                castMatrix!T(brettelDeutan1),
+                castMatrix!T(brettelDeutan2),
+                cast(T)-0.00281,
+                cast(T)-0.00611,
+                cast(T)0.00892
+            );
+
+        case CvdDeficiency.tritan:
+            return PreparedBrettel1997Dichromat!T(
+                castMatrix!T(brettelTritan1),
+                castMatrix!T(brettelTritan2),
+                cast(T)0.03901,
+                cast(T)-0.02788,
+                cast(T)-0.01113
+            );
+    }
+}
+
+
+/**
+ * Prepared Viénot 1999 protan/deutan transform for repeated application.
+ *
+ * The selected 3x3 matrix is converted to the consumer scalar type once and
+ * then reused for every color. No clipping, gamut mapping, or allocation is
+ * introduced.
+ *
+ * Obtain a valid value with `prepareVienot1999Dichromat`. `.init` is a
+ * detectably invalid transform whose coefficients are NaN; applying it
+ * produces NaN components.
+ */
+struct PreparedVienot1999Dichromat(T)
+if (is(T == float) || is(T == double))
+{
+    private Matrix3!T matrix;
+
+    /// Applies the prepared transform to one linear-light sRGB color.
+    LinearSRgb!T apply(
+        LinearSRgb!T color
+    ) const
+    @safe pure nothrow @nogc
+    {
+        return applyMatrix(
+            matrix,
+            color
+        );
+    }
+
+    /**
+     * Applies the prepared transform to fixed-cardinality caller-owned storage.
+     *
+     * Exact in-place use is supported.
+     *
+     * Allocation:
+     *     Does not allocate.
+     *
+     * Complexity:
+     *     O(N).
+     */
+    void applyInto(size_t N)(
+        ref const LinearSRgb!T[N] input,
+        ref LinearSRgb!T[N] output
+    ) const
+    @safe pure nothrow @nogc
+    {
+        applyMatrixIntoExact(
+            matrix,
+            input[],
+            output[]
+        );
+    }
+
+    /**
+     * Applies the prepared transform to runtime-sized caller-owned storage.
+     *
+     * Returns `false` and performs no writes on a length mismatch. Exact
+     * in-place use is supported.
+     *
+     * Allocation:
+     *     Does not allocate.
+     *
+     * Complexity:
+     *     O(N) on success and O(1) on a length mismatch.
+     */
+    bool tryApplyInto(
+        const(LinearSRgb!T)[] input,
+        LinearSRgb!T[] output
+    ) const
+    @safe pure nothrow @nogc
+    {
+        if (input.length != output.length)
+            return false;
+
+        applyMatrixIntoExact(
+            matrix,
+            input,
+            output
+        );
+
+        return true;
+    }
+}
+
+
+/**
+ * Prepares one Viénot 1999 protan/deutan transform for repeated use.
+ */
+PreparedVienot1999Dichromat!T prepareVienot1999Dichromat(T)(
+    RedGreenCvdDeficiency deficiency
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    final switch (deficiency)
+    {
+        case RedGreenCvdDeficiency.protan:
+            return PreparedVienot1999Dichromat!T(
+                castMatrix!T(vienotProtan)
+            );
+
+        case RedGreenCvdDeficiency.deutan:
+            return PreparedVienot1999Dichromat!T(
+                castMatrix!T(vienotDeutan)
+            );
+    }
+}
 
 
 /**
