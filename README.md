@@ -108,9 +108,12 @@ A compact provenance pointer remains in [RESEARCH.md](https://github.com/alex-19
 migration/evidence record lives with the research corpus.
 
 Current public mathematical operations are value-based, `@nogc`, and do not
-perform hidden allocation. Batch tone construction writes into caller-owned
-storage. The library creates no worker threads and owns no scheduler; callers
-remain responsible for parallel execution.
+perform hidden allocation. Batch tone construction and prepared CVD
+transformations write into caller-owned storage. Repeated CVD work can prepare
+the selected model/deficiency (and Machado severity) once, then reuse the
+prepared value for single colors or allocation-free batches. The library
+creates no worker threads and owns no scheduler; callers remain responsible
+for parallel execution.
 
 ## Quick start
 
