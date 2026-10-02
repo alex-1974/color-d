@@ -175,6 +175,53 @@ void acceptedDirectModuleSurface()
             0.5
         );
 
+    const preparedBrettel =
+        color.cvd.prepareBrettel1997Dichromat!double(
+            color.cvd.CvdDeficiency.protan
+        );
+
+    const preparedVienot =
+        color.cvd.prepareVienot1999Dichromat!double(
+            color.cvd.RedGreenCvdDeficiency.deutan
+        );
+
+    color.cvd.PreparedMachado2009!double preparedMachado;
+
+    const bool machadoPrepared =
+        color.cvd.tryPrepareMachado2009(
+            color.cvd.RedGreenCvdDeficiency.protan,
+            0.5,
+            preparedMachado
+        );
+
+    const preparedBrettelColor =
+        preparedBrettel.apply(linear);
+
+    const preparedVienotColor =
+        preparedVienot.apply(linear);
+
+    const preparedMachadoColor =
+        preparedMachado.apply(linear);
+
+    const color.rgb.LinearSRgbd[2] cvdInput =
+    [
+        linear,
+        backLinear
+    ];
+
+    color.rgb.LinearSRgbd[2] cvdOutput;
+
+    preparedBrettel.applyInto(
+        cvdInput,
+        cvdOutput
+    );
+
+    const bool cvdBatchOk =
+        preparedVienot.tryApplyInto(
+            cvdInput[],
+            cvdOutput[]
+        );
+
     const luminance =
         color.wcag.wcag2RelativeLuminance(
             encoded
@@ -238,6 +285,14 @@ void acceptedDirectModuleSurface()
     assert(brettel.r == brettel.r || brettel.r != brettel.r);
     assert(vienot.g == vienot.g || vienot.g != vienot.g);
     assert(machado.b == machado.b || machado.b != machado.b);
+    assert(machadoPrepared);
+    assert(preparedBrettelColor.r == preparedBrettelColor.r ||
+           preparedBrettelColor.r != preparedBrettelColor.r);
+    assert(preparedVienotColor.g == preparedVienotColor.g ||
+           preparedVienotColor.g != preparedVienotColor.g);
+    assert(preparedMachadoColor.b == preparedMachadoColor.b ||
+           preparedMachadoColor.b != preparedMachadoColor.b);
+    assert(cvdBatchOk);
     assert(luminance.valid || !luminance.valid);
     assert(contrast.valid || !contrast.valid);
     assert(difference == difference || difference != difference);

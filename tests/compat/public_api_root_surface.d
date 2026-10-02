@@ -21,6 +21,9 @@ static assert(is(Wcag2Measurement!double));
 static assert(is(typeof(HuePath.shorter) == HuePath));
 static assert(is(typeof(CvdDeficiency.protan) == CvdDeficiency));
 static assert(is(typeof(RedGreenCvdDeficiency.deutan) == RedGreenCvdDeficiency));
+static assert(is(PreparedBrettel1997Dichromat!double));
+static assert(is(PreparedVienot1999Dichromat!double));
+static assert(is(PreparedMachado2009!double));
 
 /*
  * Compile every accepted operation through the root import and use UFCS where
@@ -215,6 +218,53 @@ void acceptedRootAndUfcsSurface()
             0.5
         );
 
+    const preparedBrettel =
+        prepareBrettel1997Dichromat!double(
+            CvdDeficiency.protan
+        );
+
+    const preparedVienot =
+        prepareVienot1999Dichromat!double(
+            RedGreenCvdDeficiency.deutan
+        );
+
+    PreparedMachado2009!double preparedMachado;
+
+    const bool machadoPrepared =
+        tryPrepareMachado2009(
+            RedGreenCvdDeficiency.protan,
+            0.5,
+            preparedMachado
+        );
+
+    const preparedBrettelColor =
+        preparedBrettel.apply(linear);
+
+    const preparedVienotColor =
+        preparedVienot.apply(linear);
+
+    const preparedMachadoColor =
+        preparedMachado.apply(linear);
+
+    const LinearSRgbd[2] cvdInput =
+    [
+        linear,
+        linearBack
+    ];
+
+    LinearSRgbd[2] cvdOutput;
+
+    preparedVienot.applyInto(
+        cvdInput,
+        cvdOutput
+    );
+
+    const bool cvdRuntimeBatchOk =
+        preparedMachado.tryApplyInto(
+            cvdInput[],
+            cvdOutput[]
+        );
+
     const luminance =
         encoded.wcag2RelativeLuminance;
 
@@ -323,6 +373,14 @@ void acceptedRootAndUfcsSurface()
     assert(brettel.r == brettel.r || brettel.r != brettel.r);
     assert(vienot.g == vienot.g || vienot.g != vienot.g);
     assert(machado.b == machado.b || machado.b != machado.b);
+    assert(machadoPrepared);
+    assert(preparedBrettelColor.r == preparedBrettelColor.r ||
+           preparedBrettelColor.r != preparedBrettelColor.r);
+    assert(preparedVienotColor.g == preparedVienotColor.g ||
+           preparedVienotColor.g != preparedVienotColor.g);
+    assert(preparedMachadoColor.b == preparedMachadoColor.b ||
+           preparedMachadoColor.b != preparedMachadoColor.b);
+    assert(cvdRuntimeBatchOk);
     assert(luminance.valid || !luminance.valid);
     assert(contrast.valid || !contrast.valid);
     assert(linearLuminance.valid || !linearLuminance.valid);
@@ -451,3 +509,11 @@ static assert(!__traits(compiles,
         SRgbd(1.0, 1.0, 1.0)
     )
 ));
+
+
+static assert(!__traits(compiles,
+    prepareVienot1999Dichromat!double(
+        CvdDeficiency.tritan
+    )
+));
+

@@ -15,6 +15,11 @@
  All transforms operate on `LinearSRgb!T`. Callers starting from encoded sRGB
  must decode explicitly with `toLinear`, and may encode explicitly with
  `toSRgb` afterwards.
+
+ The scalar callables are convenient for isolated colors. Repeated work can
+ prepare the selected model once and then reuse the resulting value through
+ `apply`, fixed-cardinality `applyInto`, or runtime-sized `tryApplyInto`
+ without allocation.
 +/
 module color.cvd;
 
@@ -90,7 +95,7 @@ private struct Matrix3(T)
 
 
 private LinearSRgb!T applyMatrix(T)(
-    Matrix3!T matrix,
+    const Matrix3!T matrix,
     LinearSRgb!T color
 )
 @safe pure nothrow @nogc
@@ -108,6 +113,98 @@ private LinearSRgb!T applyMatrix(T)(
         matrix.m21 * color.g +
         matrix.m22 * color.b
     );
+}
+
+
+pragma(inline, true)
+private void writeMatrix(T)(
+    ref LinearSRgb!T output,
+    const ref Matrix3!T matrix,
+    T r,
+    T g,
+    T b
+)
+@safe pure nothrow @nogc
+{
+    output.r =
+        matrix.m00 * r +
+        matrix.m01 * g +
+        matrix.m02 * b;
+
+    output.g =
+        matrix.m10 * r +
+        matrix.m11 * g +
+        matrix.m12 * b;
+
+    output.b =
+        matrix.m20 * r +
+        matrix.m21 * g +
+        matrix.m22 * b;
+}
+
+
+pragma(inline, true)
+private void applyMatrixIntoExact(T)(
+    const ref Matrix3!T matrix,
+    const(LinearSRgb!T)[] input,
+    LinearSRgb!T[] output
+)
+@safe pure nothrow @nogc
+{
+    assert(input.length == output.length);
+
+    foreach (i, ref color; input)
+    {
+        const T r = color.r;
+        const T g = color.g;
+        const T b = color.b;
+
+        writeMatrix(
+            output[i],
+            matrix,
+            r,
+            g,
+            b
+        );
+    }
+}
+
+
+pragma(inline, true)
+private void applyBrettelIntoExact(T)(
+    const ref Matrix3!T first,
+    const ref Matrix3!T second,
+    T nr,
+    T ng,
+    T nb,
+    const(LinearSRgb!T)[] input,
+    LinearSRgb!T[] output
+)
+@safe pure nothrow @nogc
+{
+    assert(input.length == output.length);
+
+    foreach (i, ref color; input)
+    {
+        const T r = color.r;
+        const T g = color.g;
+        const T b = color.b;
+
+        const matrix =
+            r * nr +
+            g * ng +
+            b * nb >= cast(T)0
+                ? first
+                : second;
+
+        writeMatrix(
+            output[i],
+            matrix,
+            r,
+            g,
+            b
+        );
+    }
 }
 
 
@@ -209,6 +306,262 @@ private enum Matrix3!double vienotDeutan =
 
 
 /**
+ * Prepared Brettel 1997 full-dichromat transform for repeated application.
+ *
+ * The value owns only the two typed projection matrices and separation-plane
+ * coefficients required by the selected deficiency. It allocates nothing and
+ * carries no image, storage, threading, or gamut policy.
+ *
+ * Obtain a valid value with `prepareBrettel1997Dichromat`. `.init` is a
+ * detectably invalid transform whose floating-point coefficients are NaN;
+ * applying it produces NaN components rather than a plausible simulation.
+ */
+struct PreparedBrettel1997Dichromat(T)
+if (is(T == float) || is(T == double))
+{
+    private Matrix3!T first;
+    private Matrix3!T second;
+    private T nr;
+    private T ng;
+    private T nb;
+
+    /**
+     * Applies the prepared transform to one linear-light sRGB color.
+     */
+    LinearSRgb!T apply(
+        LinearSRgb!T color
+    ) const
+    @safe pure nothrow @nogc
+    {
+        const matrix =
+            color.r * nr +
+            color.g * ng +
+            color.b * nb >= cast(T)0
+                ? first
+                : second;
+
+        return applyMatrix(
+            matrix,
+            color
+        );
+    }
+
+    /**
+     * Applies the prepared transform to fixed-cardinality caller-owned storage.
+     *
+     * Exact in-place use is supported. Distinct source and destination arrays
+     * are also supported.
+     *
+     * Allocation:
+     *     Does not allocate.
+     *
+     * Complexity:
+     *     O(N).
+     */
+    void applyInto(size_t N)(
+        ref const LinearSRgb!T[N] input,
+        ref LinearSRgb!T[N] output
+    ) const
+    @safe pure nothrow @nogc
+    {
+        applyBrettelIntoExact(
+            first,
+            second,
+            nr,
+            ng,
+            nb,
+            input[],
+            output[]
+        );
+    }
+
+    /**
+     * Applies the prepared transform to runtime-sized caller-owned storage.
+     *
+     * Returns `false` and performs no writes when the input/output lengths do
+     * not match. An empty pair is a successful empty operation. Exact in-place
+     * use is supported.
+     *
+     * Allocation:
+     *     Does not allocate.
+     *
+     * Complexity:
+     *     O(N) on success and O(1) on a length mismatch.
+     */
+    bool tryApplyInto(
+        const(LinearSRgb!T)[] input,
+        LinearSRgb!T[] output
+    ) const
+    @safe pure nothrow @nogc
+    {
+        if (input.length != output.length)
+            return false;
+
+        applyBrettelIntoExact(
+            first,
+            second,
+            nr,
+            ng,
+            nb,
+            input,
+            output
+        );
+
+        return true;
+    }
+}
+
+
+/**
+ * Prepares one Brettel 1997 full-dichromat transform for repeated use.
+ */
+PreparedBrettel1997Dichromat!T prepareBrettel1997Dichromat(T)(
+    CvdDeficiency deficiency
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    final switch (deficiency)
+    {
+        case CvdDeficiency.protan:
+            return PreparedBrettel1997Dichromat!T(
+                castMatrix!T(brettelProtan1),
+                castMatrix!T(brettelProtan2),
+                cast(T)0.00048,
+                cast(T)0.00393,
+                cast(T)-0.00441
+            );
+
+        case CvdDeficiency.deutan:
+            return PreparedBrettel1997Dichromat!T(
+                castMatrix!T(brettelDeutan1),
+                castMatrix!T(brettelDeutan2),
+                cast(T)-0.00281,
+                cast(T)-0.00611,
+                cast(T)0.00892
+            );
+
+        case CvdDeficiency.tritan:
+            return PreparedBrettel1997Dichromat!T(
+                castMatrix!T(brettelTritan1),
+                castMatrix!T(brettelTritan2),
+                cast(T)0.03901,
+                cast(T)-0.02788,
+                cast(T)-0.01113
+            );
+    }
+}
+
+
+/**
+ * Prepared Viénot 1999 protan/deutan transform for repeated application.
+ *
+ * The selected 3x3 matrix is converted to the consumer scalar type once and
+ * then reused for every color. No clipping, gamut mapping, or allocation is
+ * introduced.
+ *
+ * Obtain a valid value with `prepareVienot1999Dichromat`. `.init` is a
+ * detectably invalid transform whose coefficients are NaN; applying it
+ * produces NaN components.
+ */
+struct PreparedVienot1999Dichromat(T)
+if (is(T == float) || is(T == double))
+{
+    private Matrix3!T matrix;
+
+    /// Applies the prepared transform to one linear-light sRGB color.
+    LinearSRgb!T apply(
+        LinearSRgb!T color
+    ) const
+    @safe pure nothrow @nogc
+    {
+        return applyMatrix(
+            matrix,
+            color
+        );
+    }
+
+    /**
+     * Applies the prepared transform to fixed-cardinality caller-owned storage.
+     *
+     * Exact in-place use is supported.
+     *
+     * Allocation:
+     *     Does not allocate.
+     *
+     * Complexity:
+     *     O(N).
+     */
+    void applyInto(size_t N)(
+        ref const LinearSRgb!T[N] input,
+        ref LinearSRgb!T[N] output
+    ) const
+    @safe pure nothrow @nogc
+    {
+        applyMatrixIntoExact(
+            matrix,
+            input[],
+            output[]
+        );
+    }
+
+    /**
+     * Applies the prepared transform to runtime-sized caller-owned storage.
+     *
+     * Returns `false` and performs no writes on a length mismatch. Exact
+     * in-place use is supported.
+     *
+     * Allocation:
+     *     Does not allocate.
+     *
+     * Complexity:
+     *     O(N) on success and O(1) on a length mismatch.
+     */
+    bool tryApplyInto(
+        const(LinearSRgb!T)[] input,
+        LinearSRgb!T[] output
+    ) const
+    @safe pure nothrow @nogc
+    {
+        if (input.length != output.length)
+            return false;
+
+        applyMatrixIntoExact(
+            matrix,
+            input,
+            output
+        );
+
+        return true;
+    }
+}
+
+
+/**
+ * Prepares one Viénot 1999 protan/deutan transform for repeated use.
+ */
+PreparedVienot1999Dichromat!T prepareVienot1999Dichromat(T)(
+    RedGreenCvdDeficiency deficiency
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    final switch (deficiency)
+    {
+        case RedGreenCvdDeficiency.protan:
+            return PreparedVienot1999Dichromat!T(
+                castMatrix!T(vienotProtan)
+            );
+
+        case RedGreenCvdDeficiency.deutan:
+            return PreparedVienot1999Dichromat!T(
+                castMatrix!T(vienotDeutan)
+            );
+    }
+}
+
+
+/**
  * Applies the Brettel, Viénot & Mollon (1997) full-dichromat transform.
  *
  * The operation uses the independently validated two-plane linear-sRGB
@@ -225,6 +578,10 @@ private enum Matrix3!double vienotDeutan =
  * Returns:
  *     The transformed linear-light sRGB value.
  *
+ * Repeated_Use:
+ *     Prefer `prepareBrettel1997Dichromat` when applying the same deficiency
+ *     to multiple colors.
+ *
  * Standards:
  *     Brettel, Viénot & Mollon (1997), using the validated modern-sRGB
  *     precomputed projection matrices described by the project research.
@@ -235,42 +592,11 @@ LinearSRgb!T brettel1997Dichromat(T)(
 )
 @safe pure nothrow @nogc
 {
-    Matrix3!double matrix;
-
-    final switch (deficiency)
-    {
-        case CvdDeficiency.protan:
-            matrix =
-                color.r * cast(T)0.00048 +
-                color.g * cast(T)0.00393 -
-                color.b * cast(T)0.00441 >= cast(T)0
-                    ? brettelProtan1
-                    : brettelProtan2;
-            break;
-
-        case CvdDeficiency.deutan:
-            matrix =
-                -color.r * cast(T)0.00281 -
-                color.g * cast(T)0.00611 +
-                color.b * cast(T)0.00892 >= cast(T)0
-                    ? brettelDeutan1
-                    : brettelDeutan2;
-            break;
-
-        case CvdDeficiency.tritan:
-            matrix =
-                color.r * cast(T)0.03901 -
-                color.g * cast(T)0.02788 -
-                color.b * cast(T)0.01113 >= cast(T)0
-                    ? brettelTritan1
-                    : brettelTritan2;
-            break;
-    }
-
-    return applyMatrix(
-        castMatrix!T(matrix),
-        color
-    );
+    return
+        prepareBrettel1997Dichromat!T(
+            deficiency
+        )
+        .apply(color);
 }
 
 ///
@@ -315,6 +641,10 @@ LinearSRgb!T brettel1997Dichromat(T)(
  * Returns:
  *     The transformed linear-light sRGB value.
  *
+ * Repeated_Use:
+ *     Prefer `prepareVienot1999Dichromat` when applying the same deficiency
+ *     to multiple colors.
+ *
  * Standards:
  *     Viénot, Brettel & Mollon (1999), using the independently validated
  *     modern-sRGB matrices preserved by the project research.
@@ -325,20 +655,11 @@ LinearSRgb!T vienot1999Dichromat(T)(
 )
 @safe pure nothrow @nogc
 {
-    final switch (deficiency)
-    {
-        case RedGreenCvdDeficiency.protan:
-            return applyMatrix(
-                castMatrix!T(vienotProtan),
-                color
-            );
-
-        case RedGreenCvdDeficiency.deutan:
-            return applyMatrix(
-                castMatrix!T(vienotDeutan),
-                color
-            );
-    }
+    return
+        prepareVienot1999Dichromat!T(
+            deficiency
+        )
+        .apply(color);
 }
 
 ///
@@ -437,6 +758,141 @@ private Matrix3!T matrixAtSeverity(T, alias table)(T severity)
 
 
 /**
+ * Prepared Machado 2009 protan/deutan transform for repeated application.
+ *
+ * A valid value contains one severity-interpolated 3x3 matrix in the consumer
+ * scalar type. Use `tryPrepareMachado2009` to construct it from runtime
+ * severity input.
+ *
+ * `.init` is the documented invalid state. Its matrix coefficients are NaN,
+ * so applying it produces NaN components rather than a plausible transformed
+ * color.
+ */
+struct PreparedMachado2009(T)
+if (is(T == float) || is(T == double))
+{
+    private Matrix3!T matrix;
+
+    /// Applies the prepared transform to one linear-light sRGB color.
+    LinearSRgb!T apply(
+        LinearSRgb!T color
+    ) const
+    @safe pure nothrow @nogc
+    {
+        return applyMatrix(
+            matrix,
+            color
+        );
+    }
+
+    /**
+     * Applies the prepared transform to fixed-cardinality caller-owned storage.
+     *
+     * Exact in-place use is supported.
+     *
+     * Allocation:
+     *     Does not allocate.
+     *
+     * Complexity:
+     *     O(N).
+     */
+    void applyInto(size_t N)(
+        ref const LinearSRgb!T[N] input,
+        ref LinearSRgb!T[N] output
+    ) const
+    @safe pure nothrow @nogc
+    {
+        applyMatrixIntoExact(
+            matrix,
+            input[],
+            output[]
+        );
+    }
+
+    /**
+     * Applies the prepared transform to runtime-sized caller-owned storage.
+     *
+     * Returns `false` and performs no writes on a length mismatch. Exact
+     * in-place use is supported.
+     *
+     * Allocation:
+     *     Does not allocate.
+     *
+     * Complexity:
+     *     O(N) on success and O(1) on a length mismatch.
+     */
+    bool tryApplyInto(
+        const(LinearSRgb!T)[] input,
+        LinearSRgb!T[] output
+    ) const
+    @safe pure nothrow @nogc
+    {
+        if (input.length != output.length)
+            return false;
+
+        applyMatrixIntoExact(
+            matrix,
+            input,
+            output
+        );
+
+        return true;
+    }
+}
+
+
+/**
+ * Prepares a Machado 2009 protan/deutan transform for repeated use.
+ *
+ * Severity uses the Machado model's own [0, 1] scale. On success, `prepared`
+ * receives the interpolated matrix and the function returns `true`.
+ *
+ * Invalid severity, including NaN and infinity, returns `false`. Because the
+ * destination is an `out` parameter, it is reset to
+ * `PreparedMachado2009!T.init` on entry and therefore remains in the
+ * documented invalid state after failure.
+ */
+bool tryPrepareMachado2009(T)(
+    RedGreenCvdDeficiency deficiency,
+    T severity,
+    out PreparedMachado2009!T prepared
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    if (!validMachadoSeverity(severity))
+        return false;
+
+    final switch (deficiency)
+    {
+        case RedGreenCvdDeficiency.protan:
+            prepared =
+                PreparedMachado2009!T(
+                    matrixAtSeverity!(
+                        T,
+                        machadoProtanTable
+                    )(
+                        severity
+                    )
+                );
+            return true;
+
+        case RedGreenCvdDeficiency.deutan:
+            prepared =
+                PreparedMachado2009!T(
+                    matrixAtSeverity!(
+                        T,
+                        machadoDeutanTable
+                    )(
+                        severity
+                    )
+                );
+            return true;
+    }
+}
+
+
+/**
  * Applies the Machado, Oliveira & Fernandes (2009) severity-dependent CVD
  * model for protan or deutan deficiency.
  *
@@ -466,6 +922,10 @@ private Matrix3!T matrixAtSeverity(T, alias table)(T severity)
  *     The transformed linear-light sRGB value, or the natural invalid
  *     `LinearSRgb!T.init` value for invalid severity.
  *
+ * Repeated_Use:
+ *     Prefer `tryPrepareMachado2009` when applying one deficiency/severity
+ *     pair to multiple colors.
+ *
  * Standards:
  *     Machado, Oliveira & Fernandes (2009), using the cross-source-verified
  *     eleven-point reference matrix tables.
@@ -477,27 +937,18 @@ LinearSRgb!T machado2009(T)(
 )
 @safe pure nothrow @nogc
 {
-    if (!validMachadoSeverity(severity))
-        return LinearSRgb!T.init;
+    PreparedMachado2009!T prepared;
 
-    final switch (deficiency)
+    if (!tryPrepareMachado2009(
+        deficiency,
+        severity,
+        prepared
+    ))
     {
-        case RedGreenCvdDeficiency.protan:
-            return applyMatrix(
-                matrixAtSeverity!(T, machadoProtanTable)(
-                    severity
-                ),
-                color
-            );
-
-        case RedGreenCvdDeficiency.deutan:
-            return applyMatrix(
-                matrixAtSeverity!(T, machadoDeutanTable)(
-                    severity
-                ),
-                color
-            );
+        return LinearSRgb!T.init;
     }
+
+    return prepared.apply(color);
 }
 
 ///
@@ -593,6 +1044,303 @@ version (unittest)
         assert(close(actual.g, expected.g, tolerance));
         assert(close(actual.b, expected.b, tolerance));
     }
+
+
+    private bool equivalentComponent(T)(
+        T actual,
+        T expected
+    )
+    @safe pure nothrow @nogc
+    {
+        if (isNaN(expected))
+            return isNaN(actual);
+
+        if (isInfinity(expected))
+            return actual == expected;
+
+        if (isNaN(actual) || isInfinity(actual))
+            return false;
+
+        const T tolerance =
+            is(T == float)
+                ? cast(T)2e-6
+                : cast(T)1e-12;
+
+        return fabs(actual - expected) <= tolerance;
+    }
+
+
+    private bool equivalentColor(T)(
+        LinearSRgb!T actual,
+        LinearSRgb!T expected
+    )
+    @safe pure nothrow @nogc
+    {
+        return
+            equivalentComponent(actual.r, expected.r) &&
+            equivalentComponent(actual.g, expected.g) &&
+            equivalentComponent(actual.b, expected.b);
+    }
+
+
+    private bool preparedBatchProbe(T)()
+    @safe pure nothrow @nogc
+    {
+        LinearSRgb!T[4] input =
+        [
+            LinearSRgb!T(
+                cast(T)0.2,
+                cast(T)0.4,
+                cast(T)0.7
+            ),
+            LinearSRgb!T(
+                cast(T)-0.25,
+                cast(T)1.25,
+                cast(T)2.0
+            ),
+            LinearSRgb!T(
+                T.nan,
+                cast(T)0.25,
+                cast(T)0.75
+            ),
+            LinearSRgb!T(
+                T.infinity,
+                cast(T)0.25,
+                -T.infinity
+            )
+        ];
+
+        foreach (index; 0u .. 3u)
+        {
+            const deficiency =
+                cast(CvdDeficiency)index;
+
+            const prepared =
+                prepareBrettel1997Dichromat!T(
+                    deficiency
+                );
+
+            LinearSRgb!T[4] output;
+
+            prepared.applyInto(
+                input,
+                output
+            );
+
+            foreach (i; 0 .. input.length)
+            {
+                if (!equivalentColor(
+                    output[i],
+                    input[i].brettel1997Dichromat(
+                        deficiency
+                    )
+                ))
+                {
+                    return false;
+                }
+            }
+
+            auto inPlace = input;
+
+            prepared.applyInto(
+                inPlace,
+                inPlace
+            );
+
+            if (inPlace != output)
+                return false;
+
+            auto runtimeInPlace = input;
+
+            if (!prepared.tryApplyInto(
+                runtimeInPlace[],
+                runtimeInPlace[]
+            ))
+            {
+                return false;
+            }
+
+            if (runtimeInPlace != output)
+                return false;
+        }
+
+        foreach (index; 0u .. 2u)
+        {
+            const deficiency =
+                cast(RedGreenCvdDeficiency)index;
+
+            const prepared =
+                prepareVienot1999Dichromat!T(
+                    deficiency
+                );
+
+            LinearSRgb!T[4] output;
+
+            prepared.applyInto(
+                input,
+                output
+            );
+
+            foreach (i; 0 .. input.length)
+            {
+                if (!equivalentColor(
+                    output[i],
+                    input[i].vienot1999Dichromat(
+                        deficiency
+                    )
+                ))
+                {
+                    return false;
+                }
+            }
+
+            auto inPlace = input;
+
+            prepared.applyInto(
+                inPlace,
+                inPlace
+            );
+
+            if (inPlace != output)
+                return false;
+
+            PreparedMachado2009!T machado;
+
+            if (!tryPrepareMachado2009(
+                deficiency,
+                cast(T)0.65,
+                machado
+            ))
+            {
+                return false;
+            }
+
+            LinearSRgb!T[4] machadoOutput;
+
+            machado.applyInto(
+                input,
+                machadoOutput
+            );
+
+            foreach (i; 0 .. input.length)
+            {
+                if (!equivalentColor(
+                    machadoOutput[i],
+                    input[i].machado2009(
+                        deficiency,
+                        cast(T)0.65
+                    )
+                ))
+                {
+                    return false;
+                }
+            }
+
+            auto machadoInPlace = input;
+
+            if (!machado.tryApplyInto(
+                machadoInPlace[],
+                machadoInPlace[]
+            ))
+            {
+                return false;
+            }
+
+            if (machadoInPlace != machadoOutput)
+                return false;
+        }
+
+        const sentinel =
+            LinearSRgb!T(
+                cast(T)0.11,
+                cast(T)0.22,
+                cast(T)0.33
+            );
+
+        LinearSRgb!T[2] mismatch =
+        [
+            sentinel,
+            sentinel
+        ];
+
+        const vienot =
+            prepareVienot1999Dichromat!T(
+                RedGreenCvdDeficiency.protan
+            );
+
+        if (vienot.tryApplyInto(
+            input[0 .. 1],
+            mismatch[]
+        ))
+        {
+            return false;
+        }
+
+        if (
+            mismatch[0] != sentinel ||
+            mismatch[1] != sentinel
+        )
+        {
+            return false;
+        }
+
+        PreparedMachado2009!T invalidPrepared;
+
+        if (tryPrepareMachado2009(
+            RedGreenCvdDeficiency.protan,
+            cast(T)-0.01,
+            invalidPrepared
+        ))
+        {
+            return false;
+        }
+
+        const invalidColor =
+            invalidPrepared.apply(input[0]);
+
+        if (
+            !isNaN(invalidColor.r) ||
+            !isNaN(invalidColor.g) ||
+            !isNaN(invalidColor.b)
+        )
+        {
+            return false;
+        }
+
+        const invalidVienot =
+            PreparedVienot1999Dichromat!T.init
+            .apply(input[0]);
+
+        const invalidBrettel =
+            PreparedBrettel1997Dichromat!T.init
+            .apply(input[0]);
+
+        if (
+            !isNaN(invalidVienot.r) ||
+            !isNaN(invalidBrettel.r)
+        )
+        {
+            return false;
+        }
+
+        LinearSRgb!T[0] emptyInput;
+        LinearSRgb!T[0] emptyOutput;
+
+        return vienot.tryApplyInto(
+            emptyInput[],
+            emptyOutput[]
+        );
+    }
+
+    @safe pure nothrow @nogc unittest
+    {
+        static assert(preparedBatchProbe!float());
+        static assert(preparedBatchProbe!double());
+
+        assert(preparedBatchProbe!float());
+        assert(preparedBatchProbe!double());
+    }
+
 
     @safe pure nothrow @nogc unittest
     {

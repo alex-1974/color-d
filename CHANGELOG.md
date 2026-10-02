@@ -17,6 +17,10 @@ The project is pre-1.0. Changes planned for the next release accumulate under
   1997 dichromacy, Viénot 1999 protan/deutan simulation, and Machado 2009
   protan/deutan severity, without accessibility classification or implicit
   gamut policy.
+- prepared CVD transforms for repeated work, with allocation-free
+  fixed-cardinality `applyInto` and runtime-sized `tryApplyInto` batch forms;
+  Machado severity interpolation can now be performed once per batch through
+  the explicit `tryPrepareMachado2009` success channel.
 
 ### Changed
 
