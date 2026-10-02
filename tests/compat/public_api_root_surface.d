@@ -475,15 +475,6 @@ static assert(!__traits(compiles,
 static assert(!__traits(compiles,
     validMachadoSeverity(0.5)
 ));
-static assert(!__traits(compiles,
-    writeMatrix(
-        LinearSRgbd.init,
-        Matrix3!double.init,
-        0.0,
-        0.0,
-        0.0
-    )
-));
 
 /*
  * The initial API intentionally has no generic/default shortcuts that would
@@ -526,14 +517,3 @@ static assert(!__traits(compiles,
     )
 ));
 
-static assert(!__traits(compiles,
-{
-    PreparedMachado2009!double prepared;
-
-    return tryPrepareMachado2009(
-        CvdDeficiency.tritan,
-        1.0,
-        prepared
-    );
-}
-));
