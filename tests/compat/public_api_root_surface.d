@@ -19,6 +19,8 @@ static assert(is(Alpha!SRgbd));
 static assert(is(Premultiplied!LinearSRgbd));
 static assert(is(Wcag2Measurement!double));
 static assert(is(typeof(HuePath.shorter) == HuePath));
+static assert(is(typeof(CvdDeficiency.protan) == CvdDeficiency));
+static assert(is(typeof(RedGreenCvdDeficiency.deutan) == RedGreenCvdDeficiency));
 
 /*
  * Compile every accepted operation through the root import and use UFCS where
@@ -197,6 +199,22 @@ void acceptedRootAndUfcsSurface()
             HuePath.shorter
         );
 
+    const brettel =
+        linear.brettel1997Dichromat(
+            CvdDeficiency.protan
+        );
+
+    const vienot =
+        linear.vienot1999Dichromat(
+            RedGreenCvdDeficiency.deutan
+        );
+
+    const machado =
+        linear.machado2009(
+            RedGreenCvdDeficiency.protan,
+            0.5
+        );
+
     const luminance =
         encoded.wcag2RelativeLuminance;
 
@@ -302,6 +320,9 @@ void acceptedRootAndUfcsSurface()
            alphaLabInterpolated.alpha != alphaLabInterpolated.alpha);
     assert(alphaLchInterpolated.alpha == alphaLchInterpolated.alpha ||
            alphaLchInterpolated.alpha != alphaLchInterpolated.alpha);
+    assert(brettel.r == brettel.r || brettel.r != brettel.r);
+    assert(vienot.g == vienot.g || vienot.g != vienot.g);
+    assert(machado.b == machado.b || machado.b != machado.b);
     assert(luminance.valid || !luminance.valid);
     assert(contrast.valid || !contrast.valid);
     assert(linearLuminance.valid || !linearLuminance.valid);
@@ -389,6 +410,12 @@ static assert(!__traits(compiles,
 ));
 static assert(!__traits(compiles,
     &tonesAtLightnessAndChromaIntoExact!double
+));
+static assert(!__traits(compiles,
+    Matrix3!double.init
+));
+static assert(!__traits(compiles,
+    validMachadoSeverity(0.5)
 ));
 
 /*
