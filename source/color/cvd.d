@@ -15,6 +15,11 @@
  All transforms operate on `LinearSRgb!T`. Callers starting from encoded sRGB
  must decode explicitly with `toLinear`, and may encode explicitly with
  `toSRgb` afterwards.
+
+ The scalar callables are convenient for isolated colors. Repeated work can
+ prepare the selected model once and then reuse the resulting value through
+ `apply`, fixed-cardinality `applyInto`, or runtime-sized `tryApplyInto`
+ without allocation.
 +/
 module color.cvd;
 
@@ -573,6 +578,10 @@ if (is(T == float) || is(T == double))
  * Returns:
  *     The transformed linear-light sRGB value.
  *
+ * Repeated_Use:
+ *     Prefer `prepareBrettel1997Dichromat` when applying the same deficiency
+ *     to multiple colors.
+ *
  * Standards:
  *     Brettel, Viénot & Mollon (1997), using the validated modern-sRGB
  *     precomputed projection matrices described by the project research.
@@ -631,6 +640,10 @@ LinearSRgb!T brettel1997Dichromat(T)(
  *
  * Returns:
  *     The transformed linear-light sRGB value.
+ *
+ * Repeated_Use:
+ *     Prefer `prepareVienot1999Dichromat` when applying the same deficiency
+ *     to multiple colors.
  *
  * Standards:
  *     Viénot, Brettel & Mollon (1999), using the independently validated
@@ -908,6 +921,10 @@ if (is(T == float) || is(T == double))
  * Returns:
  *     The transformed linear-light sRGB value, or the natural invalid
  *     `LinearSRgb!T.init` value for invalid severity.
+ *
+ * Repeated_Use:
+ *     Prefer `tryPrepareMachado2009` when applying one deficiency/severity
+ *     pair to multiple colors.
  *
  * Standards:
  *     Machado, Oliveira & Fernandes (2009), using the cross-source-verified
