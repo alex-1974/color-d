@@ -164,7 +164,8 @@
      MIT License. See the repository LICENSE file.
 
  See_Also:
-     color.storage, color.rgb, color.xyz, color.oklab, color.oklch, color.alpha,
+     color.storage, color.rgb, color.xyz, color.cielab, color.oklab,
+     color.oklch, color.alpha,
      color.composite, color.interpolate, color.gamut, color.wcag,
      color.difference, color.tone, color.cvd,
      https://github.com/alex-1974/color-d
