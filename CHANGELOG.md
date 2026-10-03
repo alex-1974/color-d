@@ -43,7 +43,10 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 - optimized Machado 2009 scalar/preparation codegen by keeping runtime
   reference tables in the consumer scalar type; CTFE, public API, invalid
   severity behavior, interpolation arithmetic, and prepared-batch semantics
-  are unchanged.
+  are unchanged;
+- completed source/Ddoc hardening for the new v0.2 public callables and fixed
+  DDox module-section rendering found during the rendered release-candidate
+  review, without changing the frozen public API.
 
 ## [0.1.1] - 2026-09-29
 
