@@ -977,6 +977,27 @@ private Matrix3!T machadoDeutanAtSeverity(T)(T severity)
 }
 
 
+private Matrix3!T machadoMatrixAtSeverity(T)(
+    RedGreenCvdDeficiency deficiency,
+    T severity
+)
+@safe pure nothrow @nogc
+{
+    final switch (deficiency)
+    {
+        case RedGreenCvdDeficiency.protan:
+            return machadoProtanAtSeverity!T(
+                severity
+            );
+
+        case RedGreenCvdDeficiency.deutan:
+            return machadoDeutanAtSeverity!T(
+                severity
+            );
+    }
+}
+
+
 /**
  * Prepared Machado 2009 protan/deutan transform for repeated application.
  *
@@ -1109,26 +1130,15 @@ if (is(T == float) || is(T == double))
     if (!validMachadoSeverity(severity))
         return false;
 
-    final switch (deficiency)
-    {
-        case RedGreenCvdDeficiency.protan:
-            prepared =
-                PreparedMachado2009!T(
-                    machadoProtanAtSeverity!T(
-                        severity
-                    )
-                );
-            return true;
+    prepared =
+        PreparedMachado2009!T(
+            machadoMatrixAtSeverity!T(
+                deficiency,
+                severity
+            )
+        );
 
-        case RedGreenCvdDeficiency.deutan:
-            prepared =
-                PreparedMachado2009!T(
-                    machadoDeutanAtSeverity!T(
-                        severity
-                    )
-                );
-            return true;
-    }
+    return true;
 }
 
 
@@ -1177,18 +1187,16 @@ LinearSRgb!T machado2009(T)(
 )
 @safe pure nothrow @nogc
 {
-    PreparedMachado2009!T prepared;
-
-    if (!tryPrepareMachado2009(
-        deficiency,
-        severity,
-        prepared
-    ))
-    {
+    if (!validMachadoSeverity(severity))
         return LinearSRgb!T.init;
-    }
 
-    return prepared.apply(color);
+    return applyMatrix(
+        machadoMatrixAtSeverity!T(
+            deficiency,
+            severity
+        ),
+        color
+    );
 }
 
 ///
