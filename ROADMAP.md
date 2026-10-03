@@ -10,6 +10,16 @@ The next planned feature release is:
 v0.2.0 — Practical Color Storage and Interop
 ```
 
+**Status: FEATURE FROZEN — release stabilization in progress.**
+
+The v0.2.0 feature baseline is
+`3bcc5076ff59827583727da8a751722d2dbb45a9`. The `release/0.2` branch was
+cut from that exact `develop` commit after real-consumer validation completed.
+No new feature family enters the release line after this checkpoint; release
+audit corrections, regression tests, documentation, CI, packaging, and
+evidence-driven correctness/performance fixes remain permitted until API
+freeze.
+
 v0.2.0 turns the existing floating-point color-math core into a more practical
 boundary for GUI, imagery, rendering, file, and configuration consumers. Its
 committed scope is deliberately small:
@@ -413,24 +423,27 @@ The completed release gate covered:
 Public Ddoc, tests and executable examples are not deferred to this phase;
 they evolve with the production APIs that introduce them.
 
-## Post-v0.1 candidate backlog
+## Candidate backlog after v0.2
 
-The following are **deferred candidates**, not committed roadmap items and not
-part of the v0.1.0 release scope.
+The v0.1 closeout backlog originally included packed sRGB storage, CIELAB /
+CIEDE2000, and color-vision-deficiency tooling. Concrete Dunia/editor and
+interop requirements subsequently justified those capabilities, and their
+generic mathematical/storage subsets were promoted for v0.2.0.
 
-They may be reconsidered only when concrete consumer requirements justify
-their cost and library-boundary impact. Their order below is not a priority
-ranking, and inclusion in this list does not imply a planned release version.
+The following remain **deferred candidates**, not committed roadmap items.
+They require their own consumer evidence and boundary validation:
 
-- `SRgb8` / `SRgba8`
-- HSL / HSV
-- Display-P3
-- Rec.2020
-- CIELAB / LCh
-- CIEDE2000
-- Okhsl / Okhsv
-- CSS parsing/serialization
-- scientific and categorical palettes
-- color-vision-deficiency tooling
-- HDR
-- ICC / CMYK
+- HSL / HSV;
+- Display-P3;
+- Rec.2020;
+- Okhsl / Okhsv;
+- CSS parsing/serialization beyond the v0.2 full-byte hex boundary;
+- scientific and categorical palettes;
+- semantic Theme/Palette abstractions;
+- APCA and other emerging accessibility measurements;
+- HDR;
+- ICC / CMYK;
+- GPU shader helpers.
+
+Their order is not a priority ranking and inclusion does not imply a planned
+release version.
