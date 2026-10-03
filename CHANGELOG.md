@@ -7,6 +7,8 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 
 ## Unreleased
 
+## [0.2.0] - 2026-10-03
+
 ### Added
 
 - `SRgb8`, an explicit three-byte encoded-sRGB storage value with stable
@@ -117,6 +119,7 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 - CSS parsing/serialization, named colors, HDR, ICC/CMYK, and policy-heavy
   Palette/Theme abstractions.
 
-[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.1.1...develop
+[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.2.0...develop
+[0.2.0]: https://github.com/alex-1974/color-d/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/alex-1974/color-d/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/alex-1974/color-d/releases/tag/v0.1.0
