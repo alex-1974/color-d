@@ -7,6 +7,7 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 
 ## Unreleased
 
+- added explicit checked conversion between `SRgb8`/`SRgba8` storage and normalized floating-point encoded sRGB, with byte/255 normalization, deterministic nearest-byte half-up quantization, and no implicit clipping.
 - added `SRgba8`, an explicit four-byte encoded-sRGB straight-alpha storage value with stable R/G/B/A layout and no implicit computational conversion.
 - added `SRgb8`, an explicit three-byte encoded-sRGB storage value with stable R/G/B byte layout and no implicit computational conversion.
 ### Added
