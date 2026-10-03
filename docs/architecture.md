@@ -44,6 +44,7 @@ color.gamut
 color.wcag
 color.difference
 color.tone
+color.cvd
 ```
 
 Technical importability of an implementation helper does not make it public
