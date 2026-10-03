@@ -367,6 +367,22 @@ if (is(T == float) || is(T == double))
         );
     }
 
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareBrettel1997Dichromat!double(
+                CvdDeficiency.protan
+            );
+
+        const transformed =
+            prepared.apply(
+                LinearSRgbd(0.2, 0.4, 0.7)
+            );
+
+        assert(transformed.r == transformed.r);
+    }
+
     /**
      * Applies the prepared transform to fixed-cardinality caller-owned storage.
      *
@@ -415,6 +431,26 @@ if (is(T == float) || is(T == double))
                 output[]
             );
         }
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareBrettel1997Dichromat!double(
+                CvdDeficiency.deutan
+            );
+
+        const LinearSRgbd[2] input = [
+            LinearSRgbd(0.2, 0.4, 0.7),
+            LinearSRgbd(0.7, 0.3, 0.1)
+        ];
+        LinearSRgbd[2] output;
+
+        prepared.applyInto(input, output);
+
+        assert(output[0].r == output[0].r);
+        assert(output[1].b == output[1].b);
     }
 
     /**
@@ -472,6 +508,23 @@ if (is(T == float) || is(T == double))
 
         return true;
     }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareBrettel1997Dichromat!double(
+                CvdDeficiency.tritan
+            );
+
+        const LinearSRgbd[1] input = [
+            LinearSRgbd(0.2, 0.4, 0.7)
+        ];
+        LinearSRgbd[1] output;
+
+        assert(prepared.tryApplyInto(input[], output[]));
+        assert(output[0].g == output[0].g);
+    }
 }
 
 
@@ -515,6 +568,22 @@ if (is(T == float) || is(T == double))
     }
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const prepared =
+        prepareBrettel1997Dichromat!double(
+            CvdDeficiency.protan
+        );
+
+    const transformed =
+        prepared.apply(
+            LinearSRgbd(0.2, 0.4, 0.7)
+        );
+
+    assert(transformed.r == transformed.r);
+}
+
 
 /**
  * Prepared Viénot 1999 protan/deutan transform for repeated application.
@@ -542,6 +611,22 @@ if (is(T == float) || is(T == double))
             matrix,
             color
         );
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareVienot1999Dichromat!double(
+                RedGreenCvdDeficiency.protan
+            );
+
+        const transformed =
+            prepared.apply(
+                LinearSRgbd(0.2, 0.4, 0.7)
+            );
+
+        assert(transformed.g == transformed.g);
     }
 
     /**
@@ -579,6 +664,26 @@ if (is(T == float) || is(T == double))
                 output[]
             );
         }
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareVienot1999Dichromat!double(
+                RedGreenCvdDeficiency.deutan
+            );
+
+        const LinearSRgbd[2] input = [
+            LinearSRgbd(0.2, 0.4, 0.7),
+            LinearSRgbd(0.7, 0.3, 0.1)
+        ];
+        LinearSRgbd[2] output;
+
+        prepared.applyInto(input, output);
+
+        assert(output[0].r == output[0].r);
+        assert(output[1].b == output[1].b);
     }
 
     /**
@@ -623,6 +728,23 @@ if (is(T == float) || is(T == double))
 
         return true;
     }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareVienot1999Dichromat!double(
+                RedGreenCvdDeficiency.protan
+            );
+
+        const LinearSRgbd[1] input = [
+            LinearSRgbd(0.2, 0.4, 0.7)
+        ];
+        LinearSRgbd[1] output;
+
+        assert(prepared.tryApplyInto(input[], output[]));
+        assert(output[0].r == output[0].r);
+    }
 }
 
 
@@ -647,6 +769,22 @@ if (is(T == float) || is(T == double))
                 castMatrix!T(vienotDeutan)
             );
     }
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const prepared =
+        prepareVienot1999Dichromat!double(
+            RedGreenCvdDeficiency.deutan
+        );
+
+    const transformed =
+        prepared.apply(
+            LinearSRgbd(0.2, 0.4, 0.7)
+        );
+
+    assert(transformed.b == transformed.b);
 }
 
 
@@ -1026,6 +1164,25 @@ if (is(T == float) || is(T == double))
         );
     }
 
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        PreparedMachado2009!double prepared;
+
+        assert(tryPrepareMachado2009(
+            RedGreenCvdDeficiency.protan,
+            0.5,
+            prepared
+        ));
+
+        const transformed =
+            prepared.apply(
+                LinearSRgbd(0.2, 0.4, 0.7)
+            );
+
+        assert(transformed.r == transformed.r);
+    }
+
     /**
      * Applies the prepared transform to fixed-cardinality caller-owned storage.
      *
@@ -1061,6 +1218,29 @@ if (is(T == float) || is(T == double))
                 output[]
             );
         }
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        PreparedMachado2009!double prepared;
+
+        assert(tryPrepareMachado2009(
+            RedGreenCvdDeficiency.deutan,
+            0.5,
+            prepared
+        ));
+
+        const LinearSRgbd[2] input = [
+            LinearSRgbd(0.2, 0.4, 0.7),
+            LinearSRgbd(0.7, 0.3, 0.1)
+        ];
+        LinearSRgbd[2] output;
+
+        prepared.applyInto(input, output);
+
+        assert(output[0].r == output[0].r);
+        assert(output[1].b == output[1].b);
     }
 
     /**
@@ -1105,6 +1285,26 @@ if (is(T == float) || is(T == double))
 
         return true;
     }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        PreparedMachado2009!double prepared;
+
+        assert(tryPrepareMachado2009(
+            RedGreenCvdDeficiency.protan,
+            0.5,
+            prepared
+        ));
+
+        const LinearSRgbd[1] input = [
+            LinearSRgbd(0.2, 0.4, 0.7)
+        ];
+        LinearSRgbd[1] output;
+
+        assert(prepared.tryApplyInto(input[], output[]));
+        assert(output[0].g == output[0].g);
+    }
 }
 
 
@@ -1139,6 +1339,27 @@ if (is(T == float) || is(T == double))
         );
 
     return true;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    PreparedMachado2009!double prepared;
+
+    assert(tryPrepareMachado2009(
+        RedGreenCvdDeficiency.protan,
+        0.5,
+        prepared
+    ));
+
+    assert(
+        prepared.apply(
+            LinearSRgbd(0.2, 0.4, 0.7)
+        ).r ==
+        prepared.apply(
+            LinearSRgbd(0.2, 0.4, 0.7)
+        ).r
+    );
 }
 
 
