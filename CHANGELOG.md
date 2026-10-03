@@ -21,6 +21,10 @@ The project is pre-1.0. Changes planned for the next release accumulate under
   fixed-cardinality `applyInto` and runtime-sized `tryApplyInto` batch forms;
   Machado severity interpolation can now be performed once per batch through
   the explicit `tryPrepareMachado2009` success channel.
+- optimized CVD implementation shape: prepared batch methods snapshot their
+  small invariant transform state before hot loops, while scalar convenience
+  calls retain direct model arithmetic; public API and numerical semantics are
+  unchanged.
 
 ### Changed
 
