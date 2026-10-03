@@ -46,8 +46,8 @@ Core principles:
 
 ## Support and compatibility
 
-The current v0.1.x release matrix covers DMD 2.112.1 and 2.113.0 plus LDC
-1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0, DMD 2.111.0, and LDC
+The v0.2.0 release qualification matrix covers DMD 2.112.1 and 2.113.0 plus
+LDC 1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0, DMD 2.111.0, and LDC
 1.41.0 are diagnostic points rather than supported release compilers.
 
 Fast CI uses the current pair, DMD 2.113.0 and LDC 1.43.0. Broader compatibility
@@ -64,11 +64,11 @@ without requiring a provider-side API correction for v0.1.0.
 
 ## Installation with DUB
 
-`v0.1.0` is released and resolves through the DUB registry. For normal use,
-add the released package as a DUB dependency:
+`v0.1.1` is the current released package and resolves through the DUB
+registry. For normal use, add the released package as a DUB dependency:
 
 ```sdl
-dependency "color-d" version="~>0.1.0"
+dependency "color-d" version="~>0.1.1"
 ```
 
 For a local workspace checkout, a path dependency remains valid:
@@ -82,7 +82,7 @@ For an external Git dependency pinned to the released source:
 ```sdl
 dependency "color-d" \
     repository="git+https://github.com/alex-1974/color-d.git" \
-    version="v0.1.0"
+    version="v0.1.1"
 ```
 
 ## Release package, repository, and research
@@ -223,24 +223,18 @@ part of the consumer archive:
 
 ## Project status
 
-**v0.1.0 was released on 2026-09-29** and is available through the DUB
-registry. It is the first supported public package surface for color-d.
+**v0.1.1 was released on 2026-09-29** and is the current stable package
+available through the DUB registry.
 
-The R0 research/architecture programme and R1–R4 production, utility, and
-real-consumer validation phases are complete. Those phase names now describe
-historical development of v0.1.0 rather than current release work. Both R4
-consumers — `imagery-d` and Dunia's theme/style layer — exercised the public
-API without requiring a provider-side API correction.
+The v0.2.0 feature set is now frozen and stabilizing on `release/0.2`.
+v0.2.0 adds practical encoded-sRGB storage and full-byte hexadecimal interop,
+sRGB gamut-boundary measurement, CIELAB D50 with Delta E 1976/CIEDE2000, and
+model-specific CVD transformations including prepared batch forms. Real
+consumer validation completed without requiring a provider-side API correction.
 
-Current work targets **v0.1.1 — Documentation and Maintenance**. This patch
-release improves public DDox examples and wording, source-level implementation
-rationale, repository documentation, contract evidence, cleanup, and toolchain
-consistency. It does not intentionally change public numerical semantics or add
-a new feature family.
-
-Deferred candidates such as packed `SRgb8` / `SRgba8`, HSL/HSV, wider-gamut
-spaces, CSS support, and palette/theme abstractions remain candidates only.
-They are not commitments for v0.1.1 or any particular later release.
+The release remains deliberately narrow: semantic Theme/Palette objects,
+general CSS Color parsing, HSL/HSV, wider-gamut spaces, and application
+accessibility thresholds remain outside v0.2.0.
 
 The library remains pre-1.0, so later 0.x releases may still make
 well-justified, documented breaking changes.
