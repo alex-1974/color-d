@@ -46,7 +46,7 @@ Core principles:
 
 ## Support and compatibility
 
-The current v0.1.x release matrix covers DMD 2.112.1 and 2.113.0 plus LDC
+The v0.2.0 release is qualified against DMD 2.112.1 and 2.113.0 plus LDC
 1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0, DMD 2.111.0, and LDC
 1.41.0 are diagnostic points rather than supported release compilers.
 
@@ -64,11 +64,11 @@ without requiring a provider-side API correction for v0.1.0.
 
 ## Installation with DUB
 
-`v0.1.0` is released and resolves through the DUB registry. For normal use,
+`v0.1.1` is the current released package and resolves through the DUB registry. For normal use,
 add the released package as a DUB dependency:
 
 ```sdl
-dependency "color-d" version="~>0.1.0"
+dependency "color-d" version="~>0.1.1"
 ```
 
 For a local workspace checkout, a path dependency remains valid:
@@ -82,7 +82,7 @@ For an external Git dependency pinned to the released source:
 ```sdl
 dependency "color-d" \
     repository="git+https://github.com/alex-1974/color-d.git" \
-    version="v0.1.0"
+    version="v0.1.1"
 ```
 
 ## Release package, repository, and research
@@ -223,8 +223,8 @@ part of the consumer archive:
 
 ## Project status
 
-**v0.1.0 was released on 2026-09-29** and is available through the DUB
-registry. It is the first supported public package surface for color-d.
+**v0.1.1 was released on 2026-09-29** and is the current published package.
+It follows the initial v0.1.0 public release with documentation and maintenance hardening.
 
 The R0 research/architecture programme and R1–R4 production, utility, and
 real-consumer validation phases are complete. Those phase names now describe
@@ -238,9 +238,7 @@ rationale, repository documentation, contract evidence, cleanup, and toolchain
 consistency. It does not intentionally change public numerical semantics or add
 a new feature family.
 
-Deferred candidates such as packed `SRgb8` / `SRgba8`, HSL/HSV, wider-gamut
-spaces, CSS support, and palette/theme abstractions remain candidates only.
-They are not commitments for v0.1.1 or any particular later release.
+Current work targets **v0.2.0 — Practical Color Storage and Interop**. Its committed scope adds packed sRGB/RGBA storage and compact hexadecimal interop, plus the independently validated gamut-boundary, CIELAB/Delta-E, and CVD primitives required by the Dunia consumer. HSL/HSV, wider-gamut spaces, general CSS Color parsing, and policy-heavy palette/theme abstractions remain outside the committed v0.2.0 scope.
 
 The library remains pre-1.0, so later 0.x releases may still make
 well-justified, documented breaking changes.
