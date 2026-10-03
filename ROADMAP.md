@@ -1,67 +1,58 @@
 # color-d Roadmap
 
-## Current release
+## Current release line
 
-**v0.1.1 — Documentation and Maintenance** was published on 2026-09-29 and is complete.
+**v0.2.0 — Practical Color Storage and Interop** was published on 2026-10-03.
 
-The next planned feature release is:
+**Status: COMPLETE — v0.2.0 RELEASED.**
 
-```text
-v0.2.0 — Practical Color Storage and Interop
-```
+Feature freeze, consumer-driven promotion, the public API audit, API freeze,
+release hardening, compiler/consumer qualification, and publication are
+complete.
 
-v0.2.0 turns the existing floating-point color-math core into a more practical
-boundary for GUI, imagery, rendering, file, and configuration consumers. Its
-committed scope is deliberately small:
+The v0.2.0 scope is:
 
 - compact encoded-sRGB storage with `SRgb8`;
 - compact encoded-sRGB plus straight-alpha storage with `SRgba8`;
-- explicit conversion between packed storage and the existing computational
-  `SRgb!T` model, including documented quantization, rounding, range, and
-  clipping behavior;
-- compact hexadecimal sRGB/RGBA parsing and serialization, provided the API
-  remains unambiguous and does not grow into a general CSS parser;
-- consumer-driven research and promotion of three generic color-math capabilities
-  identified by Dunia theme construction: sRGB gamut-boundary queries,
-  CIE/Delta-E measurement support, and color-vision-deficiency transforms;
-- real-consumer validation against Dunia/editor and/or imagery workflows;
+- explicit checked conversion between packed storage and `SRgb!T`, including
+  documented quantization and range behavior without implicit clipping;
+- compact full-byte hexadecimal sRGB/RGBA parsing and serialization without a
+  general CSS parser;
+- deterministic sRGB gamut-boundary measurement with `maxChromaInSRgb` and
+  `SRgbChromaLimit`;
+- explicit D50 CIELAB conversion plus Delta E 1976 and CIEDE2000;
+- model-specific Brettel 1997, Viénot 1999, and Machado 2009 CVD transforms,
+  including prepared allocation-free repeated-work forms;
+- real-consumer validation with Dunia/editor and imagery workflows;
 - the normal documentation, compiler, package, and release qualification gates.
 
 The release does **not** introduce a second floating-point RGBA computational
 model. Existing alpha and premultiplied-alpha semantics remain authoritative.
 
-The three Dunia-driven color-math candidates are committed to v0.2.0 as
-research-and-promotion gates rather than preselected APIs. Each is promoted only
-if the investigation establishes a generic, independently validated color-d
-contract; otherwise v0.2.0 records the reason for deferral or consumer-local
-ownership.
-
 HSL/HSV, semantic Theme/Palette objects, general CSS Color parsing, wide-gamut
-spaces, and other candidate families remain outside the committed v0.2.0 scope
-unless separately promoted by evidence.
+spaces, and other candidate families remain outside the committed v0.2.0 scope.
 
 Detailed v0.2.0 work is tracked by GitHub milestone `v0.2.0`.
 
 ## v0.2.0 consumer-driven color-math promotion
 
-Dunia theme construction has identified three additional mathematical
-capabilities that are both concretely consumer-driven and plausibly generic:
+**Status: COMPLETE before API freeze.**
 
-- sRGB gamut-boundary queries, such as maximum representable OKLCH chroma for
-  a given lightness and hue;
-- the minimum CIELAB/CIELCh/Delta-E surface justified by the consumer need and
-  standards/interoperability evidence;
-- validated color-vision-deficiency transformations suitable for measuring
-  transformed theme colors.
+The three Dunia-driven research-and-promotion gates produced bounded generic
+color-d capabilities:
 
-These are committed to v0.2.0 as **research-and-promotion gates**. The release
-does not pre-commit an API, algorithm, CIE feature subset, or CVD model.
-Research must establish the generic mathematical contract and independent
-validation first. A candidate that cannot meet that bar is explicitly deferred
-rather than forced into the library.
+- sRGB gamut-boundary measurement through `maxChromaInSRgb` and
+  `SRgbChromaLimit`;
+- `CieLabD50`, explicit XYZ D65 ↔ CIELAB D50 conversion, Delta E 1976, and
+  CIEDE2000; CIELCh and automatic metric/policy selection remain deferred;
+- Brettel 1997 protan/deutan/tritan transforms, Viénot 1999 protan/deutan
+  transforms, and Machado 2009 protan/deutan severity, with prepared repeated
+  application where justified.
 
-Application thresholds, semantic theme roles, OSM meaning, and helpers such as
-`isColorBlindSafe()` remain consumer policy.
+Each promoted family has independent validation and consumer-shaped evidence.
+Application thresholds, semantic theme roles, OSM meaning, accessibility
+classification, and helpers such as `isColorBlindSafe()` remain consumer
+policy.
 
 ## Investigation candidates after v0.1
 
@@ -102,9 +93,9 @@ Investigate:
 
 ### Accessibility and analysis
 
-CVD transformations required by Dunia theme validation are part of the v0.2.0
-research-and-promotion gate. Consumer-owned accessibility thresholds and
-policy remain outside color-d.
+The generic CVD transformations required by Dunia theme validation are
+promoted in v0.2.0. Consumer-owned accessibility thresholds and policy remain
+outside color-d.
 
 - APCA and emerging accessibility measurements, with standards maturity and
   provenance checked before public API adoption;
@@ -422,15 +413,13 @@ They may be reconsidered only when concrete consumer requirements justify
 their cost and library-boundary impact. Their order below is not a priority
 ranking, and inclusion in this list does not imply a planned release version.
 
-- `SRgb8` / `SRgba8`
 - HSL / HSV
 - Display-P3
 - Rec.2020
-- CIELAB / LCh
-- CIEDE2000
+- CIELCh
 - Okhsl / Okhsv
-- CSS parsing/serialization
+- CSS parsing/serialization beyond the v0.2 full-byte hexadecimal surface
 - scientific and categorical palettes
-- color-vision-deficiency tooling
+- additional CVD models or policy only when independently justified
 - HDR
 - ICC / CMYK

@@ -63,8 +63,8 @@
      floating-point computational model. Conversion is explicit and checked in
      the storage direction.
 
-     Compact hexadecimal interop is deliberately limited to exact full-byte
-     forms: `#RRGGBB` for `SRgb8` and `#RRGGBBAA` for `SRgba8`.
+     Compact hexadecimal interop is deliberately limited to the exact full-byte
+     forms `#RRGGBB` for `SRgb8` and `#RRGGBBAA` for `SRgba8`.
      Parsing accepts hexadecimal letter case; serialization is deterministic
      lowercase. Broader CSS color syntax is outside this surface.
 
@@ -147,9 +147,10 @@
      documentation and not release-package content.
 
  Support:
-     The current pre-1.0 CI matrix tests DMD 2.113.0 and LDC 1.43.0 on
-     Ubuntu 24.04 x86-64. No older minimum D frontend is currently promised.
-     LDC is the current release-performance reference compiler.
+     The v0.2.0 release matrix supports DMD 2.112.1 and 2.113.0 plus LDC
+     1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. Fast CI uses DMD 2.113.0 and
+     LDC 1.43.0; the full supported matrix is a release gate. LDC is the
+     current release-performance reference compiler.
 
  Authors:
      Alexander
@@ -164,10 +165,10 @@
      MIT License. See the repository LICENSE file.
 
  See_Also:
-     color.storage, color.rgb, color.xyz, color.oklab, color.oklch, color.alpha,
+     color.storage, color.rgb, color.xyz, color.cielab, color.oklab, color.oklch, color.alpha,
      color.composite, color.interpolate, color.gamut, color.wcag,
      color.difference, color.tone, color.cvd,
-     https://github.com/alex-1974/color-d
+     $(LINK2 https://github.com/alex-1974/color-d, color-d on GitHub)
 +/
 module color;
 

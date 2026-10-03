@@ -46,9 +46,9 @@ Core principles:
 
 ## Support and compatibility
 
-The current v0.1.x release matrix covers DMD 2.112.1 and 2.113.0 plus LDC
-1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0, DMD 2.111.0, and LDC
-1.41.0 are diagnostic points rather than supported release compilers.
+The v0.2.0 release is qualified against DMD 2.112.1 and 2.113.0 plus LDC
+1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0, DMD 2.111.0,
+and LDC 1.41.0 are diagnostic points rather than supported release compilers.
 
 Fast CI uses the current pair, DMD 2.113.0 and LDC 1.43.0. Broader compatibility
 qualification is kept separate from the daily development gate. DMD and LDC are
@@ -64,11 +64,11 @@ without requiring a provider-side API correction for v0.1.0.
 
 ## Installation with DUB
 
-`v0.1.0` is released and resolves through the DUB registry. For normal use,
-add the released package as a DUB dependency:
+`v0.2.0` is the current released package. For normal use, add it as a DUB
+dependency:
 
 ```sdl
-dependency "color-d" version="~>0.1.0"
+dependency "color-d" version="~>0.2.0"
 ```
 
 For a local workspace checkout, a path dependency remains valid:
@@ -82,7 +82,7 @@ For an external Git dependency pinned to the released source:
 ```sdl
 dependency "color-d" \
     repository="git+https://github.com/alex-1974/color-d.git" \
-    version="v0.1.0"
+    version="v0.2.0"
 ```
 
 ## Release package, repository, and research
@@ -157,8 +157,10 @@ call sequence cannot silently drift.
 
 ## Research and evidence
 
-The public library is the maintained result of the R0–R4 research programme;
-the research programme itself is **not** part of the consumer package.
+The v0.1 core is the maintained result of the R0–R4 research programme.
+The v0.2 gamut-boundary, CIE/Delta-E, and CVD additions were promoted through
+their own R5–R7 validation tracks. Research evidence itself is **not** part of
+the consumer package.
 
 Detailed experiments, compiler probes, benchmark drivers, rejected approaches,
 and long-form evidence live in
@@ -223,8 +225,9 @@ part of the consumer archive:
 
 ## Project status
 
-**v0.1.0 was released on 2026-09-29** and is available through the DUB
-registry. It is the first supported public package surface for color-d.
+**v0.2.0 was released on 2026-10-03** and is the current published package.
+It follows v0.1.1 with practical storage/interop and the promoted generic
+color-math capabilities qualified for the Dunia consumer.
 
 The R0 research/architecture programme and R1–R4 production, utility, and
 real-consumer validation phases are complete. Those phase names now describe
@@ -232,15 +235,13 @@ historical development of v0.1.0 rather than current release work. Both R4
 consumers — `imagery-d` and Dunia's theme/style layer — exercised the public
 API without requiring a provider-side API correction.
 
-Current work targets **v0.1.1 — Documentation and Maintenance**. This patch
-release improves public DDox examples and wording, source-level implementation
-rationale, repository documentation, contract evidence, cleanup, and toolchain
-consistency. It does not intentionally change public numerical semantics or add
-a new feature family.
+**v0.2.0 — Practical Color Storage and Interop** is released. Its frozen
+scope adds packed sRGB/RGBA storage and compact hexadecimal interop, plus the
+independently validated gamut-boundary, CIELAB/Delta-E, and CVD primitives
+required by the Dunia consumer.
 
-Deferred candidates such as packed `SRgb8` / `SRgba8`, HSL/HSV, wider-gamut
-spaces, CSS support, and palette/theme abstractions remain candidates only.
-They are not commitments for v0.1.1 or any particular later release.
+HSL/HSV, wider-gamut spaces, general CSS Color parsing, and policy-heavy
+palette/theme abstractions remain outside the committed v0.2.0 scope.
 
 The library remains pre-1.0, so later 0.x releases may still make
 well-justified, documented breaking changes.

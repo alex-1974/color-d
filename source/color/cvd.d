@@ -137,6 +137,13 @@ private LinearSRgb!T applyMatrix(T)(
 }
 
 
+/*
+ * These helpers are the inner prepared-batch kernels. Keep them visible to
+ * the caller loop so supported compilers can scalar-replace prepared matrix
+ * state and keep coefficients loop-invariant. The compiler-family state-flow
+ * choice above remains separate; scalar/batch equivalence tests protect the
+ * shared semantics.
+ */
 pragma(inline, true)
 private void writeMatrix(T)(
     ref LinearSRgb!T output,
@@ -367,6 +374,28 @@ if (is(T == float) || is(T == double))
         );
     }
 
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareBrettel1997Dichromat!double(
+                CvdDeficiency.protan
+            );
+
+        const transformed =
+            prepared.apply(
+                LinearSRgbd(0.2, 0.4, 0.7)
+            );
+
+        assert(
+            transformed ==
+            LinearSRgbd(0.2, 0.4, 0.7)
+                .brettel1997Dichromat(
+                    CvdDeficiency.protan
+                )
+        );
+    }
+
     /**
      * Applies the prepared transform to fixed-cardinality caller-owned storage.
      *
@@ -415,6 +444,36 @@ if (is(T == float) || is(T == double))
                 output[]
             );
         }
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareBrettel1997Dichromat!double(
+                CvdDeficiency.deutan
+            );
+
+        const LinearSRgbd[2] input = [
+            LinearSRgbd(0.2, 0.4, 0.7),
+            LinearSRgbd(0.7, 0.3, 0.1)
+        ];
+        LinearSRgbd[2] output;
+
+        prepared.applyInto(input, output);
+
+        assert(
+            output[0] ==
+            input[0].brettel1997Dichromat(
+                CvdDeficiency.deutan
+            )
+        );
+        assert(
+            output[1] ==
+            input[1].brettel1997Dichromat(
+                CvdDeficiency.deutan
+            )
+        );
     }
 
     /**
@@ -472,6 +531,28 @@ if (is(T == float) || is(T == double))
 
         return true;
     }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareBrettel1997Dichromat!double(
+                CvdDeficiency.tritan
+            );
+
+        const LinearSRgbd[1] input = [
+            LinearSRgbd(0.2, 0.4, 0.7)
+        ];
+        LinearSRgbd[1] output;
+
+        assert(prepared.tryApplyInto(input[], output[]));
+        assert(
+            output[0] ==
+            input[0].brettel1997Dichromat(
+                CvdDeficiency.tritan
+            )
+        );
+    }
 }
 
 
@@ -515,6 +596,28 @@ if (is(T == float) || is(T == double))
     }
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const prepared =
+        prepareBrettel1997Dichromat!double(
+            CvdDeficiency.protan
+        );
+
+    const transformed =
+        prepared.apply(
+            LinearSRgbd(0.2, 0.4, 0.7)
+        );
+
+    assert(
+        transformed ==
+        LinearSRgbd(0.2, 0.4, 0.7)
+            .brettel1997Dichromat(
+                CvdDeficiency.protan
+            )
+    );
+}
+
 
 /**
  * Prepared Viénot 1999 protan/deutan transform for repeated application.
@@ -541,6 +644,28 @@ if (is(T == float) || is(T == double))
         return applyMatrix(
             matrix,
             color
+        );
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareVienot1999Dichromat!double(
+                RedGreenCvdDeficiency.protan
+            );
+
+        const transformed =
+            prepared.apply(
+                LinearSRgbd(0.2, 0.4, 0.7)
+            );
+
+        assert(
+            transformed ==
+            LinearSRgbd(0.2, 0.4, 0.7)
+                .vienot1999Dichromat(
+                    RedGreenCvdDeficiency.protan
+                )
         );
     }
 
@@ -579,6 +704,36 @@ if (is(T == float) || is(T == double))
                 output[]
             );
         }
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareVienot1999Dichromat!double(
+                RedGreenCvdDeficiency.deutan
+            );
+
+        const LinearSRgbd[2] input = [
+            LinearSRgbd(0.2, 0.4, 0.7),
+            LinearSRgbd(0.7, 0.3, 0.1)
+        ];
+        LinearSRgbd[2] output;
+
+        prepared.applyInto(input, output);
+
+        assert(
+            output[0] ==
+            input[0].vienot1999Dichromat(
+                RedGreenCvdDeficiency.deutan
+            )
+        );
+        assert(
+            output[1] ==
+            input[1].vienot1999Dichromat(
+                RedGreenCvdDeficiency.deutan
+            )
+        );
     }
 
     /**
@@ -623,6 +778,28 @@ if (is(T == float) || is(T == double))
 
         return true;
     }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareVienot1999Dichromat!double(
+                RedGreenCvdDeficiency.protan
+            );
+
+        const LinearSRgbd[1] input = [
+            LinearSRgbd(0.2, 0.4, 0.7)
+        ];
+        LinearSRgbd[1] output;
+
+        assert(prepared.tryApplyInto(input[], output[]));
+        assert(
+            output[0] ==
+            input[0].vienot1999Dichromat(
+                RedGreenCvdDeficiency.protan
+            )
+        );
+    }
 }
 
 
@@ -647,6 +824,28 @@ if (is(T == float) || is(T == double))
                 castMatrix!T(vienotDeutan)
             );
     }
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const prepared =
+        prepareVienot1999Dichromat!double(
+            RedGreenCvdDeficiency.deutan
+        );
+
+    const transformed =
+        prepared.apply(
+            LinearSRgbd(0.2, 0.4, 0.7)
+        );
+
+    assert(
+        transformed ==
+        LinearSRgbd(0.2, 0.4, 0.7)
+            .vienot1999Dichromat(
+                RedGreenCvdDeficiency.deutan
+            )
+    );
 }
 
 
@@ -917,6 +1116,13 @@ private Matrix3!T matrixAtSeverityRuntime(T)(
 }
 
 
+/*
+ * CTFE uses the canonical manifest double tables because they are directly
+ * evaluable by the frontend. Runtime uses immutable tables already stored in
+ * the consumer scalar type. The R7.4.12 qualification retained this split to
+ * avoid repeated runtime table conversion while preserving one matrix
+ * interpolation contract.
+ */
 private Matrix3!T machadoProtanAtSeverity(T)(T severity)
 @safe pure nothrow @nogc
 {
@@ -1026,6 +1232,32 @@ if (is(T == float) || is(T == double))
         );
     }
 
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        PreparedMachado2009!double prepared;
+
+        assert(tryPrepareMachado2009(
+            RedGreenCvdDeficiency.protan,
+            0.5,
+            prepared
+        ));
+
+        const transformed =
+            prepared.apply(
+                LinearSRgbd(0.2, 0.4, 0.7)
+            );
+
+        assert(
+            transformed ==
+            LinearSRgbd(0.2, 0.4, 0.7)
+                .machado2009(
+                    RedGreenCvdDeficiency.protan,
+                    0.5
+                )
+        );
+    }
+
     /**
      * Applies the prepared transform to fixed-cardinality caller-owned storage.
      *
@@ -1061,6 +1293,41 @@ if (is(T == float) || is(T == double))
                 output[]
             );
         }
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        PreparedMachado2009!double prepared;
+
+        assert(tryPrepareMachado2009(
+            RedGreenCvdDeficiency.deutan,
+            0.5,
+            prepared
+        ));
+
+        const LinearSRgbd[2] input = [
+            LinearSRgbd(0.2, 0.4, 0.7),
+            LinearSRgbd(0.7, 0.3, 0.1)
+        ];
+        LinearSRgbd[2] output;
+
+        prepared.applyInto(input, output);
+
+        assert(
+            output[0] ==
+            input[0].machado2009(
+                RedGreenCvdDeficiency.deutan,
+                0.5
+            )
+        );
+        assert(
+            output[1] ==
+            input[1].machado2009(
+                RedGreenCvdDeficiency.deutan,
+                0.5
+            )
+        );
     }
 
     /**
@@ -1105,6 +1372,32 @@ if (is(T == float) || is(T == double))
 
         return true;
     }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        PreparedMachado2009!double prepared;
+
+        assert(tryPrepareMachado2009(
+            RedGreenCvdDeficiency.protan,
+            0.5,
+            prepared
+        ));
+
+        const LinearSRgbd[1] input = [
+            LinearSRgbd(0.2, 0.4, 0.7)
+        ];
+        LinearSRgbd[1] output;
+
+        assert(prepared.tryApplyInto(input[], output[]));
+        assert(
+            output[0] ==
+            input[0].machado2009(
+                RedGreenCvdDeficiency.protan,
+                0.5
+            )
+        );
+    }
 }
 
 
@@ -1139,6 +1432,28 @@ if (is(T == float) || is(T == double))
         );
 
     return true;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    PreparedMachado2009!double prepared;
+
+    assert(tryPrepareMachado2009(
+        RedGreenCvdDeficiency.protan,
+        0.5,
+        prepared
+    ));
+
+    const input = LinearSRgbd(0.2, 0.4, 0.7);
+
+    assert(
+        prepared.apply(input) ==
+        input.machado2009(
+            RedGreenCvdDeficiency.protan,
+            0.5
+        )
+    );
 }
 
 

@@ -1,7 +1,9 @@
 module public_api_direct_modules;
 
+static import color.storage;
 static import color.rgb;
 static import color.xyz;
+static import color.cielab;
 static import color.oklab;
 static import color.oklch;
 static import color.alpha;
@@ -20,6 +22,45 @@ static import color.cvd;
 void acceptedDirectModuleSurface()
 @safe pure nothrow @nogc
 {
+    color.storage.SRgb8 packedRgb =
+        color.storage.SRgb8.init;
+
+    color.storage.SRgba8 packedRgba =
+        color.storage.SRgba8.init;
+
+    const bool parsedRgb =
+        color.storage.tryParseSRgb8Hex(
+            "#247ac4",
+            packedRgb
+        );
+
+    const bool parsedRgba =
+        color.storage.tryParseSRgba8Hex(
+            "#247ac480",
+            packedRgba
+        );
+
+    const packedAsRgb =
+        packedRgb.toSRgb!double();
+
+    const packedAsAlpha =
+        packedRgba.toAlphaSRgb!double();
+
+    color.storage.SRgb8 requantizedRgb;
+    color.storage.SRgba8 requantizedRgba;
+
+    const bool storedRgb =
+        color.storage.tryToSRgb8(
+            packedAsRgb,
+            requantizedRgb
+        );
+
+    const bool storedRgba =
+        color.storage.tryToSRgba8(
+            packedAsAlpha,
+            requantizedRgba
+        );
+
     const encoded =
         color.rgb.SRgbd(
             0.82,
@@ -35,6 +76,28 @@ void acceptedDirectModuleSurface()
     const xyz =
         color.xyz.toXyzD65(
             linear
+        );
+
+    const cieLab =
+        color.cielab.toCieLabD50(
+            xyz
+        );
+
+    const cieXyzBack =
+        color.cielab.toXyzD65(
+            cieLab
+        );
+
+    const cieDelta76 =
+        color.difference.deltaE76(
+            cieLab,
+            cieLab
+        );
+
+    const cieDelta2000 =
+        color.difference.deltaE2000(
+            cieLab,
+            cieLab
         );
 
     const lab =
@@ -135,6 +198,14 @@ void acceptedDirectModuleSurface()
     const bool inGamut =
         color.gamut.inGamut(
             backLinear
+        );
+
+    const chromaLimit =
+        color.gamut.maxChromaInSRgb(
+            0.5,
+            color.oklch.OklabHued.fromDegrees(
+                40.0
+            )
         );
 
     const clipped =
@@ -274,6 +345,18 @@ void acceptedDirectModuleSurface()
             runtimeTones[]
         );
 
+    assert(parsedRgb);
+    assert(parsedRgba);
+    assert(storedRgb);
+    assert(storedRgba);
+    assert(requantizedRgb == packedRgb);
+    assert(requantizedRgba == packedRgba);
+    assert(cieLab.l == cieLab.l || cieLab.l != cieLab.l);
+    assert(cieXyzBack.x == cieXyzBack.x || cieXyzBack.x != cieXyzBack.x);
+    assert(cieDelta76 == 0.0);
+    assert(cieDelta2000 == 0.0);
+    assert(chromaLimit.valid);
+    assert(chromaLimit.value > 0.0);
     assert(straightBack.alpha == 0.5);
     assert(composed.alpha == composed.alpha || composed.alpha != composed.alpha);
     assert(rectangular.r == rectangular.r || rectangular.r != rectangular.r);
@@ -309,12 +392,30 @@ void acceptedDirectModuleSurface()
  * Local imports keep each check isolated while the top-level static imports
  * above remain qualified-only.
  */
+void storageDoesNotReexportColorDependencies()
+{
+    import color.storage;
+
+    static assert(!__traits(compiles,
+        SRgbd.init
+    ));
+}
+
 void xyzDoesNotReexportRgb()
 {
     import color.xyz;
 
     static assert(!__traits(compiles,
         LinearSRgbd.init
+    ));
+}
+
+void cielabDoesNotReexportXyz()
+{
+    import color.cielab;
+
+    static assert(!__traits(compiles,
+        XyzD65d.init
     ));
 }
 

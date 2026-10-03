@@ -24,6 +24,16 @@ if (is(T == float) || is(T == double))
     alias Scalar = T;
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const lab = CieLabD50d(50.0, 2.5, -4.0);
+
+    assert(lab.l == 50.0);
+    assert(lab.a == 2.5);
+    assert(lab.b == -4.0);
+}
+
 /// CIE Lab D50 with float components.
 alias CieLabD50f = CieLabD50!float;
 
@@ -34,6 +44,12 @@ private T labCubeRoot(T)(const T value)
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {
+    /*
+     * Use Phobos cbrt at runtime for its direct cube-root semantics and keep
+     * the source-available power form only for CTFE. Current Phobos cbrt
+     * reaches a C symbol during CTFE, so the compiler cannot evaluate it
+     * there. Returning zero first also preserves signed zero.
+     */
     if (value == cast(T)0)
         return value;
 
@@ -150,6 +166,20 @@ if (is(T == float) || is(T == double))
     );
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const white = XyzD65d(
+        0.9504559270516717,
+        1.0,
+        1.0890577507598784
+    ).toCieLabD50;
+
+    assert(white.l > 99.999999 && white.l < 100.000001);
+    assert(white.a > -0.00001 && white.a < 0.00001);
+    assert(white.b > -0.00001 && white.b < 0.00001);
+}
+
 /**
  * Converts CIE 1976 L*a*b* D50 coordinates to XYZ D65.
  *
@@ -183,34 +213,6 @@ if (is(T == float) || is(T == double))
 ///
 @safe pure nothrow @nogc unittest
 {
-    const white = XyzD65d(
-        0.9504559270516717,
-        1.0,
-        1.0890577507598784
-    ).toCieLabD50;
-
-    assert(white.l > 99.999999 && white.l < 100.000001);
-    assert(white.a > -0.00001 && white.a < 0.00001);
-    assert(white.b > -0.00001 && white.b < 0.00001);
-}
-
-///
-@safe pure nothrow @nogc unittest
-{
-    const lab = XyzD65d(
-        0.21661,
-        0.14602,
-        0.59452
-    ).toCieLabD50;
-
-    assert(lab.l > 44.35 && lab.l < 44.37);
-    assert(lab.a > 36.03 && lab.a < 36.07);
-    assert(lab.b > -59.01 && lab.b < -58.97);
-}
-
-///
-@safe pure nothrow @nogc unittest
-{
     const source = XyzD65d(
         0.21661,
         0.14602,
@@ -224,7 +226,19 @@ if (is(T == float) || is(T == double))
     assert(back.z > 0.5943 && back.z < 0.5948);
 }
 
-///
+@safe pure nothrow @nogc unittest
+{
+    const lab = XyzD65d(
+        0.21661,
+        0.14602,
+        0.59452
+    ).toCieLabD50;
+
+    assert(lab.l > 44.35 && lab.l < 44.37);
+    assert(lab.a > 36.03 && lab.a < 36.07);
+    assert(lab.b > -59.01 && lab.b < -58.97);
+}
+
 @safe pure nothrow @nogc unittest
 {
     enum source = XyzD65d(0.21661, 0.14602, 0.59452);
