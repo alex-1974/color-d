@@ -166,6 +166,20 @@ if (is(T == float) || is(T == double))
     );
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const white = XyzD65d(
+        0.9504559270516717,
+        1.0,
+        1.0890577507598784
+    ).toCieLabD50;
+
+    assert(white.l > 99.999999 && white.l < 100.000001);
+    assert(white.a > -0.00001 && white.a < 0.00001);
+    assert(white.b > -0.00001 && white.b < 0.00001);
+}
+
 /**
  * Converts CIE 1976 L*a*b* D50 coordinates to XYZ D65.
  *
@@ -199,15 +213,17 @@ if (is(T == float) || is(T == double))
 ///
 @safe pure nothrow @nogc unittest
 {
-    const white = XyzD65d(
-        0.9504559270516717,
-        1.0,
-        1.0890577507598784
-    ).toCieLabD50;
+    const source = XyzD65d(
+        0.21661,
+        0.14602,
+        0.59452
+    );
 
-    assert(white.l > 99.999999 && white.l < 100.000001);
-    assert(white.a > -0.00001 && white.a < 0.00001);
-    assert(white.b > -0.00001 && white.b < 0.00001);
+    const back = source.toCieLabD50.toXyzD65;
+
+    assert(back.x > 0.2165 && back.x < 0.2168);
+    assert(back.y > 0.1459 && back.y < 0.1462);
+    assert(back.z > 0.5943 && back.z < 0.5948);
 }
 
 @safe pure nothrow @nogc unittest
@@ -223,21 +239,6 @@ if (is(T == float) || is(T == double))
     assert(lab.b > -59.01 && lab.b < -58.97);
 }
 
-///
-@safe pure nothrow @nogc unittest
-{
-    const source = XyzD65d(
-        0.21661,
-        0.14602,
-        0.59452
-    );
-
-    const back = source.toCieLabD50.toXyzD65;
-
-    assert(back.x > 0.2165 && back.x < 0.2168);
-    assert(back.y > 0.1459 && back.y < 0.1462);
-    assert(back.z > 0.5943 && back.z < 0.5948);
-}
 @safe pure nothrow @nogc unittest
 {
     enum source = XyzD65d(0.21661, 0.14602, 0.59452);
