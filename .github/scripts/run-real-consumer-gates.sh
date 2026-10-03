@@ -54,6 +54,17 @@ echo "raster-d=$(git -C "$raster" rev-parse HEAD)"
 echo "dunia=$(git -C "$dunia" rev-parse HEAD)"
 
 echo
+echo "=== color-d v0.2 storage/interop external consumer ==="
+(
+    cd "$root/tests/consumer/v0_2_storage_interop"
+
+    dub run \
+        --compiler="$compiler" \
+        --build="$build" \
+        --force
+)
+
+echo
 echo "=== imagery-d accepted consumer ==="
 (
     cd "$imagery/experiments/m3_color_d_srgb_consumer"
