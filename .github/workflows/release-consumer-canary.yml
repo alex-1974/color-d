@@ -1,9 +1,9 @@
 name: Release consumer canary
 
 on:
-  pull_request:
+  push:
     branches:
-      - develop
+      - "release/**"
     paths:
       - ".github/scripts/run-real-consumer-gates.sh"
       - ".github/workflows/release.yml"
@@ -13,6 +13,27 @@ on:
       - "source/color/package.d"
       - "source/color/rgb.d"
       - "source/color/alpha.d"
+      - "source/color/cielab.d"
+      - "source/color/difference.d"
+      - "source/color/gamut.d"
+      - "source/color/cvd.d"
+  pull_request:
+    branches:
+      - develop
+      - "release/**"
+    paths:
+      - ".github/scripts/run-real-consumer-gates.sh"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/release-consumer-canary.yml"
+      - "tests/consumer/v0_2_storage_interop/**"
+      - "source/color/storage.d"
+      - "source/color/package.d"
+      - "source/color/rgb.d"
+      - "source/color/alpha.d"
+      - "source/color/cielab.d"
+      - "source/color/difference.d"
+      - "source/color/gamut.d"
+      - "source/color/cvd.d"
   workflow_dispatch:
 
 permissions:
