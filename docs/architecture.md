@@ -44,6 +44,7 @@ color.gamut
 color.wcag
 color.difference
 color.tone
+color.cvd
 ```
 
 Technical importability of an implementation helper does not make it public
@@ -57,6 +58,11 @@ Compact storage and floating-point computation are distinct public concepts.
 straight-alpha `SRgba8`. Computational color mathematics remains in the floating-point color-space
 types such as `SRgb!T` and `LinearSRgb!T`. Storage types do not implicitly
 convert to computational types.
+
+The explicit storage boundary follows ADR 0006: byte-to-computation
+normalization uses the full 0...255 range, while computation-to-storage is a
+checked conversion with deterministic nearest-byte quantization. It does not
+silently clip extended values or repair NaN/infinity.
 
 ## Value-oriented core
 
