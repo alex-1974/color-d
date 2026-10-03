@@ -25,6 +25,10 @@ The project is pre-1.0. Changes planned for the next release accumulate under
   compiler-family capability gate: LDC snapshots small invariant transform
   state before hot loops, while DMD retains the established member-backed
   path; public API and numerical semantics are unchanged.
+- optimized Machado 2009 scalar/preparation codegen by keeping runtime
+  reference tables in the consumer scalar type; CTFE, public API, invalid
+  severity behavior, interpolation arithmetic, and prepared-batch semantics
+  are unchanged.
 
 ### Changed
 
