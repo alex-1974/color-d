@@ -24,6 +24,16 @@ if (is(T == float) || is(T == double))
     alias Scalar = T;
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    const lab = CieLabD50d(50.0, 2.5, -4.0);
+
+    assert(lab.l == 50.0);
+    assert(lab.a == 2.5);
+    assert(lab.b == -4.0);
+}
+
 /// CIE Lab D50 with float components.
 alias CieLabD50f = CieLabD50!float;
 
@@ -194,7 +204,6 @@ if (is(T == float) || is(T == double))
     assert(white.b > -0.00001 && white.b < 0.00001);
 }
 
-///
 @safe pure nothrow @nogc unittest
 {
     const lab = XyzD65d(
@@ -223,8 +232,6 @@ if (is(T == float) || is(T == double))
     assert(back.y > 0.1459 && back.y < 0.1462);
     assert(back.z > 0.5943 && back.z < 0.5948);
 }
-
-///
 @safe pure nothrow @nogc unittest
 {
     enum source = XyzD65d(0.21661, 0.14602, 0.59452);
