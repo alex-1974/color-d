@@ -394,7 +394,7 @@ jobs:
           echo "consumer archive bytes=$archive_bytes"
 
           if (( archive_bytes > max_archive_bytes )); then
-              echo "consumer archive exceeded the 1 MiB v0.1 package guard" >&2
+              echo "consumer archive exceeded the 1 MiB package guard" >&2
               exit 1
           fi
 
@@ -419,45 +419,50 @@ jobs:
 
           trap cleanup EXIT
 
-          bash .github/scripts/check-release-metadata.sh 0.1.1 preflight "$GITHUB_WORKSPACE"
+          release_version="0.2.0"
 
-          if bash .github/scripts/check-release-metadata.sh 0.1 release "$GITHUB_WORKSPACE"
+          bash .github/scripts/check-release-metadata.sh               "$release_version"               preflight               "$GITHUB_WORKSPACE"
+
+          bash .github/scripts/check-release-metadata.sh               "$release_version"               release               "$GITHUB_WORKSPACE"
+
+          if bash .github/scripts/check-release-metadata.sh 0.2 release "$GITHUB_WORKSPACE"
           then
               echo "Invalid release version unexpectedly passed" >&2
               exit 1
           fi
 
-          python3 .github/scripts/extract-release-notes.py CHANGELOG.md 0.1.0 "$tmp/release-notes.md"
+          python3 .github/scripts/extract-release-notes.py               CHANGELOG.md               "$release_version"               "$tmp/release-notes.md"
+
           grep -Fq '### Added' "$tmp/release-notes.md"
-          grep -Fq '### Deferred' "$tmp/release-notes.md"
+          grep -Fq '### Changed' "$tmp/release-notes.md"
 
           mkdir -p "$tmp/artifacts-a"
           mkdir -p "$tmp/artifacts-b"
 
           bash .github/scripts/assemble-release-archive.sh \
-              0.1.1 \
+              "$release_version" \
               "$tmp/artifacts-a" \
               HEAD
 
           bash .github/scripts/assemble-release-archive.sh \
-              0.1.1 \
+              "$release_version" \
               "$tmp/artifacts-b" \
               HEAD
 
           bash .github/scripts/assemble-ddox-archive.sh \
-              0.1.1 \
+              "$release_version" \
               docs \
               "$tmp/artifacts-a"
 
           bash .github/scripts/assemble-ddox-archive.sh \
-              0.1.1 \
+              "$release_version" \
               docs \
               "$tmp/artifacts-b"
 
           for file in \
-              color-d-0.1.1.tar.gz \
-              color-d-0.1.1.metadata.txt \
-              color-d-0.1.1.ddox.tar.gz
+              "color-d-$release_version.tar.gz" \
+              "color-d-$release_version.metadata.txt" \
+              "color-d-$release_version.ddox.tar.gz"
           do
               test -s "$tmp/artifacts-a/$file"
               cmp "$tmp/artifacts-a/$file" "$tmp/artifacts-b/$file"
@@ -465,15 +470,15 @@ jobs:
 
           grep -Fq \
               "commit=$(git rev-parse HEAD)" \
-              "$tmp/artifacts-a/color-d-0.1.1.metadata.txt"
+              "$tmp/artifacts-a/color-d-$release_version.metadata.txt"
 
           (
               cd "$tmp/artifacts-a"
 
               sha256sum \
-                  color-d-0.1.1.tar.gz \
-                  color-d-0.1.1.metadata.txt \
-                  color-d-0.1.1.ddox.tar.gz \
+                  "color-d-$release_version.tar.gz" \
+                  "color-d-$release_version.metadata.txt" \
+                  "color-d-$release_version.ddox.tar.gz" \
                   > SHA256SUMS
 
               sha256sum -c SHA256SUMS
