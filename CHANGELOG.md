@@ -7,6 +7,7 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 
 ## Unreleased
 
+- added `SRgb8`, an explicit three-byte encoded-sRGB storage value with stable R/G/B byte layout and no implicit computational conversion.
 ### Added
 
 - explicit D50 CIELAB values with XYZ D65 conversion and linear Bradford
