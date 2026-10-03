@@ -63,8 +63,8 @@
      floating-point computational model. Conversion is explicit and checked in
      the storage direction.
 
-     Compact hexadecimal interop is deliberately limited to exact full-byte
-     forms: `#RRGGBB` for `SRgb8` and `#RRGGBBAA` for `SRgba8`.
+     Compact hexadecimal interop is deliberately limited to the exact full-byte
+     forms `#RRGGBB` for `SRgb8` and `#RRGGBBAA` for `SRgba8`.
      Parsing accepts hexadecimal letter case; serialization is deterministic
      lowercase. Broader CSS color syntax is outside this surface.
 
@@ -168,7 +168,7 @@
      color.storage, color.rgb, color.xyz, color.cielab, color.oklab, color.oklch, color.alpha,
      color.composite, color.interpolate, color.gamut, color.wcag,
      color.difference, color.tone, color.cvd,
-     https://github.com/alex-1974/color-d
+     $(LINK2 https://github.com/alex-1974/color-d, color-d on GitHub)
 +/
 module color;
 
