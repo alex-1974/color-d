@@ -813,6 +813,51 @@ private enum Matrix3!double[11] machadoDeutanTable =
 ];
 
 
+private Matrix3!T[11] castMatrixTable(T)(
+    Matrix3!double[11] table
+)
+@safe pure nothrow @nogc
+{
+    Matrix3!T[11] result;
+
+    foreach (i; 0 .. table.length)
+    {
+        result[i] =
+            castMatrix!T(
+                table[i]
+            );
+    }
+
+    return result;
+}
+
+
+/*
+ * R7.4.12 scalar-call qualification found that repeated runtime conversion of
+ * Machado's published double tables into the consumer scalar type is material
+ * on every supported compiler. Keep target-scalar runtime tables in read-only
+ * storage while preserving the canonical double manifest tables for CTFE.
+ *
+ * Viénot and Brettel deliberately remain unchanged: the same research found
+ * compiler/workload regressions for those models.
+ */
+private immutable Matrix3!float[11] machadoProtanFloatTable =
+    castMatrixTable!float(
+        machadoProtanTable
+    );
+
+private immutable Matrix3!float[11] machadoDeutanFloatTable =
+    castMatrixTable!float(
+        machadoDeutanTable
+    );
+
+private immutable Matrix3!double[11] machadoProtanDoubleTable =
+    machadoProtanTable;
+
+private immutable Matrix3!double[11] machadoDeutanDoubleTable =
+    machadoDeutanTable;
+
+
 private bool validMachadoSeverity(T)(T severity)
 @safe pure nothrow @nogc
 {
@@ -843,6 +888,92 @@ private Matrix3!T matrixAtSeverity(T, alias table)(T severity)
         castMatrix!T(table[lower + 1]),
         alpha
     );
+}
+
+
+private Matrix3!T matrixAtSeverityRuntime(T)(
+    const ref Matrix3!T[11] table,
+    T severity
+)
+@safe pure nothrow @nogc
+{
+    const T scaled =
+        severity * cast(T)10;
+
+    const size_t lower =
+        cast(size_t)scaled;
+
+    if (lower >= 10)
+        return table[10];
+
+    const T alpha =
+        scaled - cast(T)lower;
+
+    return interpolateMatrix(
+        table[lower],
+        table[lower + 1],
+        alpha
+    );
+}
+
+
+private Matrix3!T machadoProtanAtSeverity(T)(T severity)
+@safe pure nothrow @nogc
+{
+    if (__ctfe)
+    {
+        return matrixAtSeverity!(
+            T,
+            machadoProtanTable
+        )(
+            severity
+        );
+    }
+
+    static if (is(T == float))
+    {
+        return matrixAtSeverityRuntime(
+            machadoProtanFloatTable,
+            severity
+        );
+    }
+    else
+    {
+        return matrixAtSeverityRuntime(
+            machadoProtanDoubleTable,
+            severity
+        );
+    }
+}
+
+
+private Matrix3!T machadoDeutanAtSeverity(T)(T severity)
+@safe pure nothrow @nogc
+{
+    if (__ctfe)
+    {
+        return matrixAtSeverity!(
+            T,
+            machadoDeutanTable
+        )(
+            severity
+        );
+    }
+
+    static if (is(T == float))
+    {
+        return matrixAtSeverityRuntime(
+            machadoDeutanFloatTable,
+            severity
+        );
+    }
+    else
+    {
+        return matrixAtSeverityRuntime(
+            machadoDeutanDoubleTable,
+            severity
+        );
+    }
 }
 
 
@@ -983,10 +1114,7 @@ if (is(T == float) || is(T == double))
         case RedGreenCvdDeficiency.protan:
             prepared =
                 PreparedMachado2009!T(
-                    matrixAtSeverity!(
-                        T,
-                        machadoProtanTable
-                    )(
+                    machadoProtanAtSeverity!T(
                         severity
                     )
                 );
@@ -995,10 +1123,7 @@ if (is(T == float) || is(T == double))
         case RedGreenCvdDeficiency.deutan:
             prepared =
                 PreparedMachado2009!T(
-                    matrixAtSeverity!(
-                        T,
-                        machadoDeutanTable
-                    )(
+                    machadoDeutanAtSeverity!T(
                         severity
                     )
                 );
