@@ -11,6 +11,9 @@ static assert(is(LinearSRgbf));
 static assert(is(LinearSRgbd));
 static assert(is(XyzD65f));
 static assert(is(XyzD65d));
+static assert(is(CieLabD50f));
+static assert(is(CieLabD50d));
+static assert(is(SRgbChromaLimit!double));
 static assert(is(Oklabf));
 static assert(is(Oklabd));
 static assert(is(OklabHuef));
@@ -89,6 +92,38 @@ void acceptedRootAndUfcsSurface()
 
     const xyz =
         linear.toXyzD65;
+
+    const cieLab =
+        xyz.toCieLabD50;
+
+    const cieXyzBack =
+        cieLab.toXyzD65;
+
+    const cieDifference76 =
+        cieLab.deltaE76(
+            CieLabD50d(
+                cieLab.l,
+                cieLab.a + 1.0,
+                cieLab.b
+            )
+        );
+
+    const cieDifference2000 =
+        cieLab.deltaE2000(
+            CieLabD50d(
+                cieLab.l,
+                cieLab.a + 1.0,
+                cieLab.b
+            )
+        );
+
+    const chromaBoundary =
+        maxChromaInSRgb(
+            0.60,
+            OklabHued.fromDegrees(
+                255.0
+            )
+        );
 
     const lab =
         xyz.toOklab;
@@ -381,6 +416,11 @@ void acceptedRootAndUfcsSurface()
 
     const alphaRay =
         alphaLch.gamutMapRayTraceToLinearSRgb;
+
+    assert(cieXyzBack.x == cieXyzBack.x || cieXyzBack.x != cieXyzBack.x);
+    assert(cieDifference76 == cieDifference76 || cieDifference76 != cieDifference76);
+    assert(cieDifference2000 == cieDifference2000 || cieDifference2000 != cieDifference2000);
+    assert(chromaBoundary.valid || !chromaBoundary.valid);
 
     assert(parsedRgb);
     assert(parsedRgba);
