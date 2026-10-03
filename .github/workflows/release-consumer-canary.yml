@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - develop
+      - "release/**"
     paths:
       - ".github/scripts/run-real-consumer-gates.sh"
       - ".github/workflows/release.yml"
