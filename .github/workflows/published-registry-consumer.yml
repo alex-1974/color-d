@@ -1,0 +1,78 @@
+name: Published registry consumer canary
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - ".github/workflows/published-registry-consumer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  registry-consumer:
+    name: Registry consumer / ${{ matrix.compiler }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - dmd-2.113.0
+          - ldc-1.43.0
+
+    steps:
+      - name: Install D toolchain
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      - name: Toolchain versions
+        run: |
+          "$DC" --version
+          dub --version
+
+      - name: Build clean consumer from published DUB package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          mkdir -p "$tmp/source"
+
+          cat > "$tmp/dub.json" <<'JSON'
+          {
+            "name": "color-d-published-registry-consumer",
+            "targetType": "executable",
+            "dependencies": {
+              "color-d": "~>0.2.0"
+            }
+          }
+          JSON
+
+          cat > "$tmp/source/app.d" <<'D'
+          import color;
+
+          void main()
+          {
+              const packed = SRgb8(0x80, 0x40, 0x20);
+              const encoded = packed.toSRgb!double;
+              const perceptual = encoded.toLinear.toXyzD65.toOklab.toOklch;
+              const mapped = perceptual.gamutMapRayTraceToLinearSRgb();
+
+              assert(mapped.inGamut);
+          }
+          D
+
+          (
+              cd "$tmp"
+              dub build --compiler="$DC" --build=release
+              ./color-d-published-registry-consumer
+          )
+
+          test -s "$tmp/dub.selections.json"
+          grep -Fq '"color-d"' "$tmp/dub.selections.json"
