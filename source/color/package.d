@@ -147,9 +147,10 @@
      documentation and not release-package content.
 
  Support:
-     The current pre-1.0 CI matrix tests DMD 2.113.0 and LDC 1.43.0 on
-     Ubuntu 24.04 x86-64. No older minimum D frontend is currently promised.
-     LDC is the current release-performance reference compiler.
+     The v0.2.0 release matrix supports DMD 2.112.1 and 2.113.0 plus LDC
+     1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. Fast CI uses DMD 2.113.0 and
+     LDC 1.43.0; the full supported matrix is a release gate. LDC is the
+     current release-performance reference compiler.
 
  Authors:
      Alexander
@@ -164,7 +165,7 @@
      MIT License. See the repository LICENSE file.
 
  See_Also:
-     color.storage, color.rgb, color.xyz, color.oklab, color.oklch, color.alpha,
+     color.storage, color.rgb, color.xyz, color.cielab, color.oklab, color.oklch, color.alpha,
      color.composite, color.interpolate, color.gamut, color.wcag,
      color.difference, color.tone, color.cvd,
      https://github.com/alex-1974/color-d

@@ -25,6 +25,7 @@ private import std.math :
     cos,
     sin,
     exp2,
+    sqrt,
     PI;
 
 
