@@ -52,6 +52,15 @@ jobs:
           dub build --compiler="$DC" --build=ddox --force
           python3 .github/scripts/check-ddox-site.py docs
 
+      - name: Upload DDox review artifact
+        if: matrix.compiler == 'dmd-2.113.0' && startsWith(github.base_ref, 'release/')
+        uses: actions/upload-artifact@v7
+        with:
+          name: ddox-review-${{ github.event.pull_request.number }}-${{ github.sha }}
+          path: docs
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Release unittests
         run: dub test --compiler="$DC" --build=release --force
 

@@ -44,7 +44,7 @@
 
  Conversion:
      Storage to computation is total and normalized. Computation to storage is
-     checked: out-of-range values, NaN, and infinities fail without modifying
+     checked; out-of-range values, NaN, and infinities fail without modifying
      caller-owned output.
 
  Hex_Interop:
