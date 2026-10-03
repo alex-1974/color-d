@@ -47,6 +47,12 @@
      checked: out-of-range values, NaN, and infinities fail without modifying
      caller-owned output.
 
+ Hex_Interop:
+     `SRgb8` uses exactly `#RRGGBB`; `SRgba8` uses exactly
+     `#RRGGBBAA`. Parsing accepts upper- or lowercase hexadecimal digits.
+     Serialization is deterministic lowercase and returns fixed-size character
+     arrays without allocation.
+
  Compile_Time:
      Aggregate construction and the public conversion operations are usable at
      CTFE.
@@ -126,6 +132,43 @@ struct SRgb8
         static assert(normalized.r == 1.0);
         static assert(normalized.g == 128.0 / 255.0);
         static assert(normalized.b == 0.0);
+    }
+
+    /**
+     * Serializes this byte value as canonical six-digit hexadecimal sRGB.
+     *
+     * The result is exactly seven ASCII characters: a leading `#` followed
+     * by two lowercase hexadecimal digits for red, green, and blue.
+     *
+     * Returns:
+     *     Allocation-free `char[7]` containing `#rrggbb`.
+     */
+    char[7] toHex() const
+    @safe pure nothrow @nogc
+    {
+        char[7] result;
+
+        result[0] = '#';
+        writeHexByte(r, result, 1);
+        writeHexByte(g, result, 3);
+        writeHexByte(b, result, 5);
+
+        return result;
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        enum packed = SRgb8(0x12, 0xAB, 0x00);
+        enum hex = packed.toHex();
+
+        static assert(hex[0] == '#');
+        static assert(hex[1] == '1');
+        static assert(hex[2] == '2');
+        static assert(hex[3] == 'a');
+        static assert(hex[4] == 'b');
+        static assert(hex[5] == '0');
+        static assert(hex[6] == '0');
     }
 }
 
@@ -244,6 +287,47 @@ struct SRgba8
         static assert(normalized.color.g == 64.0 / 255.0);
         static assert(normalized.color.b == 0.0);
         static assert(normalized.alpha == 128.0 / 255.0);
+    }
+
+    /**
+     * Serializes this byte value as canonical eight-digit hexadecimal RGBA.
+     *
+     * The result is exactly nine ASCII characters: a leading `#` followed
+     * by two lowercase hexadecimal digits for red, green, blue, and straight
+     * alpha, in that order.
+     *
+     * Returns:
+     *     Allocation-free `char[9]` containing `#rrggbbaa`.
+     */
+    char[9] toHex() const
+    @safe pure nothrow @nogc
+    {
+        char[9] result;
+
+        result[0] = '#';
+        writeHexByte(r, result, 1);
+        writeHexByte(g, result, 3);
+        writeHexByte(b, result, 5);
+        writeHexByte(a, result, 7);
+
+        return result;
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        enum packed = SRgba8(0x12, 0xAB, 0x00, 0x80);
+        enum hex = packed.toHex();
+
+        static assert(hex[0] == '#');
+        static assert(hex[1] == '1');
+        static assert(hex[2] == '2');
+        static assert(hex[3] == 'a');
+        static assert(hex[4] == 'b');
+        static assert(hex[5] == '0');
+        static assert(hex[6] == '0');
+        static assert(hex[7] == '8');
+        static assert(hex[8] == '0');
     }
 }
 
@@ -598,6 +682,389 @@ static assert(allStorageRoundTrips!double());
         rgbaDestination
     ));
     assert(rgbaDestination == SRgba8(4, 5, 6, 7));
+}
+
+
+private char lowerHexDigit(
+    ubyte value
+)
+@safe pure nothrow @nogc
+{
+    return
+        value < 10
+            ? cast(char)('0' + value)
+            : cast(char)('a' + value - 10);
+}
+
+
+private void writeHexByte(size_t N)(
+    ubyte value,
+    ref char[N] output,
+    size_t offset
+)
+@safe pure nothrow @nogc
+{
+    output[offset] =
+        lowerHexDigit(
+            cast(ubyte)(value >> 4)
+        );
+
+    output[offset + 1] =
+        lowerHexDigit(
+            cast(ubyte)(value & 0x0F)
+        );
+}
+
+
+private int hexDigitValue(
+    char value
+)
+@safe pure nothrow @nogc
+{
+    if (value >= '0' && value <= '9')
+        return value - '0';
+
+    if (value >= 'a' && value <= 'f')
+        return value - 'a' + 10;
+
+    if (value >= 'A' && value <= 'F')
+        return value - 'A' + 10;
+
+    return -1;
+}
+
+
+private int hexByteValue(
+    char high,
+    char low
+)
+@safe pure nothrow @nogc
+{
+    const int highValue =
+        hexDigitValue(high);
+
+    const int lowValue =
+        hexDigitValue(low);
+
+    if (highValue < 0 || lowValue < 0)
+        return -1;
+
+    return
+        (highValue << 4) |
+        lowValue;
+}
+
+
+/**
+ * Tries to parse exact six-digit hexadecimal encoded-sRGB storage.
+ *
+ * The accepted form is exactly `#RRGGBB`. Hexadecimal letters are
+ * case-insensitive. Shorthand forms, whitespace, missing `#`, extra
+ * characters, and non-hexadecimal digits are rejected.
+ *
+ * Params:
+ *     text = Candidate seven-character hexadecimal form.
+ *     output = Destination storage value. It is unchanged on failure.
+ *
+ * Returns:
+ *     `true` when `text` was parsed; otherwise `false`.
+ */
+bool tryParseSRgb8Hex(
+    scope const(char)[] text,
+    ref SRgb8 output
+)
+@safe pure nothrow @nogc
+{
+    if (
+        text.length != 7 ||
+        text[0] != '#'
+    )
+    {
+        return false;
+    }
+
+    const int r =
+        hexByteValue(
+            text[1],
+            text[2]
+        );
+
+    const int g =
+        hexByteValue(
+            text[3],
+            text[4]
+        );
+
+    const int b =
+        hexByteValue(
+            text[5],
+            text[6]
+        );
+
+    if (
+        r < 0 ||
+        g < 0 ||
+        b < 0
+    )
+    {
+        return false;
+    }
+
+    output =
+        SRgb8(
+            cast(ubyte)r,
+            cast(ubyte)g,
+            cast(ubyte)b
+        );
+
+    return true;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    SRgb8 value = SRgb8.init;
+
+    assert(tryParseSRgb8Hex(
+        "#12AbF0",
+        value
+    ));
+
+    assert(value == SRgb8(
+        0x12,
+        0xAB,
+        0xF0
+    ));
+
+    const hex = value.toHex();
+    assert(hex[] == "#12abf0");
+}
+
+
+/**
+ * Tries to parse exact eight-digit hexadecimal encoded-sRGB straight-alpha
+ * storage.
+ *
+ * The accepted form is exactly `#RRGGBBAA`, with alpha in the final byte
+ * pair. Hexadecimal letters are case-insensitive. Shorthand forms, whitespace,
+ * missing `#`, extra characters, and non-hexadecimal digits are rejected.
+ *
+ * Params:
+ *     text = Candidate nine-character hexadecimal form.
+ *     output = Destination storage value. It is unchanged on failure.
+ *
+ * Returns:
+ *     `true` when `text` was parsed; otherwise `false`.
+ */
+bool tryParseSRgba8Hex(
+    scope const(char)[] text,
+    ref SRgba8 output
+)
+@safe pure nothrow @nogc
+{
+    if (
+        text.length != 9 ||
+        text[0] != '#'
+    )
+    {
+        return false;
+    }
+
+    const int r =
+        hexByteValue(
+            text[1],
+            text[2]
+        );
+
+    const int g =
+        hexByteValue(
+            text[3],
+            text[4]
+        );
+
+    const int b =
+        hexByteValue(
+            text[5],
+            text[6]
+        );
+
+    const int a =
+        hexByteValue(
+            text[7],
+            text[8]
+        );
+
+    if (
+        r < 0 ||
+        g < 0 ||
+        b < 0 ||
+        a < 0
+    )
+    {
+        return false;
+    }
+
+    output =
+        SRgba8(
+            cast(ubyte)r,
+            cast(ubyte)g,
+            cast(ubyte)b,
+            cast(ubyte)a
+        );
+
+    return true;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    SRgba8 value = SRgba8.init;
+
+    assert(tryParseSRgba8Hex(
+        "#12AbF080",
+        value
+    ));
+
+    assert(value == SRgba8(
+        0x12,
+        0xAB,
+        0xF0,
+        0x80
+    ));
+
+    const hex = value.toHex();
+    assert(hex[] == "#12abf080");
+}
+
+
+private bool hexInteropCtfe()
+@safe pure nothrow @nogc
+{
+    SRgb8 rgb =
+        SRgb8.init;
+
+    if (!tryParseSRgb8Hex(
+        "#Aa00Ff",
+        rgb
+    ))
+    {
+        return false;
+    }
+
+    if (rgb != SRgb8(
+        0xAA,
+        0x00,
+        0xFF
+    ))
+    {
+        return false;
+    }
+
+    SRgba8 rgba =
+        SRgba8.init;
+
+    if (!tryParseSRgba8Hex(
+        "#Aa00Ff80",
+        rgba
+    ))
+    {
+        return false;
+    }
+
+    if (rgba != SRgba8(
+        0xAA,
+        0x00,
+        0xFF,
+        0x80
+    ))
+    {
+        return false;
+    }
+
+    const rgbHex =
+        rgb.toHex();
+
+    const rgbaHex =
+        rgba.toHex();
+
+    return
+        rgbHex[0] == '#' &&
+        rgbHex[1] == 'a' &&
+        rgbHex[2] == 'a' &&
+        rgbHex[5] == 'f' &&
+        rgbHex[6] == 'f' &&
+        rgbaHex[0] == '#' &&
+        rgbaHex[7] == '8' &&
+        rgbaHex[8] == '0';
+}
+
+
+static assert(hexInteropCtfe());
+
+
+@safe pure nothrow @nogc unittest
+{
+    const invalidRgb =
+    [
+        "",
+        "#123",
+        "#1234",
+        "112233",
+        "#12345",
+        "#1234567",
+        "#12345678",
+        "#12gg56",
+        " #123456",
+        "#123456 "
+    ];
+
+    foreach (text; invalidRgb)
+    {
+        SRgb8 destination =
+            SRgb8(1, 2, 3);
+
+        assert(!tryParseSRgb8Hex(
+            text,
+            destination
+        ));
+
+        assert(destination == SRgb8(
+            1,
+            2,
+            3
+        ));
+    }
+
+    const invalidRgba =
+    [
+        "",
+        "#1234",
+        "#123456",
+        "11223344",
+        "#1234567",
+        "#123456789",
+        "#123456gg",
+        " #12345678",
+        "#12345678 "
+    ];
+
+    foreach (text; invalidRgba)
+    {
+        SRgba8 destination =
+            SRgba8(1, 2, 3, 4);
+
+        assert(!tryParseSRgba8Hex(
+            text,
+            destination
+        ));
+
+        assert(destination == SRgba8(
+            1,
+            2,
+            3,
+            4
+        ));
+    }
 }
 
 
