@@ -11,6 +11,8 @@ static assert(is(LinearSRgbf));
 static assert(is(LinearSRgbd));
 static assert(is(XyzD65f));
 static assert(is(XyzD65d));
+static assert(is(CieLabD50f));
+static assert(is(CieLabD50d));
 static assert(is(Oklabf));
 static assert(is(Oklabd));
 static assert(is(OklabHuef));
@@ -20,6 +22,7 @@ static assert(is(Oklchd));
 static assert(is(Alpha!SRgbd));
 static assert(is(Premultiplied!LinearSRgbd));
 static assert(is(Wcag2Measurement!double));
+static assert(is(SRgbChromaLimit!double));
 static assert(is(typeof(HuePath.shorter) == HuePath));
 static assert(is(typeof(CvdDeficiency.protan) == CvdDeficiency));
 static assert(is(typeof(RedGreenCvdDeficiency.deutan) == RedGreenCvdDeficiency));
@@ -90,6 +93,22 @@ void acceptedRootAndUfcsSurface()
     const xyz =
         linear.toXyzD65;
 
+    const cieLab =
+        xyz.toCieLabD50;
+
+    const cieXyzBack =
+        cieLab.toXyzD65;
+
+    const cieDelta76 =
+        cieLab.deltaE76(
+            cieLab
+        );
+
+    const cieDelta2000 =
+        cieLab.deltaE2000(
+            cieLab
+        );
+
     const lab =
         xyz.toOklab;
 
@@ -142,6 +161,12 @@ void acceptedRootAndUfcsSurface()
 
     const bool linearGamutState =
         linearBack.inGamut;
+
+    const chromaLimit =
+        maxChromaInSRgb(
+            0.5,
+            OklabHued.fromDegrees(40.0)
+        );
 
     const clipped =
         SRgbd(-0.1, 0.5, 1.1).clip;
@@ -399,6 +424,12 @@ void acceptedRootAndUfcsSurface()
     assert(achromatic || !achromatic);
     assert(nearAchromatic || !nearAchromatic);
     assert(canonical.l == canonical.l || canonical.l != canonical.l);
+    assert(cieLab.l == cieLab.l || cieLab.l != cieLab.l);
+    assert(cieXyzBack.x == cieXyzBack.x || cieXyzBack.x != cieXyzBack.x);
+    assert(cieDelta76 == 0.0);
+    assert(cieDelta2000 == 0.0);
+    assert(chromaLimit.valid);
+    assert(chromaLimit.value > 0.0);
     assert(straightAlphaValid);
     assert(premultipliedAlphaValid);
     assert(luminanceValue == luminanceValue || luminanceValue != luminanceValue);
