@@ -1002,9 +1002,74 @@ private bool hexInteropCtfe()
 static assert(hexInteropCtfe());
 
 
+private bool allHexByteRoundTrips()
+@safe pure nothrow @nogc
+{
+    foreach (i; 0u .. 256u)
+    {
+        const byteValue =
+            cast(ubyte)i;
+
+        const rgb =
+            SRgb8(
+                byteValue,
+                byteValue,
+                byteValue
+            );
+
+        const rgbHex =
+            rgb.toHex();
+
+        SRgb8 rgbParsed =
+            SRgb8.init;
+
+        if (!tryParseSRgb8Hex(
+            rgbHex[],
+            rgbParsed
+        ))
+        {
+            return false;
+        }
+
+        if (rgbParsed != rgb)
+            return false;
+
+        const rgba =
+            SRgba8(
+                byteValue,
+                byteValue,
+                byteValue,
+                byteValue
+            );
+
+        const rgbaHex =
+            rgba.toHex();
+
+        SRgba8 rgbaParsed =
+            SRgba8.init;
+
+        if (!tryParseSRgba8Hex(
+            rgbaHex[],
+            rgbaParsed
+        ))
+        {
+            return false;
+        }
+
+        if (rgbaParsed != rgba)
+            return false;
+    }
+
+    return true;
+}
+
+
+static assert(allHexByteRoundTrips());
+
+
 @safe pure nothrow @nogc unittest
 {
-    const invalidRgb =
+    const string[10] invalidRgb =
     [
         "",
         "#123",
@@ -1035,7 +1100,7 @@ static assert(hexInteropCtfe());
         ));
     }
 
-    const invalidRgba =
+    const string[9] invalidRgba =
     [
         "",
         "#1234",
