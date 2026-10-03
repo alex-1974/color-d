@@ -31,6 +31,7 @@ import color;
 Supported direct modules are:
 
 ```text
+color.storage
 color.rgb
 color.xyz
 color.cielab
@@ -47,6 +48,15 @@ color.tone
 
 Technical importability of an implementation helper does not make it public
 contract.
+
+## Storage and computation
+
+Compact storage and floating-point computation are distinct public concepts.
+
+`color.storage` owns bounded encoded-sRGB storage such as `SRgb8`.
+Computational color mathematics remains in the floating-point color-space
+types such as `SRgb!T` and `LinearSRgb!T`. Storage types do not implicitly
+convert to computational types.
 
 ## Value-oriented core
 

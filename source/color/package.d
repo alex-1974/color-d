@@ -38,6 +38,10 @@
      OKLCH does not imply gamut mapping. Gamut mapping does not imply encoding.
 
  Color_Model:
+     Compact storage and floating-point computation are distinct. `SRgb8`
+     stores encoded sRGB channel bytes; explicit storage/computational
+     conversion is a separate operation.
+
      The public computational chain is:
 
      ---
@@ -150,13 +154,14 @@
      MIT License. See the repository LICENSE file.
 
  See_Also:
-     color.rgb, color.xyz, color.oklab, color.oklch, color.alpha,
+     color.storage, color.rgb, color.xyz, color.oklab, color.oklch, color.alpha,
      color.composite, color.interpolate, color.gamut, color.wcag,
      color.difference, color.tone, color.cvd,
      https://github.com/alex-1974/color-d
 +/
 module color;
 
+public import color.storage;
 public import color.rgb;
 public import color.xyz;
 public import color.cielab;
