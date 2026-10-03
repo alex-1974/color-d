@@ -2,7 +2,9 @@ module public_api_root_surface;
 
 import color;
 
-// The curated root must expose every accepted v0.1 public value family.
+// The curated root must expose every accepted public value family.
+static assert(is(SRgb8));
+static assert(is(SRgba8));
 static assert(is(SRgbf));
 static assert(is(SRgbd));
 static assert(is(LinearSRgbf));
@@ -33,6 +35,52 @@ static assert(is(PreparedMachado2009!double));
 void acceptedRootAndUfcsSurface()
 @safe pure nothrow @nogc
 {
+    SRgb8 packedRgb =
+        SRgb8.init;
+
+    SRgba8 packedRgba =
+        SRgba8.init;
+
+    const bool parsedRgb =
+        tryParseSRgb8Hex(
+            "#247ac4",
+            packedRgb
+        );
+
+    const bool parsedRgba =
+        tryParseSRgba8Hex(
+            "#247ac480",
+            packedRgba
+        );
+
+    const storageRgb =
+        packedRgb.toSRgb!double();
+
+    const storageAlpha =
+        packedRgba.toAlphaSRgb!double();
+
+    SRgb8 requantizedRgb;
+
+    SRgba8 requantizedRgba;
+
+    const bool storedRgb =
+        tryToSRgb8(
+            storageRgb,
+            requantizedRgb
+        );
+
+    const bool storedRgba =
+        tryToSRgba8(
+            storageAlpha,
+            requantizedRgba
+        );
+
+    const rgbHex =
+        packedRgb.toHex();
+
+    const rgbaHex =
+        packedRgba.toHex();
+
     const encoded =
         SRgbd(0.82, 0.25, 0.12);
 
@@ -333,6 +381,15 @@ void acceptedRootAndUfcsSurface()
 
     const alphaRay =
         alphaLch.gamutMapRayTraceToLinearSRgb;
+
+    assert(parsedRgb);
+    assert(parsedRgba);
+    assert(storedRgb);
+    assert(storedRgba);
+    assert(requantizedRgb == packedRgb);
+    assert(requantizedRgba == packedRgba);
+    assert(rgbHex[0] == '#');
+    assert(rgbaHex[0] == '#');
 
     // Keep all values live enough for compile-time semantic checking.
     assert(storedHue == storedHue || storedHue != storedHue);
