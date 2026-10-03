@@ -384,7 +384,7 @@ jobs:
           echo "consumer archive bytes=$archive_bytes"
 
           if (( archive_bytes > max_archive_bytes )); then
-              echo "consumer archive exceeded the 1 MiB v0.1 package guard" >&2
+              echo "consumer archive exceeded the 1 MiB package guard" >&2
               exit 1
           fi
 
@@ -409,7 +409,7 @@ jobs:
 
           trap cleanup EXIT
 
-          bash .github/scripts/check-release-metadata.sh 0.1.1 preflight "$GITHUB_WORKSPACE"
+          bash .github/scripts/check-release-metadata.sh 0.2.0 preflight "$GITHUB_WORKSPACE"
 
           if bash .github/scripts/check-release-metadata.sh 0.1 release "$GITHUB_WORKSPACE"
           then
@@ -425,29 +425,29 @@ jobs:
           mkdir -p "$tmp/artifacts-b"
 
           bash .github/scripts/assemble-release-archive.sh \
-              0.1.1 \
+              0.2.0 \
               "$tmp/artifacts-a" \
               HEAD
 
           bash .github/scripts/assemble-release-archive.sh \
-              0.1.1 \
+              0.2.0 \
               "$tmp/artifacts-b" \
               HEAD
 
           bash .github/scripts/assemble-ddox-archive.sh \
-              0.1.1 \
+              0.2.0 \
               docs \
               "$tmp/artifacts-a"
 
           bash .github/scripts/assemble-ddox-archive.sh \
-              0.1.1 \
+              0.2.0 \
               docs \
               "$tmp/artifacts-b"
 
           for file in \
-              color-d-0.1.1.tar.gz \
-              color-d-0.1.1.metadata.txt \
-              color-d-0.1.1.ddox.tar.gz
+              color-d-0.2.0.tar.gz \
+              color-d-0.2.0.metadata.txt \
+              color-d-0.2.0.ddox.tar.gz
           do
               test -s "$tmp/artifacts-a/$file"
               cmp "$tmp/artifacts-a/$file" "$tmp/artifacts-b/$file"
@@ -455,15 +455,15 @@ jobs:
 
           grep -Fq \
               "commit=$(git rev-parse HEAD)" \
-              "$tmp/artifacts-a/color-d-0.1.1.metadata.txt"
+              "$tmp/artifacts-a/color-d-0.2.0.metadata.txt"
 
           (
               cd "$tmp/artifacts-a"
 
               sha256sum \
-                  color-d-0.1.1.tar.gz \
-                  color-d-0.1.1.metadata.txt \
-                  color-d-0.1.1.ddox.tar.gz \
+                  color-d-0.2.0.tar.gz \
+                  color-d-0.2.0.metadata.txt \
+                  color-d-0.2.0.ddox.tar.gz \
                   > SHA256SUMS
 
               sha256sum -c SHA256SUMS
