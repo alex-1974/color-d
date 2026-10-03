@@ -19,11 +19,14 @@ Primary initial consumers are:
 
 ## When to use color-d
 
-Use `color-d` when a D program needs explicit color-space mathematics rather
-than framework-specific styling objects. Typical use cases include typed
-sRGB/XYZ/Oklab/OKLCH conversion, linear-light alpha compositing, perceptual
-interpolation, explicit sRGB gamut handling, model-specific color-vision-deficiency transformations, WCAG 2 measurements, and
-compile-time construction of fixed color data.
+Use `color-d` when a D program needs explicit color representation or
+color-space mathematics rather than framework-specific styling objects.
+Typical use cases include compact encoded-sRGB byte/hex interchange,
+typed sRGB/XYZ/CIELAB/Oklab/OKLCH conversion, linear-light alpha compositing,
+perceptual interpolation, explicit sRGB gamut handling and boundary
+measurement, named Delta-E measurements, model-specific color-vision-deficiency
+transformations, WCAG 2 measurements, and compile-time construction of fixed
+color data.
 
 The library deliberately does not own application theme roles, OSM semantics,
 renderer policy, image-wide rendering intent, or GUI-framework tokens.
@@ -59,8 +62,8 @@ See [Compiler matrix](docs/compiler-matrix.md) for exact-version policy,
 reproducible local commands, and compiler-specific evidence.
 
 The public API remains pre-1.0, so later 0.x releases may still make breaking
-changes when justified and documented. R4 real-consumer validation completed
-without requiring a provider-side API correction for v0.1.0.
+changes when justified and documented. The v0.2.0 storage/interop consumer
+validation also completed without requiring a provider-side API correction.
 
 ## Installation with DUB
 
@@ -154,6 +157,30 @@ outside `color-d`.
 
 Fast CI compiles and executes the same quick-start path so this documented
 call sequence cannot silently drift.
+
+For v0.2 storage/configuration boundaries, conversion remains equally explicit:
+
+```d
+import color;
+
+SRgba8 packed;
+assert(tryParseSRgba8Hex("#247AC480", packed));
+
+const encoded = packed.toAlphaSRgb!double();
+const linear = encoded.color.toLinear;
+
+const boundary =
+    maxChromaInSRgb(
+        0.60,
+        OklabHued.fromDegrees(255.0)
+    );
+
+assert(boundary.valid);
+assert(packed.toHex()[] == "#247ac480");
+```
+
+Broader CSS parsing, theme roles, accessibility thresholds, and renderer policy
+remain consumer responsibilities.
 
 ## Research and evidence
 
