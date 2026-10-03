@@ -3,9 +3,9 @@
 This directory contains the documentation that a package user needs to
 understand and use color-d. It is shipped with the consumer archive.
 
-The current released package is `v0.1.1`. The frozen v0.2.0 release
-candidate documents the new storage/interop and independently promoted
-color-math capabilities now undergoing final release qualification.
+The current released package is `v0.2.0`. It includes the new
+storage/interop surface and the independently promoted generic color-math
+capabilities qualified for this release.
 
 ## Start here
 
