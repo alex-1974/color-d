@@ -1,25 +1,119 @@
 # color-d Roadmap
 
-## Current release work
+## Current release line
 
-**v0.1.0 — First public release** was published on 2026-09-29 and is complete.
-The R0–R4 sections below are retained as the historical development and
-validation path that produced that release; they are not current package
-release targets.
+**v0.2.0 — Practical Color Storage and Interop** was published on 2026-10-03.
 
-**v0.1.1 — Documentation and Maintenance** is complete and ready for release.
+**Status: COMPLETE — v0.2.0 RELEASED.**
 
-**Status: COMPLETE — v0.1.1 RELEASED.**
+Feature freeze, consumer-driven promotion, the public API audit, API freeze,
+release hardening, compiler/consumer qualification, and publication are
+complete.
 
-v0.1.1 is deliberately limited to documentation quality, executable public
-examples, source rationale, contract evidence, repository cleanup, and
-compatible toolchain/quality-gate maintenance. It does not add a new color
-space, storage family, palette/theme policy abstraction, or intentionally
-change public numerical semantics.
+The v0.2.0 scope is:
 
-Detailed v0.1.1 work is tracked by GitHub milestone `v0.1.1` and its issues.
-Deferred feature families remain candidates only; they are not promises for
-v0.1.1 or a later release.
+- compact encoded-sRGB storage with `SRgb8`;
+- compact encoded-sRGB plus straight-alpha storage with `SRgba8`;
+- explicit checked conversion between packed storage and `SRgb!T`, including
+  documented quantization and range behavior without implicit clipping;
+- compact full-byte hexadecimal sRGB/RGBA parsing and serialization without a
+  general CSS parser;
+- deterministic sRGB gamut-boundary measurement with `maxChromaInSRgb` and
+  `SRgbChromaLimit`;
+- explicit D50 CIELAB conversion plus Delta E 1976 and CIEDE2000;
+- model-specific Brettel 1997, Viénot 1999, and Machado 2009 CVD transforms,
+  including prepared allocation-free repeated-work forms;
+- real-consumer validation with Dunia/editor and imagery workflows;
+- the normal documentation, compiler, package, and release qualification gates.
+
+The release does **not** introduce a second floating-point RGBA computational
+model. Existing alpha and premultiplied-alpha semantics remain authoritative.
+
+HSL/HSV, semantic Theme/Palette objects, general CSS Color parsing, wide-gamut
+spaces, and other candidate families remain outside the committed v0.2.0 scope.
+
+Detailed v0.2.0 work is tracked by GitHub milestone `v0.2.0`.
+
+## v0.2.0 consumer-driven color-math promotion
+
+**Status: COMPLETE before API freeze.**
+
+The three Dunia-driven research-and-promotion gates produced bounded generic
+color-d capabilities:
+
+- sRGB gamut-boundary measurement through `maxChromaInSRgb` and
+  `SRgbChromaLimit`;
+- `CieLabD50`, explicit XYZ D65 ↔ CIELAB D50 conversion, Delta E 1976, and
+  CIEDE2000; CIELCh and automatic metric/policy selection remain deferred;
+- Brettel 1997 protan/deutan/tritan transforms, Viénot 1999 protan/deutan
+  transforms, and Machado 2009 protan/deutan severity, with prepared repeated
+  application where justified.
+
+Each promoted family has independent validation and consumer-shaped evidence.
+Application thresholds, semantic theme roles, OSM meaning, accessibility
+classification, and helpers such as `isColorBlindSafe()` remain consumer
+policy.
+
+## Investigation candidates after v0.1
+
+The following are research and design candidates, not release commitments.
+They should be promoted only when consumer evidence establishes both their
+value and the correct `color-d` boundary.
+
+### Common color-library surface
+
+- HSL / HSV: establish hue semantics for achromatic colors, extended-value
+  behavior, conversion paths, CTFE behavior, interpolation expectations, and
+  concrete consumer demand before promotion.
+- CSS Color parsing and serialization beyond the compact hexadecimal v0.2.0
+  boundary, including `rgb()`, `hsl()`, `oklab()`, and `oklch()`.
+- Display-P3 and later Rec.2020 where real wide-gamut consumers justify them.
+- Okhsl / Okhsv if perceptual picker/editing workflows demonstrate an advantage.
+- named colors only if a standards/configuration consumer requires the data and
+  ownership boundary is clear.
+
+### Theme, palette, and editor primitives
+
+The accepted architecture remains that `color-d` owns reusable color
+mathematics, not application theme roles or OSM semantics. Research should
+therefore ask which generic primitives are missing rather than introducing a
+policy-heavy `Theme`, `Palette`, `ThemeBuilder`, or `PaletteBuilder`.
+
+Investigate:
+
+- compile-time construction and validation of fixed GUI theme data from ordinary
+  D values and fixed-size arrays;
+- reusable contrast- and perceptual-distance-based candidate selection;
+- foreground/background distinguishability primitives for adaptive overlays;
+- N-step gradients and fixed-cardinality palette generation where these are
+  more than composition of existing interpolation/tone operations;
+- Light, Dark, and High-Contrast consumer validation in the Dunia/OSM editor;
+- how established theme systems derive and validate colors, without importing
+  their framework-specific policy into `color-d`.
+
+### Accessibility and analysis
+
+The generic CVD transformations required by Dunia theme validation are
+promoted in v0.2.0. Consumer-owned accessibility thresholds and policy remain
+outside color-d.
+
+- APCA and emerging accessibility measurements, with standards maturity and
+  provenance checked before public API adoption;
+- scientific and categorical palette analysis/generation where a generic
+  mathematical contract can be established.
+
+### Rendering and interchange
+
+- GPU/renderer-friendly interop and whether existing value/static-array forms
+  already suffice before adding new public representation types;
+- blend modes beyond source-over, separating color mathematics from renderer
+  policy;
+- HDR color models and transfer functions;
+- ICC / CMYK and color-management boundaries.
+
+These candidates intentionally have no promised release version or priority.
+Research may reject a candidate, keep it consumer-local, or promote only a
+smaller reusable primitive.
 
 ## Historical v0.1.0 development path
 
@@ -319,15 +413,13 @@ They may be reconsidered only when concrete consumer requirements justify
 their cost and library-boundary impact. Their order below is not a priority
 ranking, and inclusion in this list does not imply a planned release version.
 
-- `SRgb8` / `SRgba8`
 - HSL / HSV
 - Display-P3
 - Rec.2020
-- CIELAB / LCh
-- CIEDE2000
+- CIELCh
 - Okhsl / Okhsv
-- CSS parsing/serialization
+- CSS parsing/serialization beyond the v0.2 full-byte hexadecimal surface
 - scientific and categorical palettes
-- color-vision-deficiency tooling
+- additional CVD models or policy only when independently justified
 - HDR
 - ICC / CMYK

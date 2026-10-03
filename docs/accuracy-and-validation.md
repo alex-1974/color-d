@@ -6,6 +6,25 @@ The current public computational scalar types are `float` and `double`.
 They are validated separately. D `real` is not part of the initial public
 contract because its representation and precision are platform-dependent.
 
+## 8-bit storage conversion
+
+`SRgb8` and `SRgba8` use the full unsigned-byte range as normalized
+encoded-sRGB/straight-alpha storage.
+
+Storage-to-computation maps a byte `c` to `c / 255` in the requested
+`float` or `double` scalar type.
+
+Checked computation-to-storage accepts only finite components in inclusive
+`[0, 1]`. Accepted components are multiplied by 255 and rounded to the
+nearest byte with exact half steps choosing the larger byte. Invalid input
+fails without modifying caller-owned destination storage.
+
+Every possible byte value is exhaustively tested to survive
+storage -> float/double -> storage round trips.
+
+No implicit clipping, gamut mapping, alpha premultiplication, or special-value
+repair is part of the storage conversion contract. See ADR 0006.
+
 ## No universal epsilon
 
 color-d does not define one floating-point tolerance. Each tested property uses
@@ -100,6 +119,11 @@ corpora. They do not claim exhaustive proof over all finite IEEE values.
   R0.9; WCAG relative luminance is deliberately distinct from XYZ D65 Y.
 - `deltaEOK` is Euclidean Oklab distance as described by CSS Color 4 and
   independently validated in R0.10.
+- CIE 1976 L*a*b* and Delta E 1976 follow ISO/CIE 11664-4. The production
+  `CieLabD50` type makes the D50 reference white explicit; XYZ D65 ↔ CIELAB
+  conversion includes the explicit linear Bradford adaptation.
+- CIEDE2000 follows ISO/CIE 11664-6 and is validated against the Sharma/Wu/Dalal
+  supplementary reference data.
 
 ## Evidence
 

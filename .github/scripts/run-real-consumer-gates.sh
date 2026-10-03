@@ -6,9 +6,10 @@ usage()
     cat <<'EOF'
 usage: run-real-consumer-gates.sh <compiler> <debug|release> [repository-root]
 
-Runs the accepted imagery-d and Dunia color-d consumer slices against the
-current color-d checkout. Consumer repositories must already be checked out
-under consumer-workspace/ at their pinned validated commits.
+Runs the v0.2 storage/interop external-consumer fixture plus the accepted
+imagery-d and Dunia color-d consumer slices against the current color-d
+checkout. Consumer repositories must already be checked out under
+consumer-workspace/ at their pinned validated commits.
 EOF
 }
 
@@ -52,6 +53,17 @@ echo "color-d=$(git -C "$root" rev-parse HEAD)"
 echo "imagery-d=$(git -C "$imagery" rev-parse HEAD)"
 echo "raster-d=$(git -C "$raster" rev-parse HEAD)"
 echo "dunia=$(git -C "$dunia" rev-parse HEAD)"
+
+echo
+echo "=== color-d v0.2 storage/interop external consumer ==="
+(
+    cd "$root/tests/consumer/v0_2_storage_interop"
+
+    dub run \
+        --compiler="$compiler" \
+        --build="$build" \
+        --force
+)
 
 echo
 echo "=== imagery-d accepted consumer ==="

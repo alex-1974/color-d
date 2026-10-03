@@ -7,11 +7,54 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 
 ## Unreleased
 
+## [0.2.0] - 2026-10-03
+
+### Added
+
+- `SRgb8`, an explicit three-byte encoded-sRGB storage value with stable
+  R/G/B byte layout and no implicit computational conversion;
+- `SRgba8`, an explicit four-byte encoded-sRGB straight-alpha storage value
+  with stable R/G/B/A layout and no implicit computational conversion;
+- explicit checked conversion between `SRgb8`/`SRgba8` storage and normalized
+  floating-point encoded sRGB, with byte/255 normalization, deterministic
+  nearest-byte half-up quantization, and no implicit clipping;
+- allocation-free compact hexadecimal interop for `SRgb8` (`#RRGGBB`) and
+  `SRgba8` (`#RRGGBBAA`), with case-insensitive parsing, lowercase
+  serialization, CTFE support, and no shorthand/CSS parser expansion;
+- explicit D50 CIELAB values with XYZ D65 conversion and linear Bradford
+  adaptation;
+- Delta E 1976 and CIEDE2000 measurements as separately named generic
+  operations, without application thresholds or automatic metric selection;
+- deterministic sRGB gamut-boundary measurement through `maxChromaInSRgb` and
+  `SRgbChromaLimit`, without implicit gamut mapping or consumer policy;
+- model-specific linear-sRGB color-vision-deficiency transforms for Brettel
+  1997 dichromacy, Viénot 1999 protan/deutan simulation, and Machado 2009
+  protan/deutan severity, without accessibility classification or implicit
+  gamut policy;
+- prepared CVD transforms for repeated work, with allocation-free
+  fixed-cardinality `applyInto` and runtime-sized `tryApplyInto` batch forms;
+  Machado severity interpolation can be performed once per batch through the
+  explicit `tryPrepareMachado2009` success channel.
+
+### Changed
+
+- optimized CVD prepared-batch implementation shape with a centralized
+  compiler-family capability gate: LDC snapshots small invariant transform
+  state before hot loops, while DMD retains the established member-backed
+  path; public API and numerical semantics are unchanged;
+- optimized Machado 2009 scalar/preparation codegen by keeping runtime
+  reference tables in the consumer scalar type; CTFE, public API, invalid
+  severity behavior, interpolation arithmetic, and prepared-batch semantics
+  are unchanged;
+- completed source/Ddoc hardening for the new v0.2 public callables and fixed
+  DDox module-section rendering found during the rendered release-candidate
+  review, without changing the frozen public API.
+
 ## [0.1.1] - 2026-09-29
 
 ### Changed
 
-- preparing v0.1.1 as a documentation and maintenance release with no intended
+- prepared v0.1.1 as a documentation and maintenance release with no intended
   public numerical-semantic or feature-family expansion;
 - strengthened the documentation contract so every public callable has a
   directly associated executable documented-`unittest` example in source;
@@ -76,6 +119,7 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 - CSS parsing/serialization, named colors, HDR, ICC/CMYK, and policy-heavy
   Palette/Theme abstractions.
 
-[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.1.1...develop
+[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.2.0...develop
+[0.2.0]: https://github.com/alex-1974/color-d/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/alex-1974/color-d/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/alex-1974/color-d/releases/tag/v0.1.0

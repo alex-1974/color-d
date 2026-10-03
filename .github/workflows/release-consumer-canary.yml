@@ -4,10 +4,16 @@ on:
   pull_request:
     branches:
       - develop
+      - "release/**"
     paths:
       - ".github/scripts/run-real-consumer-gates.sh"
       - ".github/workflows/release.yml"
       - ".github/workflows/release-consumer-canary.yml"
+      - "tests/consumer/v0_2_storage_interop/**"
+      - "source/color/storage.d"
+      - "source/color/package.d"
+      - "source/color/rgb.d"
+      - "source/color/alpha.d"
   workflow_dispatch:
 
 permissions:

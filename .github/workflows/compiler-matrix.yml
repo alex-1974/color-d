@@ -37,10 +37,15 @@ jobs:
     continue-on-error: ${{ !matrix.supported }}
 
     steps:
-      - name: Checkout develop
+      - name: Checkout develop for scheduled compatibility
+        if: github.event_name == 'schedule'
         uses: actions/checkout@v7
         with:
           ref: develop
+
+      - name: Checkout selected ref for manual compatibility
+        if: github.event_name != 'schedule'
+        uses: actions/checkout@v7
 
       - name: Install D toolchain
         uses: dlang-community/setup-dlang@v2

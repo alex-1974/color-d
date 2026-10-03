@@ -1,0 +1,5 @@
+name "color-d-v020-storage-consumer"
+description "External consumer-shaped validation for color-d v0.2 storage and interop"
+targetType "executable"
+
+dependency "color-d" path="../../.."

@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - develop
+      - "release/**"
   workflow_dispatch:
 
 permissions:
@@ -50,6 +51,15 @@ jobs:
         run: |
           dub build --compiler="$DC" --build=ddox --force
           python3 .github/scripts/check-ddox-site.py docs
+
+      - name: Upload DDox review artifact
+        if: matrix.compiler == 'dmd-2.113.0' && startsWith(github.base_ref, 'release/')
+        uses: actions/upload-artifact@v7
+        with:
+          name: ddox-review-${{ github.event.pull_request.number }}-${{ github.sha }}
+          path: docs
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Release unittests
         run: dub test --compiler="$DC" --build=release --force
@@ -384,7 +394,7 @@ jobs:
           echo "consumer archive bytes=$archive_bytes"
 
           if (( archive_bytes > max_archive_bytes )); then
-              echo "consumer archive exceeded the 1 MiB v0.1 package guard" >&2
+              echo "consumer archive exceeded the 1 MiB package guard" >&2
               exit 1
           fi
 
@@ -409,45 +419,50 @@ jobs:
 
           trap cleanup EXIT
 
-          bash .github/scripts/check-release-metadata.sh 0.1.1 preflight "$GITHUB_WORKSPACE"
+          release_version="0.2.0"
 
-          if bash .github/scripts/check-release-metadata.sh 0.1 release "$GITHUB_WORKSPACE"
+          bash .github/scripts/check-release-metadata.sh               "$release_version"               preflight               "$GITHUB_WORKSPACE"
+
+          bash .github/scripts/check-release-metadata.sh               "$release_version"               release               "$GITHUB_WORKSPACE"
+
+          if bash .github/scripts/check-release-metadata.sh 0.2 release "$GITHUB_WORKSPACE"
           then
               echo "Invalid release version unexpectedly passed" >&2
               exit 1
           fi
 
-          python3 .github/scripts/extract-release-notes.py CHANGELOG.md 0.1.0 "$tmp/release-notes.md"
+          python3 .github/scripts/extract-release-notes.py               CHANGELOG.md               "$release_version"               "$tmp/release-notes.md"
+
           grep -Fq '### Added' "$tmp/release-notes.md"
-          grep -Fq '### Deferred' "$tmp/release-notes.md"
+          grep -Fq '### Changed' "$tmp/release-notes.md"
 
           mkdir -p "$tmp/artifacts-a"
           mkdir -p "$tmp/artifacts-b"
 
           bash .github/scripts/assemble-release-archive.sh \
-              0.1.1 \
+              "$release_version" \
               "$tmp/artifacts-a" \
               HEAD
 
           bash .github/scripts/assemble-release-archive.sh \
-              0.1.1 \
+              "$release_version" \
               "$tmp/artifacts-b" \
               HEAD
 
           bash .github/scripts/assemble-ddox-archive.sh \
-              0.1.1 \
+              "$release_version" \
               docs \
               "$tmp/artifacts-a"
 
           bash .github/scripts/assemble-ddox-archive.sh \
-              0.1.1 \
+              "$release_version" \
               docs \
               "$tmp/artifacts-b"
 
           for file in \
-              color-d-0.1.1.tar.gz \
-              color-d-0.1.1.metadata.txt \
-              color-d-0.1.1.ddox.tar.gz
+              "color-d-$release_version.tar.gz" \
+              "color-d-$release_version.metadata.txt" \
+              "color-d-$release_version.ddox.tar.gz"
           do
               test -s "$tmp/artifacts-a/$file"
               cmp "$tmp/artifacts-a/$file" "$tmp/artifacts-b/$file"
@@ -455,15 +470,15 @@ jobs:
 
           grep -Fq \
               "commit=$(git rev-parse HEAD)" \
-              "$tmp/artifacts-a/color-d-0.1.1.metadata.txt"
+              "$tmp/artifacts-a/color-d-$release_version.metadata.txt"
 
           (
               cd "$tmp/artifacts-a"
 
               sha256sum \
-                  color-d-0.1.1.tar.gz \
-                  color-d-0.1.1.metadata.txt \
-                  color-d-0.1.1.ddox.tar.gz \
+                  "color-d-$release_version.tar.gz" \
+                  "color-d-$release_version.metadata.txt" \
+                  "color-d-$release_version.ddox.tar.gz" \
                   > SHA256SUMS
 
               sha256sum -c SHA256SUMS
@@ -801,8 +816,38 @@ jobs:
 
           static assert(toneBatchCtfe());
 
+          enum packedStorage = SRgb8(255, 128, 0);
+          enum normalizedStorage = packedStorage.toSRgb!double();
+          static assert(normalizedStorage.r == 1.0);
+          static assert(normalizedStorage.g == 128.0 / 255.0);
+          static assert(normalizedStorage.b == 0.0);
+
+          enum packedHex = packedStorage.toHex();
+          static assert(packedHex[0] == '#');
+          static assert(packedHex[1] == 'f');
+          static assert(packedHex[2] == 'f');
+          static assert(packedHex[3] == '8');
+          static assert(packedHex[4] == '0');
+
           void main()
           {
+              SRgb8 stored = SRgb8.init;
+              assert(tryToSRgb8(
+                  SRgbd(1.0, 0.5, 0.0),
+                  stored
+              ));
+              assert(stored == SRgb8(255, 128, 0));
+
+              SRgb8 parsed = SRgb8.init;
+              assert(tryParseSRgb8Hex(
+                  "#Ff8000",
+                  parsed
+              ));
+              assert(parsed == stored);
+
+              const serialized = parsed.toHex();
+              assert(serialized[] == "#ff8000");
+
               double[2] lightnesses =
                   [0.25, 0.75];
 
@@ -827,8 +872,10 @@ jobs:
           D
 
           cat > "$tmp/direct.d" <<'D'
+          import color.storage;
           import color.rgb;
           import color.xyz;
+          import color.cielab;
           import color.oklab;
           import color.oklch;
           import color.gamut;
@@ -838,6 +885,7 @@ jobs:
           import color.difference;
           import color.wcag;
           import color.tone;
+          import color.cvd;
 
           void main()
           {

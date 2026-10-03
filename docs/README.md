@@ -3,8 +3,9 @@
 This directory contains the documentation that a package user needs to
 understand and use color-d. It is shipped with the consumer archive.
 
-The current released package is `v0.1.0`; current `develop` documentation also
-contains documentation and maintenance improvements planned for `v0.1.1`.
+The current released package is `v0.2.0`. It includes the new
+storage/interop surface and the independently promoted generic color-math
+capabilities qualified for this release.
 
 ## Start here
 

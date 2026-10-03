@@ -31,8 +31,10 @@ import color;
 Supported direct modules are:
 
 ```text
+color.storage
 color.rgb
 color.xyz
+color.cielab
 color.oklab
 color.oklch
 color.alpha
@@ -42,10 +44,30 @@ color.gamut
 color.wcag
 color.difference
 color.tone
+color.cvd
 ```
 
 Technical importability of an implementation helper does not make it public
 contract.
+
+## Storage and computation
+
+Compact storage and floating-point computation are distinct public concepts.
+
+`color.storage` owns bounded encoded-sRGB storage such as `SRgb8` and
+straight-alpha `SRgba8`. Computational color mathematics remains in the floating-point color-space
+types such as `SRgb!T` and `LinearSRgb!T`. Storage types do not implicitly
+convert to computational types.
+
+The explicit storage boundary follows ADR 0006: byte-to-computation
+normalization uses the full 0...255 range, while computation-to-storage is a
+checked conversion with deterministic nearest-byte quantization. It does not
+silently clip extended values or repair NaN/infinity.
+
+Compact textual interchange follows ADR 0007 and is intentionally narrower
+than CSS Color syntax: `SRgb8` serializes/parses exact `#RRGGBB` and
+`SRgba8` exact `#RRGGBBAA`; shorthand and functional forms are not part of
+the storage boundary.
 
 ## Value-oriented core
 
