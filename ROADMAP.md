@@ -2,13 +2,19 @@
 
 ## Current release
 
-**v0.1.1 — Documentation and Maintenance** was published on 2026-09-29 and is complete.
+**v0.1.1 — Documentation and Maintenance** was published on 2026-09-29 and
+remains the current released package.
 
-The next planned feature release is:
+The active release candidate is:
 
 ```text
 v0.2.0 — Practical Color Storage and Interop
 ```
+
+The v0.2.0 public API is frozen and the release is in final stabilization and
+qualification. Remaining work is limited to release-hardening changes permitted
+by the workspace workflow: documentation, metadata, tests/CI, confirmed fixes,
+compiler/consumer qualification, and publication.
 
 v0.2.0 turns the existing floating-point color-math core into a more practical
 boundary for GUI, imagery, rendering, file, and configuration consumers. Its
