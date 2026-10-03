@@ -6,9 +6,10 @@
  Both are deliberately distinct from the floating-point computational color
  types.
 
- This module does not define normalization, quantization, clipping, or
- floating-point conversion policy. Those operations require an explicit
- storage/conversion contract and are provided separately.
+ Storage/computational conversion is explicit. Byte storage normalizes through
+ division by 255; checked conversion back to storage rejects values outside
+ inclusive [0, 1] and uses nearest-byte half-up quantization. It does not
+ implicitly clip, gamut-map, or repair special values.
 
  Storage_Model:
      The packed layouts are:
@@ -41,8 +42,14 @@
  Allocation:
      Both storage types are plain values with no hidden allocation or ownership.
 
+ Conversion:
+     Storage to computation is total and normalized. Computation to storage is
+     checked: out-of-range values, NaN, and infinities fail without modifying
+     caller-owned output.
+
  Compile_Time:
-     Aggregate construction and ordinary value operations are usable at CTFE.
+     Aggregate construction and the public conversion operations are usable at
+     CTFE.
 
  See_Also:
      color.rgb, color.alpha
