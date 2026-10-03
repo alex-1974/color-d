@@ -53,8 +53,8 @@ contract.
 
 Compact storage and floating-point computation are distinct public concepts.
 
-`color.storage` owns bounded encoded-sRGB storage such as `SRgb8`.
-Computational color mathematics remains in the floating-point color-space
+`color.storage` owns bounded encoded-sRGB storage such as `SRgb8` and
+straight-alpha `SRgba8`. Computational color mathematics remains in the floating-point color-space
 types such as `SRgb!T` and `LinearSRgb!T`. Storage types do not implicitly
 convert to computational types.
 

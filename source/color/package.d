@@ -39,8 +39,8 @@
 
  Color_Model:
      Compact storage and floating-point computation are distinct. `SRgb8`
-     stores encoded sRGB channel bytes; explicit storage/computational
-     conversion is a separate operation.
+     stores encoded sRGB channel bytes, while `SRgba8` adds a straight-alpha
+     byte. Explicit storage/computational conversion is a separate operation.
 
      The public computational chain is:
 
