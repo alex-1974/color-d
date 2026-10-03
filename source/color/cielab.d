@@ -44,6 +44,12 @@ private T labCubeRoot(T)(const T value)
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {
+    /*
+     * Use Phobos cbrt at runtime for its direct cube-root semantics and keep
+     * the source-available power form only for CTFE. Current Phobos cbrt
+     * reaches a C symbol during CTFE, so the compiler cannot evaluate it
+     * there. Returning zero first also preserves signed zero.
+     */
     if (value == cast(T)0)
         return value;
 
