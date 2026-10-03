@@ -58,6 +58,16 @@
      This matters because physically meaningful operations such as alpha
      compositing must not be performed on nonlinear encoded channel values.
 
+ Storage_Interop:
+     `SRgb8` and `SRgba8` provide bounded byte storage distinct from the
+     floating-point computational model. Conversion is explicit and checked in
+     the storage direction.
+
+     Compact hexadecimal interop is deliberately limited to exact full-byte
+     forms: `#RRGGBB` for `SRgb8` and `#RRGGBBAA` for `SRgba8`.
+     Parsing accepts hexadecimal letter case; serialization is deterministic
+     lowercase. Broader CSS color syntax is outside this surface.
+
  Extended_Values:
      Color components are mathematical values, not storage bytes. Construction
      does not silently clamp values to [0, 1], and intermediate out-of-gamut

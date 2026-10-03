@@ -807,6 +807,13 @@ jobs:
           static assert(normalizedStorage.g == 128.0 / 255.0);
           static assert(normalizedStorage.b == 0.0);
 
+          enum packedHex = packedStorage.toHex();
+          static assert(packedHex[0] == '#');
+          static assert(packedHex[1] == 'f');
+          static assert(packedHex[2] == 'f');
+          static assert(packedHex[3] == '8');
+          static assert(packedHex[4] == '0');
+
           void main()
           {
               SRgb8 stored = SRgb8.init;
@@ -815,6 +822,16 @@ jobs:
                   stored
               ));
               assert(stored == SRgb8(255, 128, 0));
+
+              SRgb8 parsed = SRgb8.init;
+              assert(tryParseSRgb8Hex(
+                  "#Ff8000",
+                  parsed
+              ));
+              assert(parsed == stored);
+
+              const serialized = parsed.toHex();
+              assert(serialized[] == "#ff8000");
 
               double[2] lightnesses =
                   [0.25, 0.75];
