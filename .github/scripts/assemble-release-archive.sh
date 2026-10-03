@@ -123,7 +123,7 @@ max_archive_bytes=$((1024 * 1024))
 
 if (( archive_bytes > max_archive_bytes ))
 then
-    echo "Release archive exceeded the 1 MiB v0.1 package guard: $archive_bytes bytes" >&2
+    echo "Release archive exceeded the 1 MiB package guard: $archive_bytes bytes" >&2
     exit 1
 fi
 
