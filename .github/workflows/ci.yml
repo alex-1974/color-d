@@ -801,8 +801,21 @@ jobs:
 
           static assert(toneBatchCtfe());
 
+          enum packedStorage = SRgb8(255, 128, 0);
+          enum normalizedStorage = packedStorage.toSRgb!double();
+          static assert(normalizedStorage.r == 1.0);
+          static assert(normalizedStorage.g == 128.0 / 255.0);
+          static assert(normalizedStorage.b == 0.0);
+
           void main()
           {
+              SRgb8 stored = SRgb8.init;
+              assert(tryToSRgb8(
+                  SRgbd(1.0, 0.5, 0.0),
+                  stored
+              ));
+              assert(stored == SRgb8(255, 128, 0));
+
               double[2] lightnesses =
                   [0.25, 0.75];
 
@@ -827,8 +840,10 @@ jobs:
           D
 
           cat > "$tmp/direct.d" <<'D'
+          import color.storage;
           import color.rgb;
           import color.xyz;
+          import color.cielab;
           import color.oklab;
           import color.oklch;
           import color.gamut;
@@ -838,6 +853,7 @@ jobs:
           import color.difference;
           import color.wcag;
           import color.tone;
+          import color.cvd;
 
           void main()
           {
