@@ -333,12 +333,18 @@ if (is(T == float) || is(T == double))
     ) const
     @safe pure nothrow @nogc
     {
+        const localFirst = first;
+        const localSecond = second;
+        const localNr = nr;
+        const localNg = ng;
+        const localNb = nb;
+
         const matrix =
-            color.r * nr +
-            color.g * ng +
-            color.b * nb >= cast(T)0
-                ? first
-                : second;
+            color.r * localNr +
+            color.g * localNg +
+            color.b * localNb >= cast(T)0
+                ? localFirst
+                : localSecond;
 
         return applyMatrix(
             matrix,
@@ -364,12 +370,18 @@ if (is(T == float) || is(T == double))
     ) const
     @safe pure nothrow @nogc
     {
+        const localFirst = first;
+        const localSecond = second;
+        const localNr = nr;
+        const localNg = ng;
+        const localNb = nb;
+
         applyBrettelIntoExact(
-            first,
-            second,
-            nr,
-            ng,
-            nb,
+            localFirst,
+            localSecond,
+            localNr,
+            localNg,
+            localNb,
             input[],
             output[]
         );
@@ -397,12 +409,18 @@ if (is(T == float) || is(T == double))
         if (input.length != output.length)
             return false;
 
+        const localFirst = first;
+        const localSecond = second;
+        const localNr = nr;
+        const localNg = ng;
+        const localNb = nb;
+
         applyBrettelIntoExact(
-            first,
-            second,
-            nr,
-            ng,
-            nb,
+            localFirst,
+            localSecond,
+            localNr,
+            localNg,
+            localNb,
             input,
             output
         );
@@ -475,8 +493,10 @@ if (is(T == float) || is(T == double))
     ) const
     @safe pure nothrow @nogc
     {
+        const localMatrix = matrix;
+
         return applyMatrix(
-            matrix,
+            localMatrix,
             color
         );
     }
@@ -498,8 +518,10 @@ if (is(T == float) || is(T == double))
     ) const
     @safe pure nothrow @nogc
     {
+        const localMatrix = matrix;
+
         applyMatrixIntoExact(
-            matrix,
+            localMatrix,
             input[],
             output[]
         );
@@ -526,8 +548,10 @@ if (is(T == float) || is(T == double))
         if (input.length != output.length)
             return false;
 
+        const localMatrix = matrix;
+
         applyMatrixIntoExact(
-            matrix,
+            localMatrix,
             input,
             output
         );
@@ -592,11 +616,42 @@ LinearSRgb!T brettel1997Dichromat(T)(
 )
 @safe pure nothrow @nogc
 {
-    return
-        prepareBrettel1997Dichromat!T(
-            deficiency
-        )
-        .apply(color);
+    Matrix3!double matrix;
+
+    final switch (deficiency)
+    {
+        case CvdDeficiency.protan:
+            matrix =
+                color.r * cast(T)0.00048 +
+                color.g * cast(T)0.00393 -
+                color.b * cast(T)0.00441 >= cast(T)0
+                    ? brettelProtan1
+                    : brettelProtan2;
+            break;
+
+        case CvdDeficiency.deutan:
+            matrix =
+                -color.r * cast(T)0.00281 -
+                color.g * cast(T)0.00611 +
+                color.b * cast(T)0.00892 >= cast(T)0
+                    ? brettelDeutan1
+                    : brettelDeutan2;
+            break;
+
+        case CvdDeficiency.tritan:
+            matrix =
+                color.r * cast(T)0.03901 -
+                color.g * cast(T)0.02788 -
+                color.b * cast(T)0.01113 >= cast(T)0
+                    ? brettelTritan1
+                    : brettelTritan2;
+            break;
+    }
+
+    return applyMatrix(
+        castMatrix!T(matrix),
+        color
+    );
 }
 
 ///
@@ -655,11 +710,20 @@ LinearSRgb!T vienot1999Dichromat(T)(
 )
 @safe pure nothrow @nogc
 {
-    return
-        prepareVienot1999Dichromat!T(
-            deficiency
-        )
-        .apply(color);
+    final switch (deficiency)
+    {
+        case RedGreenCvdDeficiency.protan:
+            return applyMatrix(
+                castMatrix!T(vienotProtan),
+                color
+            );
+
+        case RedGreenCvdDeficiency.deutan:
+            return applyMatrix(
+                castMatrix!T(vienotDeutan),
+                color
+            );
+    }
 }
 
 ///
@@ -779,8 +843,10 @@ if (is(T == float) || is(T == double))
     ) const
     @safe pure nothrow @nogc
     {
+        const localMatrix = matrix;
+
         return applyMatrix(
-            matrix,
+            localMatrix,
             color
         );
     }
@@ -802,8 +868,10 @@ if (is(T == float) || is(T == double))
     ) const
     @safe pure nothrow @nogc
     {
+        const localMatrix = matrix;
+
         applyMatrixIntoExact(
-            matrix,
+            localMatrix,
             input[],
             output[]
         );
@@ -830,8 +898,10 @@ if (is(T == float) || is(T == double))
         if (input.length != output.length)
             return false;
 
+        const localMatrix = matrix;
+
         applyMatrixIntoExact(
-            matrix,
+            localMatrix,
             input,
             output
         );
@@ -937,18 +1007,33 @@ LinearSRgb!T machado2009(T)(
 )
 @safe pure nothrow @nogc
 {
-    PreparedMachado2009!T prepared;
-
-    if (!tryPrepareMachado2009(
-        deficiency,
-        severity,
-        prepared
-    ))
-    {
+    if (!validMachadoSeverity(severity))
         return LinearSRgb!T.init;
-    }
 
-    return prepared.apply(color);
+    final switch (deficiency)
+    {
+        case RedGreenCvdDeficiency.protan:
+            return applyMatrix(
+                matrixAtSeverity!(
+                    T,
+                    machadoProtanTable
+                )(
+                    severity
+                ),
+                color
+            );
+
+        case RedGreenCvdDeficiency.deutan:
+            return applyMatrix(
+                matrixAtSeverity!(
+                    T,
+                    machadoDeutanTable
+                )(
+                    severity
+                ),
+                color
+            );
+    }
 }
 
 ///
