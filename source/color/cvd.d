@@ -367,6 +367,26 @@ if (is(T == float) || is(T == double))
         );
     }
 
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        enum prepared =
+            prepareBrettel1997Dichromat!double(
+                CvdDeficiency.protan
+            );
+
+        enum transformed =
+            prepared.apply(
+                LinearSRgbd(
+                    0.2,
+                    0.4,
+                    0.7
+                )
+            );
+
+        static assert(transformed.r == transformed.r);
+    }
+
     /**
      * Applies the prepared transform to fixed-cardinality caller-owned storage.
      *
@@ -415,6 +435,30 @@ if (is(T == float) || is(T == double))
                 output[]
             );
         }
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareBrettel1997Dichromat!double(
+                CvdDeficiency.deutan
+            );
+
+        const LinearSRgbd[2] input =
+        [
+            LinearSRgbd(0.2, 0.4, 0.7),
+            LinearSRgbd(0.7, 0.4, 0.2)
+        ];
+
+        LinearSRgbd[2] output;
+
+        prepared.applyInto(
+            input,
+            output
+        );
+
+        assert(output[0].r == output[0].r);
     }
 
     /**
@@ -472,6 +516,42 @@ if (is(T == float) || is(T == double))
 
         return true;
     }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareBrettel1997Dichromat!double(
+                CvdDeficiency.tritan
+            );
+
+        LinearSRgbd[1] input =
+        [
+            LinearSRgbd(
+                0.2,
+                0.4,
+                0.7
+            )
+        ];
+
+        LinearSRgbd[2] output =
+        [
+            LinearSRgbd(1, 1, 1),
+            LinearSRgbd(1, 1, 1)
+        ];
+
+        const before =
+            output;
+
+        assert(
+            !prepared.tryApplyInto(
+                input[],
+                output[]
+            )
+        );
+
+        assert(output == before);
+    }
 }
 
 
@@ -515,6 +595,26 @@ if (is(T == float) || is(T == double))
     }
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    enum prepared =
+        prepareBrettel1997Dichromat!double(
+            CvdDeficiency.protan
+        );
+
+    enum transformed =
+        prepared.apply(
+            LinearSRgbd(
+                0.2,
+                0.4,
+                0.7
+            )
+        );
+
+    static assert(transformed.g == transformed.g);
+}
+
 
 /**
  * Prepared Viénot 1999 protan/deutan transform for repeated application.
@@ -542,6 +642,26 @@ if (is(T == float) || is(T == double))
             matrix,
             color
         );
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        enum prepared =
+            prepareVienot1999Dichromat!double(
+                RedGreenCvdDeficiency.deutan
+            );
+
+        enum transformed =
+            prepared.apply(
+                LinearSRgbd(
+                    0.2,
+                    0.4,
+                    0.7
+                )
+            );
+
+        static assert(transformed.b == transformed.b);
     }
 
     /**
@@ -579,6 +699,30 @@ if (is(T == float) || is(T == double))
                 output[]
             );
         }
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareVienot1999Dichromat!double(
+                RedGreenCvdDeficiency.protan
+            );
+
+        const LinearSRgbd[2] input =
+        [
+            LinearSRgbd(0.2, 0.4, 0.7),
+            LinearSRgbd(0.7, 0.4, 0.2)
+        ];
+
+        LinearSRgbd[2] output;
+
+        prepared.applyInto(
+            input,
+            output
+        );
+
+        assert(output[1].r == output[1].r);
     }
 
     /**
@@ -623,6 +767,33 @@ if (is(T == float) || is(T == double))
 
         return true;
     }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        const prepared =
+            prepareVienot1999Dichromat!double(
+                RedGreenCvdDeficiency.deutan
+            );
+
+        LinearSRgbd[1] input =
+        [
+            LinearSRgbd(
+                0.2,
+                0.4,
+                0.7
+            )
+        ];
+
+        LinearSRgbd[2] output;
+
+        assert(
+            !prepared.tryApplyInto(
+                input[],
+                output[]
+            )
+        );
+    }
 }
 
 
@@ -647,6 +818,26 @@ if (is(T == float) || is(T == double))
                 castMatrix!T(vienotDeutan)
             );
     }
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    enum prepared =
+        prepareVienot1999Dichromat!double(
+            RedGreenCvdDeficiency.protan
+        );
+
+    enum transformed =
+        prepared.apply(
+            LinearSRgbd(
+                0.2,
+                0.4,
+                0.7
+            )
+        );
+
+    static assert(transformed.r == transformed.r);
 }
 
 
