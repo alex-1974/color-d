@@ -616,42 +616,11 @@ LinearSRgb!T brettel1997Dichromat(T)(
 )
 @safe pure nothrow @nogc
 {
-    Matrix3!double matrix;
-
-    final switch (deficiency)
-    {
-        case CvdDeficiency.protan:
-            matrix =
-                color.r * cast(T)0.00048 +
-                color.g * cast(T)0.00393 -
-                color.b * cast(T)0.00441 >= cast(T)0
-                    ? brettelProtan1
-                    : brettelProtan2;
-            break;
-
-        case CvdDeficiency.deutan:
-            matrix =
-                -color.r * cast(T)0.00281 -
-                color.g * cast(T)0.00611 +
-                color.b * cast(T)0.00892 >= cast(T)0
-                    ? brettelDeutan1
-                    : brettelDeutan2;
-            break;
-
-        case CvdDeficiency.tritan:
-            matrix =
-                color.r * cast(T)0.03901 -
-                color.g * cast(T)0.02788 -
-                color.b * cast(T)0.01113 >= cast(T)0
-                    ? brettelTritan1
-                    : brettelTritan2;
-            break;
-    }
-
-    return applyMatrix(
-        castMatrix!T(matrix),
-        color
-    );
+    return
+        prepareBrettel1997Dichromat!T(
+            deficiency
+        )
+        .apply(color);
 }
 
 ///
@@ -710,20 +679,11 @@ LinearSRgb!T vienot1999Dichromat(T)(
 )
 @safe pure nothrow @nogc
 {
-    final switch (deficiency)
-    {
-        case RedGreenCvdDeficiency.protan:
-            return applyMatrix(
-                castMatrix!T(vienotProtan),
-                color
-            );
-
-        case RedGreenCvdDeficiency.deutan:
-            return applyMatrix(
-                castMatrix!T(vienotDeutan),
-                color
-            );
-    }
+    return
+        prepareVienot1999Dichromat!T(
+            deficiency
+        )
+        .apply(color);
 }
 
 ///
@@ -1007,33 +967,18 @@ LinearSRgb!T machado2009(T)(
 )
 @safe pure nothrow @nogc
 {
-    if (!validMachadoSeverity(severity))
-        return LinearSRgb!T.init;
+    PreparedMachado2009!T prepared;
 
-    final switch (deficiency)
+    if (!tryPrepareMachado2009(
+        deficiency,
+        severity,
+        prepared
+    ))
     {
-        case RedGreenCvdDeficiency.protan:
-            return applyMatrix(
-                matrixAtSeverity!(
-                    T,
-                    machadoProtanTable
-                )(
-                    severity
-                ),
-                color
-            );
-
-        case RedGreenCvdDeficiency.deutan:
-            return applyMatrix(
-                matrixAtSeverity!(
-                    T,
-                    machadoDeutanTable
-                )(
-                    severity
-                ),
-                color
-            );
+        return LinearSRgb!T.init;
     }
+
+    return prepared.apply(color);
 }
 
 ///
