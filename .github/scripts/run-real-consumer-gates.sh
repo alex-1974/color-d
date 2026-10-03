@@ -6,9 +6,10 @@ usage()
     cat <<'EOF'
 usage: run-real-consumer-gates.sh <compiler> <debug|release> [repository-root]
 
-Runs the accepted imagery-d and Dunia color-d consumer slices against the
-current color-d checkout. Consumer repositories must already be checked out
-under consumer-workspace/ at their pinned validated commits.
+Runs the v0.2 storage/interop external-consumer fixture plus the accepted
+imagery-d and Dunia color-d consumer slices against the current color-d
+checkout. Consumer repositories must already be checked out under
+consumer-workspace/ at their pinned validated commits.
 EOF
 }
 
