@@ -137,6 +137,13 @@ private LinearSRgb!T applyMatrix(T)(
 }
 
 
+/*
+ * These helpers are the inner prepared-batch kernels. Keep them visible to
+ * the caller loop so supported compilers can scalar-replace prepared matrix
+ * state and keep coefficients loop-invariant. The compiler-family state-flow
+ * choice above remains separate; scalar/batch equivalence tests protect the
+ * shared semantics.
+ */
 pragma(inline, true)
 private void writeMatrix(T)(
     ref LinearSRgb!T output,
@@ -1055,6 +1062,13 @@ private Matrix3!T matrixAtSeverityRuntime(T)(
 }
 
 
+/*
+ * CTFE uses the canonical manifest double tables because they are directly
+ * evaluable by the frontend. Runtime uses immutable tables already stored in
+ * the consumer scalar type. The R7.4.12 qualification retained this split to
+ * avoid repeated runtime table conversion while preserving one matrix
+ * interpolation contract.
+ */
 private Matrix3!T machadoProtanAtSeverity(T)(T severity)
 @safe pure nothrow @nogc
 {
