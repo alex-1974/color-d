@@ -171,8 +171,10 @@ jobs:
           D
 
           cat > "$tmp/direct_positive.d" <<'D'
+          import color.storage;
           import color.rgb;
           import color.xyz;
+          import color.cielab;
           import color.oklab;
           import color.oklch;
           import color.gamut;
@@ -182,6 +184,7 @@ jobs:
           import color.difference;
           import color.wcag;
           import color.tone;
+          import color.cvd;
           D
 
           cat > "$tmp/generic_mapper_negative.d" <<'D'
@@ -246,6 +249,9 @@ jobs:
 
           compile_ok "$tmp/root_positive.d" "$tmp/root_positive.o"
           compile_ok "$tmp/direct_positive.d" "$tmp/direct_positive.o"
+          compile_ok "$GITHUB_WORKSPACE/tests/compat/public_api_root_surface.d" "$tmp/public_api_root_surface.o"
+          compile_ok "$GITHUB_WORKSPACE/tests/compat/public_api_direct_modules.d" "$tmp/public_api_direct_modules.o"
+          compile_ok "$GITHUB_WORKSPACE/tests/compat/named_arguments.d" "$tmp/named_arguments.o"
 
           compile_fail "$tmp/generic_mapper_negative.d" "$tmp/generic_mapper_negative.o"
           compile_fail "$tmp/method_enum_negative.d" "$tmp/method_enum_negative.o"
@@ -305,47 +311,98 @@ jobs:
 
           void main()
           {
-              const encoded =
-                  SRgbd(
-                      0.82,
-                      0.25,
-                      0.12
-                  );
-
-              const perceptual =
-                  encoded
-                  .toLinear
-                  .toXyzD65
-                  .toOklab
-                  .toOklch;
-
-              const mapped =
-                  perceptual
-                  .withLightness(0.70)
-                  .withChroma(0.16)
-                  .gamutMapRayTraceToLinearSRgb;
-
-              assert(mapped.inGamut);
-
-              double[3] lightnesses =
-                  [0.20, 0.50, 0.80];
-
-              double[3] chromas =
-                  [0.04, 0.10, 0.06];
-
-              Oklchd[3] tones;
+              SRgba8 packed =
+                  SRgba8.init;
 
               assert(
-                  perceptual
-                  .tryTonesAtLightnessAndChromaInto(
-                      lightnesses[],
-                      chromas[],
-                      tones[]
+                  tryParseSRgba8Hex(
+                      "#247AC480",
+                      packed
                   )
               );
 
-              assert(tones[2].l == 0.80);
-              assert(tones[2].c == 0.06);
+              assert(
+                  packed.toHex()[] ==
+                      "#247ac480"
+              );
+
+              const encodedAlpha =
+                  packed.toAlphaSRgb!double();
+
+              const linear =
+                  encodedAlpha.color.toLinear;
+
+              const xyz =
+                  linear.toXyzD65;
+
+              const cie =
+                  xyz.toCieLabD50;
+
+              const cieBack =
+                  cie.toXyzD65;
+
+              assert(cieBack.x == cieBack.x);
+
+              const ciePeer =
+                  CieLabD50d(
+                      cie.l,
+                      cie.a + 1.0,
+                      cie.b
+                  );
+
+              assert(cie.deltaE76(ciePeer) > 0.0);
+              assert(cie.deltaE2000(ciePeer) > 0.0);
+
+              const boundary =
+                  maxChromaInSRgb(
+                      0.60,
+                      OklabHued.fromDegrees(
+                          255.0
+                      )
+                  );
+
+              assert(boundary.valid);
+              assert(boundary.value > 0.0);
+
+              const simulated =
+                  machado2009(
+                      linear,
+                      RedGreenCvdDeficiency.protan,
+                      0.65
+                  );
+
+              assert(
+                  simulated.r == simulated.r
+              );
+
+              const prepared =
+                  prepareVienot1999Dichromat!double(
+                      RedGreenCvdDeficiency.deutan
+                  );
+
+              const LinearSRgbd[2] input =
+              [
+                  linear,
+                  simulated
+              ];
+
+              LinearSRgbd[2] output;
+
+              prepared.applyInto(
+                  input,
+                  output
+              );
+
+              SRgba8 storedBack;
+
+              assert(
+                  tryToSRgba8(
+                      encodedAlpha,
+                      storedBack
+                  )
+              );
+
+              assert(storedBack == packed);
           }
           D
 
