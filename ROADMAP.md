@@ -2,19 +2,13 @@
 
 ## Current release line
 
-**v0.1.1 — Documentation and Maintenance** was published on 2026-09-29 and
-remains the current published package.
+**v0.2.0 — Practical Color Storage and Interop** was published on 2026-10-03.
 
-The frozen release candidate is:
+**Status: COMPLETE — v0.2.0 RELEASED.**
 
-```text
-v0.2.0 — Practical Color Storage and Interop
-```
-
-Feature freeze, the consumer-driven promotion work, the public API audit, and
-the v0.2.0 API freeze are complete. No new feature or public API enters this
-release line. Remaining work is release qualification, documentation,
-packaging, publication, and fixes that preserve the frozen contract.
+Feature freeze, consumer-driven promotion, the public API audit, API freeze,
+release hardening, compiler/consumer qualification, and publication are
+complete.
 
 The v0.2.0 scope is:
 
