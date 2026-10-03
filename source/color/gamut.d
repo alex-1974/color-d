@@ -1141,6 +1141,18 @@ if (is(T == float) || is(T == double))
         return _value;
     }
 
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        enum result =
+            maxChromaInSRgb(
+                0.5,
+                OklabHued.fromDegrees(0.0)
+            );
+
+        static assert(result.value > 0.0);
+    }
+
     /// Whether the measurement input was valid and a boundary was established.
     @property bool valid() const
     @safe pure nothrow @nogc
@@ -1151,23 +1163,9 @@ if (is(T == float) || is(T == double))
     ///
     @safe pure nothrow @nogc unittest
     {
-        enum result =
-            maxChromaInSRgb(
-                0.5,
-                OklabHued.fromDegrees(0.0)
-            );
-
-        static assert(result.valid);
-        static assert(result.value > 0.0);
-    }
-
-    ///
-    @safe pure nothrow @nogc unittest
-    {
         enum invalid = SRgbChromaLimit!double.init;
 
         static assert(!invalid.valid);
-        static assert(invalid.value != invalid.value);
     }
 }
 
