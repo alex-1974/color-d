@@ -64,6 +64,11 @@ normalization uses the full 0...255 range, while computation-to-storage is a
 checked conversion with deterministic nearest-byte quantization. It does not
 silently clip extended values or repair NaN/infinity.
 
+Compact textual interchange follows ADR 0007 and is intentionally narrower
+than CSS Color syntax: `SRgb8` serializes/parses exact `#RRGGBB` and
+`SRgba8` exact `#RRGGBBAA`; shorthand and functional forms are not part of
+the storage boundary.
+
 ## Value-oriented core
 
 The public core uses small value types, explicit conversions, no hidden
