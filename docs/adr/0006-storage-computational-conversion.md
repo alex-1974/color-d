@@ -71,9 +71,15 @@ This guarantees `0.0 -> 0`, `1.0 -> 255`, and for example `0.5 -> 128`.
 
 The public conversion surface is:
 
-    SRgb!T toSRgb(T)(SRgb8 value);
+    struct SRgb8
+    {
+        SRgb!T toSRgb(T)() const;
+    }
 
-    Alpha!(SRgb!T) toAlphaSRgb(T)(SRgba8 value);
+    struct SRgba8
+    {
+        Alpha!(SRgb!T) toAlphaSRgb(T)() const;
+    }
 
     bool tryToSRgb8(T)(
         SRgb!T value,
@@ -89,6 +95,8 @@ The destination parameters use `ref`, not `out`, because failure promises
 to leave existing caller state unchanged.
 
 The scalar type for storage-to-computation conversion is always explicit.
+The methods are type-scoped deliberately so the root module does not create a
+second free `toSRgb` symbol alongside `color.rgb.toSRgb`.
 Computation-to-storage infers `T` from the source value.
 
 ### Round-trip contract
