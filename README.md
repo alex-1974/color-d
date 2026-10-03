@@ -46,9 +46,9 @@ Core principles:
 
 ## Support and compatibility
 
-The v0.2.0 release is qualified against DMD 2.112.1 and 2.113.0 plus LDC
-1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0, DMD 2.111.0, and LDC
-1.41.0 are diagnostic points rather than supported release compilers.
+The v0.2.0 release candidate is qualified against DMD 2.112.1 and 2.113.0
+plus LDC 1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0, DMD 2.111.0,
+and LDC 1.41.0 are diagnostic points rather than supported release compilers.
 
 Fast CI uses the current pair, DMD 2.113.0 and LDC 1.43.0. Broader compatibility
 qualification is kept separate from the daily development gate. DMD and LDC are
@@ -157,8 +157,10 @@ call sequence cannot silently drift.
 
 ## Research and evidence
 
-The public library is the maintained result of the R0–R4 research programme;
-the research programme itself is **not** part of the consumer package.
+The v0.1 core is the maintained result of the R0–R4 research programme.
+The v0.2 gamut-boundary, CIE/Delta-E, and CVD additions were promoted through
+their own R5–R7 validation tracks. Research evidence itself is **not** part of
+the consumer package.
 
 Detailed experiments, compiler probes, benchmark drivers, rejected approaches,
 and long-form evidence live in
@@ -232,13 +234,15 @@ historical development of v0.1.0 rather than current release work. Both R4
 consumers — `imagery-d` and Dunia's theme/style layer — exercised the public
 API without requiring a provider-side API correction.
 
-Current work targets **v0.1.1 — Documentation and Maintenance**. This patch
-release improves public DDox examples and wording, source-level implementation
-rationale, repository documentation, contract evidence, cleanup, and toolchain
-consistency. It does not intentionally change public numerical semantics or add
-a new feature family.
+The current release candidate is **v0.2.0 — Practical Color Storage and
+Interop**. Feature freeze and public API freeze are complete. Its frozen scope
+adds packed sRGB/RGBA storage and compact hexadecimal interop, plus the
+independently validated gamut-boundary, CIELAB/Delta-E, and CVD primitives
+required by the Dunia consumer. Release work is limited to qualification,
+documentation, packaging, and fixes that preserve the frozen public contract.
 
-Current work targets **v0.2.0 — Practical Color Storage and Interop**. Its committed scope adds packed sRGB/RGBA storage and compact hexadecimal interop, plus the independently validated gamut-boundary, CIELAB/Delta-E, and CVD primitives required by the Dunia consumer. HSL/HSV, wider-gamut spaces, general CSS Color parsing, and policy-heavy palette/theme abstractions remain outside the committed v0.2.0 scope.
+HSL/HSV, wider-gamut spaces, general CSS Color parsing, and policy-heavy
+palette/theme abstractions remain outside the committed v0.2.0 scope.
 
 The library remains pre-1.0, so later 0.x releases may still make
 well-justified, documented breaking changes.
