@@ -155,6 +155,9 @@ static assert(SRgb8.init.r == 0);
 static assert(SRgb8.init.g == 0);
 static assert(SRgb8.init.b == 0);
 
+static assert(!__traits(compiles, SRgb8.init.toSRgb!int()));
+static assert(!__traits(compiles, SRgb8.init.toSRgb!real()));
+
 
 @safe pure nothrow @nogc unittest
 {
@@ -275,6 +278,9 @@ static assert(SRgba8.init.r == 0);
 static assert(SRgba8.init.g == 0);
 static assert(SRgba8.init.b == 0);
 static assert(SRgba8.init.a == 0);
+
+static assert(!__traits(compiles, SRgba8.init.toAlphaSRgb!int()));
+static assert(!__traits(compiles, SRgba8.init.toAlphaSRgb!real()));
 
 
 @safe pure nothrow @nogc unittest
@@ -571,6 +577,27 @@ static assert(allStorageRoundTrips!double());
         ));
         assert(destination == SRgb8(7, 8, 9));
     }
+
+    SRgba8 rgbaDestination =
+        SRgba8(4, 5, 6, 7);
+
+    assert(!tryToSRgba8(
+        Alpha!SRgbd(
+            SRgbd(-0.01, 0.5, 0.75),
+            0.5
+        ),
+        rgbaDestination
+    ));
+    assert(rgbaDestination == SRgba8(4, 5, 6, 7));
+
+    assert(!tryToSRgba8(
+        Alpha!SRgbd(
+            SRgbd(0.25, 0.5, 0.75),
+            double.nan
+        ),
+        rgbaDestination
+    ));
+    assert(rgbaDestination == SRgba8(4, 5, 6, 7));
 }
 
 
