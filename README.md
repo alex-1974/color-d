@@ -232,13 +232,14 @@ historical development of v0.1.0 rather than current release work. Both R4
 consumers — `imagery-d` and Dunia's theme/style layer — exercised the public
 API without requiring a provider-side API correction.
 
-Current work targets **v0.1.1 — Documentation and Maintenance**. This patch
-release improves public DDox examples and wording, source-level implementation
-rationale, repository documentation, contract evidence, cleanup, and toolchain
-consistency. It does not intentionally change public numerical semantics or add
-a new feature family.
-
-Current work targets **v0.2.0 — Practical Color Storage and Interop**. Its committed scope adds packed sRGB/RGBA storage and compact hexadecimal interop, plus the independently validated gamut-boundary, CIELAB/Delta-E, and CVD primitives required by the Dunia consumer. HSL/HSV, wider-gamut spaces, general CSS Color parsing, and policy-heavy palette/theme abstractions remain outside the committed v0.2.0 scope.
+The active stabilization line is **v0.2.0 — Practical Color Storage and
+Interop**. Its frozen candidate adds packed sRGB/RGBA storage and compact
+hexadecimal interop, plus the independently validated gamut-boundary,
+CIELAB/Delta-E, and CVD primitives required by the Dunia consumer. The public
+API is frozen for release qualification; remaining work is documentation,
+metadata, compiler/consumer qualification, and publication. HSL/HSV,
+wider-gamut spaces, general CSS Color parsing, and policy-heavy palette/theme
+abstractions remain outside the v0.2.0 scope.
 
 The library remains pre-1.0, so later 0.x releases may still make
 well-justified, documented breaking changes.
