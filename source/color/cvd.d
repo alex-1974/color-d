@@ -94,6 +94,27 @@ private struct Matrix3(T)
 }
 
 
+/*
+ * R7.4.6 exact-production evidence shows opposite optimal value flow:
+ *
+ * - LDC/LLVM scalar-replaces a local prepared-state snapshot and keeps matrix
+ *   coefficients loop-invariant/in registers;
+ * - DMD preserves the original member-backed form more robustly and the local
+ *   snapshot reintroduces material code-placement sensitivity.
+ *
+ * Keep this capability decision centralized and semantic-neutral. Re-evaluate
+ * when the supported compiler/backend matrix changes materially.
+ */
+version (LDC)
+{
+    private enum bool usePreparedLocalSnapshot = true;
+}
+else
+{
+    private enum bool usePreparedLocalSnapshot = false;
+}
+
+
 private LinearSRgb!T applyMatrix(T)(
     const Matrix3!T matrix,
     LinearSRgb!T color
@@ -333,18 +354,12 @@ if (is(T == float) || is(T == double))
     ) const
     @safe pure nothrow @nogc
     {
-        const localFirst = first;
-        const localSecond = second;
-        const localNr = nr;
-        const localNg = ng;
-        const localNb = nb;
-
         const matrix =
-            color.r * localNr +
-            color.g * localNg +
-            color.b * localNb >= cast(T)0
-                ? localFirst
-                : localSecond;
+            color.r * nr +
+            color.g * ng +
+            color.b * nb >= cast(T)0
+                ? first
+                : second;
 
         return applyMatrix(
             matrix,
@@ -370,21 +385,36 @@ if (is(T == float) || is(T == double))
     ) const
     @safe pure nothrow @nogc
     {
-        const localFirst = first;
-        const localSecond = second;
-        const localNr = nr;
-        const localNg = ng;
-        const localNb = nb;
+        static if (usePreparedLocalSnapshot)
+        {
+            const localFirst = first;
+            const localSecond = second;
+            const localNr = nr;
+            const localNg = ng;
+            const localNb = nb;
 
-        applyBrettelIntoExact(
-            localFirst,
-            localSecond,
-            localNr,
-            localNg,
-            localNb,
-            input[],
-            output[]
-        );
+            applyBrettelIntoExact(
+                localFirst,
+                localSecond,
+                localNr,
+                localNg,
+                localNb,
+                input[],
+                output[]
+            );
+        }
+        else
+        {
+            applyBrettelIntoExact(
+                first,
+                second,
+                nr,
+                ng,
+                nb,
+                input[],
+                output[]
+            );
+        }
     }
 
     /**
@@ -409,21 +439,36 @@ if (is(T == float) || is(T == double))
         if (input.length != output.length)
             return false;
 
-        const localFirst = first;
-        const localSecond = second;
-        const localNr = nr;
-        const localNg = ng;
-        const localNb = nb;
+        static if (usePreparedLocalSnapshot)
+        {
+            const localFirst = first;
+            const localSecond = second;
+            const localNr = nr;
+            const localNg = ng;
+            const localNb = nb;
 
-        applyBrettelIntoExact(
-            localFirst,
-            localSecond,
-            localNr,
-            localNg,
-            localNb,
-            input,
-            output
-        );
+            applyBrettelIntoExact(
+                localFirst,
+                localSecond,
+                localNr,
+                localNg,
+                localNb,
+                input,
+                output
+            );
+        }
+        else
+        {
+            applyBrettelIntoExact(
+                first,
+                second,
+                nr,
+                ng,
+                nb,
+                input,
+                output
+            );
+        }
 
         return true;
     }
@@ -493,10 +538,8 @@ if (is(T == float) || is(T == double))
     ) const
     @safe pure nothrow @nogc
     {
-        const localMatrix = matrix;
-
         return applyMatrix(
-            localMatrix,
+            matrix,
             color
         );
     }
@@ -518,13 +561,24 @@ if (is(T == float) || is(T == double))
     ) const
     @safe pure nothrow @nogc
     {
-        const localMatrix = matrix;
+        static if (usePreparedLocalSnapshot)
+        {
+            const localMatrix = matrix;
 
-        applyMatrixIntoExact(
-            localMatrix,
-            input[],
-            output[]
-        );
+            applyMatrixIntoExact(
+                localMatrix,
+                input[],
+                output[]
+            );
+        }
+        else
+        {
+            applyMatrixIntoExact(
+                matrix,
+                input[],
+                output[]
+            );
+        }
     }
 
     /**
@@ -548,13 +602,24 @@ if (is(T == float) || is(T == double))
         if (input.length != output.length)
             return false;
 
-        const localMatrix = matrix;
+        static if (usePreparedLocalSnapshot)
+        {
+            const localMatrix = matrix;
 
-        applyMatrixIntoExact(
-            localMatrix,
-            input,
-            output
-        );
+            applyMatrixIntoExact(
+                localMatrix,
+                input,
+                output
+            );
+        }
+        else
+        {
+            applyMatrixIntoExact(
+                matrix,
+                input,
+                output
+            );
+        }
 
         return true;
     }
@@ -803,10 +868,8 @@ if (is(T == float) || is(T == double))
     ) const
     @safe pure nothrow @nogc
     {
-        const localMatrix = matrix;
-
         return applyMatrix(
-            localMatrix,
+            matrix,
             color
         );
     }
@@ -828,13 +891,24 @@ if (is(T == float) || is(T == double))
     ) const
     @safe pure nothrow @nogc
     {
-        const localMatrix = matrix;
+        static if (usePreparedLocalSnapshot)
+        {
+            const localMatrix = matrix;
 
-        applyMatrixIntoExact(
-            localMatrix,
-            input[],
-            output[]
-        );
+            applyMatrixIntoExact(
+                localMatrix,
+                input[],
+                output[]
+            );
+        }
+        else
+        {
+            applyMatrixIntoExact(
+                matrix,
+                input[],
+                output[]
+            );
+        }
     }
 
     /**
@@ -858,13 +932,24 @@ if (is(T == float) || is(T == double))
         if (input.length != output.length)
             return false;
 
-        const localMatrix = matrix;
+        static if (usePreparedLocalSnapshot)
+        {
+            const localMatrix = matrix;
 
-        applyMatrixIntoExact(
-            localMatrix,
-            input,
-            output
-        );
+            applyMatrixIntoExact(
+                localMatrix,
+                input,
+                output
+            );
+        }
+        else
+        {
+            applyMatrixIntoExact(
+                matrix,
+                input,
+                output
+            );
+        }
 
         return true;
     }
