@@ -387,7 +387,13 @@ if (is(T == float) || is(T == double))
                 LinearSRgbd(0.2, 0.4, 0.7)
             );
 
-        assert(transformed.r == transformed.r);
+        assert(
+            transformed ==
+            LinearSRgbd(0.2, 0.4, 0.7)
+                .brettel1997Dichromat(
+                    CvdDeficiency.protan
+                )
+        );
     }
 
     /**
@@ -456,8 +462,18 @@ if (is(T == float) || is(T == double))
 
         prepared.applyInto(input, output);
 
-        assert(output[0].r == output[0].r);
-        assert(output[1].b == output[1].b);
+        assert(
+            output[0] ==
+            input[0].brettel1997Dichromat(
+                CvdDeficiency.deutan
+            )
+        );
+        assert(
+            output[1] ==
+            input[1].brettel1997Dichromat(
+                CvdDeficiency.deutan
+            )
+        );
     }
 
     /**
@@ -530,7 +546,12 @@ if (is(T == float) || is(T == double))
         LinearSRgbd[1] output;
 
         assert(prepared.tryApplyInto(input[], output[]));
-        assert(output[0].g == output[0].g);
+        assert(
+            output[0] ==
+            input[0].brettel1997Dichromat(
+                CvdDeficiency.tritan
+            )
+        );
     }
 }
 
@@ -588,7 +609,13 @@ if (is(T == float) || is(T == double))
             LinearSRgbd(0.2, 0.4, 0.7)
         );
 
-    assert(transformed.r == transformed.r);
+    assert(
+        transformed ==
+        LinearSRgbd(0.2, 0.4, 0.7)
+            .brettel1997Dichromat(
+                CvdDeficiency.protan
+            )
+    );
 }
 
 
@@ -633,7 +660,13 @@ if (is(T == float) || is(T == double))
                 LinearSRgbd(0.2, 0.4, 0.7)
             );
 
-        assert(transformed.g == transformed.g);
+        assert(
+            transformed ==
+            LinearSRgbd(0.2, 0.4, 0.7)
+                .vienot1999Dichromat(
+                    RedGreenCvdDeficiency.protan
+                )
+        );
     }
 
     /**
@@ -689,8 +722,18 @@ if (is(T == float) || is(T == double))
 
         prepared.applyInto(input, output);
 
-        assert(output[0].r == output[0].r);
-        assert(output[1].b == output[1].b);
+        assert(
+            output[0] ==
+            input[0].vienot1999Dichromat(
+                RedGreenCvdDeficiency.deutan
+            )
+        );
+        assert(
+            output[1] ==
+            input[1].vienot1999Dichromat(
+                RedGreenCvdDeficiency.deutan
+            )
+        );
     }
 
     /**
@@ -750,7 +793,12 @@ if (is(T == float) || is(T == double))
         LinearSRgbd[1] output;
 
         assert(prepared.tryApplyInto(input[], output[]));
-        assert(output[0].r == output[0].r);
+        assert(
+            output[0] ==
+            input[0].vienot1999Dichromat(
+                RedGreenCvdDeficiency.protan
+            )
+        );
     }
 }
 
@@ -791,7 +839,13 @@ if (is(T == float) || is(T == double))
             LinearSRgbd(0.2, 0.4, 0.7)
         );
 
-    assert(transformed.b == transformed.b);
+    assert(
+        transformed ==
+        LinearSRgbd(0.2, 0.4, 0.7)
+            .vienot1999Dichromat(
+                RedGreenCvdDeficiency.deutan
+            )
+    );
 }
 
 
@@ -1194,7 +1248,14 @@ if (is(T == float) || is(T == double))
                 LinearSRgbd(0.2, 0.4, 0.7)
             );
 
-        assert(transformed.r == transformed.r);
+        assert(
+            transformed ==
+            LinearSRgbd(0.2, 0.4, 0.7)
+                .machado2009(
+                    RedGreenCvdDeficiency.protan,
+                    0.5
+                )
+        );
     }
 
     /**
@@ -1253,8 +1314,20 @@ if (is(T == float) || is(T == double))
 
         prepared.applyInto(input, output);
 
-        assert(output[0].r == output[0].r);
-        assert(output[1].b == output[1].b);
+        assert(
+            output[0] ==
+            input[0].machado2009(
+                RedGreenCvdDeficiency.deutan,
+                0.5
+            )
+        );
+        assert(
+            output[1] ==
+            input[1].machado2009(
+                RedGreenCvdDeficiency.deutan,
+                0.5
+            )
+        );
     }
 
     /**
@@ -1317,7 +1390,13 @@ if (is(T == float) || is(T == double))
         LinearSRgbd[1] output;
 
         assert(prepared.tryApplyInto(input[], output[]));
-        assert(output[0].g == output[0].g);
+        assert(
+            output[0] ==
+            input[0].machado2009(
+                RedGreenCvdDeficiency.protan,
+                0.5
+            )
+        );
     }
 }
 
@@ -1366,13 +1445,14 @@ if (is(T == float) || is(T == double))
         prepared
     ));
 
+    const input = LinearSRgbd(0.2, 0.4, 0.7);
+
     assert(
-        prepared.apply(
-            LinearSRgbd(0.2, 0.4, 0.7)
-        ).r ==
-        prepared.apply(
-            LinearSRgbd(0.2, 0.4, 0.7)
-        ).r
+        prepared.apply(input) ==
+        input.machado2009(
+            RedGreenCvdDeficiency.protan,
+            0.5
+        )
     );
 }
 
