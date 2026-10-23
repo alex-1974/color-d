@@ -1710,8 +1710,11 @@ version (unittest)
                 inPlace
             );
 
-            if (inPlace != output)
-                return false;
+            foreach (i; 0 .. input.length)
+            {
+                if (!equivalentColor(inPlace[i], output[i]))
+                    return false;
+            }
 
             auto runtimeInPlace = input;
 
@@ -1723,8 +1726,11 @@ version (unittest)
                 return false;
             }
 
-            if (runtimeInPlace != output)
-                return false;
+            foreach (i; 0 .. input.length)
+            {
+                if (!equivalentColor(runtimeInPlace[i], output[i]))
+                    return false;
+            }
         }
 
         foreach (index; 0u .. 2u)
@@ -1764,8 +1770,11 @@ version (unittest)
                 inPlace
             );
 
-            if (inPlace != output)
-                return false;
+            foreach (i; 0 .. input.length)
+            {
+                if (!equivalentColor(inPlace[i], output[i]))
+                    return false;
+            }
 
             PreparedMachado2009!T machado;
 
@@ -1809,8 +1818,11 @@ version (unittest)
                 return false;
             }
 
-            if (machadoInPlace != machadoOutput)
-                return false;
+            foreach (i; 0 .. input.length)
+            {
+                if (!equivalentColor(machadoInPlace[i], machadoOutput[i]))
+                    return false;
+            }
         }
 
         const sentinel =

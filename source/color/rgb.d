@@ -85,7 +85,9 @@ if (is(T == float) || is(T == double))
 
     assert(encoded.r > linear.r);
     assert(encoded.g > linear.g);
-    assert(encoded.b == 1.0);
+    // Older libm implementations can leave the exact endpoint one ulp away
+    // from one after the transfer-function power path.
+    assert(encoded.b > 1.0 - 1e-12 && encoded.b <= 1.0);
 }
 
 /// Encoded sRGB with `float` components.
@@ -209,6 +211,153 @@ if (is(T == float) || is(T == double))
 }
 
 /**
+ * Reusable exact decode table for all 256 encoded sRGB byte values.
+ *
+ * The table is caller-owned and immutable after construction by convention.
+ * It contains the same scalar transfer results as `SRgb!T.toLinear`; it does
+ * not clip, gamut-map, interpolate, or allocate.
+ */
+struct SRgb8DecodeTable(T)
+if (is(T == float) || is(T == double))
+{
+    private T[256] values_;
+
+    /// Returns the exact decoded value for one encoded sRGB byte.
+    T opIndex(const ubyte encoded) const
+    @safe pure nothrow @nogc
+    {
+        return values_[encoded];
+    }
+}
+
+/**
+ * Builds a reusable exact lookup table for encoded sRGB bytes.
+ *
+ * Setup cost is 256 scalar transfer evaluations and storage is 256 values of
+ * `T`. Each subsequent lookup is an indexed read with zero interpolation
+ * error. The returned value is independent and caller-owned.
+ */
+SRgb8DecodeTable!T makeSRgb8DecodeTable(T)()
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    SRgb8DecodeTable!T table;
+
+    foreach (ubyte encoded; 0 .. 256)
+        table.values_[encoded] = srgbToLinearComponent(
+            cast(T)encoded / cast(T)255
+        );
+
+    return table;
+}
+
+/**
+ * Decodes a batch with the exact scalar sRGB transfer semantics.
+ *
+ * Returns `false` without writing when the input and output lengths differ.
+ * The operation performs no allocation, clipping, gamut mapping, or implicit
+ * quantization.
+ */
+bool decodeSrgbBatch(T)(
+    scope const SRgb!T[] input,
+    scope LinearSRgb!T[] output
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    if (input.length != output.length)
+        return false;
+
+    foreach (i; 0 .. input.length)
+    {
+        output[i] = LinearSRgb!T(
+            srgbToLinearComponent!T(cast(T)input[i].r),
+            srgbToLinearComponent!T(cast(T)input[i].g),
+            srgbToLinearComponent!T(cast(T)input[i].b)
+        );
+    }
+
+    return true;
+}
+
+/**
+ * Encodes a batch with the exact scalar sRGB transfer semantics.
+ *
+ * Returns `false` without writing when the input and output lengths differ.
+ * The operation performs no allocation, clipping, gamut mapping, or implicit
+ * quantization.
+ */
+bool encodeSrgbBatch(T)(
+    scope const LinearSRgb!T[] input,
+    scope SRgb!T[] output
+)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    if (input.length != output.length)
+        return false;
+
+    foreach (i; 0 .. input.length)
+    {
+        output[i] = SRgb!T(
+            linearToSrgbComponent!T(cast(T)input[i].r),
+            linearToSrgbComponent!T(cast(T)input[i].g),
+            linearToSrgbComponent!T(cast(T)input[i].b)
+        );
+    }
+
+    return true;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const table = makeSRgb8DecodeTable!double();
+
+    assert(table[0] == 0.0);
+    assert(table[255] == 1.0);
+    assert(
+        table[128] > 0.21586050011389926 - 1e-15 &&
+        table[128] < 0.21586050011389926 + 1e-15
+    );
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const SRgbd[2] encoded =
+    [
+        SRgbd(0.0, 0.5, 1.0),
+        SRgbd(-0.25, 0.25, 1.25)
+    ];
+    LinearSRgbd[2] linear;
+    SRgbd[2] roundTrip;
+
+    assert(decodeSrgbBatch(encoded[], linear[]));
+    assert(linear[0] == encoded[0].toLinear);
+    assert(linear[1] == encoded[1].toLinear);
+
+    assert(encodeSrgbBatch(linear[], roundTrip[]));
+    assert(
+        roundTrip[0].r > encoded[0].r - 1e-12 &&
+        roundTrip[0].r < encoded[0].r + 1e-12 &&
+        roundTrip[0].g > encoded[0].g - 1e-12 &&
+        roundTrip[0].g < encoded[0].g + 1e-12 &&
+        roundTrip[0].b > encoded[0].b - 1e-12 &&
+        roundTrip[0].b < encoded[0].b + 1e-12
+    );
+    assert(
+        roundTrip[1].r > encoded[1].r - 1e-12 &&
+        roundTrip[1].r < encoded[1].r + 1e-12
+    );
+
+    LinearSRgbd[1] tooShortLinear;
+    SRgbd[1] tooShortEncoded;
+    assert(!decodeSrgbBatch(encoded[], tooShortLinear[]));
+    assert(!encodeSrgbBatch(linear[], tooShortEncoded[]));
+}
+
+/**
  * Decodes an sRGB value for calculations that require linear light.
  *
  * Components outside the nominal [0, 1] range remain extended values rather
@@ -288,7 +437,9 @@ SRgb!T toSRgb(T)(LinearSRgb!T color)
     const linear = LinearSRgbd(1.0, 0.0, -1.0);
     const encoded = linear.toSRgb;
 
-    assert(encoded == SRgbd(1.0, 0.0, -1.0));
+    assert(encoded.r > 1.0 - 1e-12 && encoded.r <= 1.0);
+    assert(encoded.g == 0.0);
+    assert(encoded.b < -1.0 + 1e-12 && encoded.b >= -1.0);
 }
 
 @safe pure nothrow @nogc unittest

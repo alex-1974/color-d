@@ -68,21 +68,18 @@ private T oklabChromaMagnitude(T)(
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {
-    import std.math :
-        hypot,
-        sqrt;
+    import std.math : sqrt;
 
     /*
      * Preserve the ordinary direct path and its established rounding.
      *
      * For finite extreme values, a*a + b*b can overflow or underflow even
      * when the Euclidean magnitude itself is representable. Only those
-     * exceptional finite cases take Phobos' scaled hypot path.
+     * exceptional finite cases take the local scaled path below.
      *
      * NaN makes the squared sum NaN and therefore stays on the direct path.
-     * Infinite squared sums may use hypot; for inputs without NaN this retains
-     * the same visible infinity classification while also covering finite
-     * overflow.
+     * This avoids compiler-specific hypot behavior, including the DMD 2.111
+     * minimum-subnormal CTFE/runtime discrepancy.
      */
     const T squared =
         a * a +
@@ -102,7 +99,17 @@ if (is(T == float) || is(T == double))
         )
     )
     {
-        return hypot(a, b);
+        const T absA = a < cast(T)0 ? -a : a;
+        const T absB = b < cast(T)0 ? -b : b;
+        const T scale = absA > absB ? absA : absB;
+
+        if (scale == T.infinity)
+            return scale;
+
+        return scale * cast(T)sqrt(
+            (a / scale) * (a / scale) +
+            (b / scale) * (b / scale)
+        );
     }
 
     return direct;
@@ -207,7 +214,10 @@ if (is(T == float) || is(T == double))
         import std.math : PI;
 
         const hue = OklabHued.fromDegrees(180.0);
-        assert(hue.radians == PI);
+        assert(
+            hue.radians > PI - 1e-15 &&
+            hue.radians < PI + 1e-15
+        );
     }
 }
 

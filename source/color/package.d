@@ -54,6 +54,10 @@
 
      `T` is `float` or `double`.
 
+     HSL and HSV are also available as explicit interoperability spaces for
+     CSS, color-pickers, and established UI/tooling workflows. They are not
+     perceptual replacements for Oklab or OKLCH.
+
      Encoded sRGB and linear-light sRGB are deliberately different types.
      This matters because physically meaningful operations such as alpha
      compositing must not be performed on nonlinear encoded channel values.
@@ -165,7 +169,7 @@
      MIT License. See the repository LICENSE file.
 
  See_Also:
-     color.storage, color.rgb, color.xyz, color.cielab, color.oklab, color.oklch, color.alpha,
+     color.storage, color.rgb, color.hsl, color.hsv, color.xyz, color.cielab, color.oklab, color.oklch, color.alpha,
      color.composite, color.interpolate, color.gamut, color.wcag,
      color.difference, color.tone, color.cvd,
      $(LINK2 https://github.com/alex-1974/color-d, color-d on GitHub)
@@ -174,6 +178,8 @@ module color;
 
 public import color.storage;
 public import color.rgb;
+public import color.hsl;
+public import color.hsv;
 public import color.xyz;
 public import color.cielab;
 public import color.oklab;

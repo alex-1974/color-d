@@ -5,7 +5,7 @@ for compatibility evidence and for compiler-specific workarounds.
 
 ## Supported release matrix
 
-The v0.2.0 release is qualified against:
+The v0.3.0 release uses the following supported matrix:
 
 | Frontend generation | DMD | LDC |
 | --- | --- | --- |
@@ -13,10 +13,17 @@ The v0.2.0 release is qualified against:
 | 2.113 | 2.113.0 | 1.43.0 |
 
 DMD 2.112.0 is retained as a diagnostic point when a result differs inside the
-2.112 line. DMD 2.111.0 and LDC 1.41.0 are retained as legacy diagnostic
-canaries: their Phobos `cbrt` is not `pure`, so they cannot satisfy color-d's
-public `pure` contract for Oklab conversion. These diagnostic versions are not
-supported release compilers.
+2.112 line. DMD 2.111.0 and LDC 1.41.0 are now build- and unittest-compatible
+baseline toolchains. Their older Phobos `cbrt` declarations and CTFE/libm
+behavior require source fallbacks and version-specific qualification guards;
+they are not yet promoted to the supported release matrix by this change.
+
+The legacy compatibility path uses the source-available signed cube-root route
+for Oklab and CIELAB, explicit template arguments for older DMD inference, and
+portable finite-value arithmetic for affected extreme-value canaries. The
+older Delta-E-2000 trigonometric reference check remains diagnostic on the
+legacy line because DMD 2.111/LDC 1.41 produce a known incorrect runtime value
+for that vector.
 
 The normal Fast CI intentionally uses only the current supported pair,
 DMD 2.113.0 and LDC 1.43.0. The broader matrix is a scheduled and manually

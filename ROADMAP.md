@@ -2,15 +2,27 @@
 
 ## Current release line
 
-**v0.2.0 — Practical Color Storage and Interop** was published on 2026-10-03.
+**v0.3.0 — HSL/HSV and reusable batch conversion** was published on
+2026-10-23.
 
-**Status: COMPLETE — v0.2.0 RELEASED.**
+**Status: COMPLETE — v0.3.0 RELEASED.**
 
 Feature freeze, consumer-driven promotion, the public API audit, API freeze,
 release hardening, compiler/consumer qualification, and publication are
 complete.
 
-The v0.2.0 scope is:
+The v0.3.0 scope includes the completed v0.2.0 foundation plus:
+
+- HSL and HSV as explicit encoded-sRGB interoperability spaces for `float` and
+  `double`, with degree-based hue normalization and achromatic hue
+  canonicalization;
+- reusable encoded-sRGB decode tables plus allocation-free batch encode/decode
+  operations for repeated RGB8 consumer workloads;
+- DMD 2.111.0 / LDC 1.41.0 build and unittest compatibility through
+  version-specific fallbacks, while the supported release matrix remains DMD
+  2.112+ and LDC 1.42+.
+
+The v0.2.0 foundation scope was:
 
 - compact encoded-sRGB storage with `SRgb8`;
 - compact encoded-sRGB plus straight-alpha storage with `SRgba8`;
@@ -32,7 +44,39 @@ model. Existing alpha and premultiplied-alpha semantics remain authoritative.
 HSL/HSV, semantic Theme/Palette objects, general CSS Color parsing, wide-gamut
 spaces, and other candidate families remain outside the committed v0.2.0 scope.
 
-Detailed v0.2.0 work is tracked by GitHub milestone `v0.2.0`.
+## Post-v0.2 development
+
+### v0.3.0 — HSL/HSV and reusable batch conversion
+
+**Status: COMPLETE — v0.3.0 RELEASED.**
+
+The v0.3.0 release promotes the following completed `color-d` work:
+
+- HSL and HSV as explicit encoded-sRGB interoperability spaces for `float` and
+  `double`, with degree-based hue normalization and achromatic hue
+  canonicalization (#157);
+- reusable encoded-sRGB decode tables plus allocation-free batch encode/decode
+  operations for repeated RGB8 consumer workloads (#196);
+- DMD 2.111.0 / LDC 1.41.0 build and unittest compatibility through
+  version-specific fallbacks, while the supported release matrix remains DMD
+  2.112+ and LDC 1.42+ (#195).
+
+The v0.3.0 release is published. The current package is v0.3.0; v0.2.0 remains
+available as the preceding release line.
+
+HSL and HSV are now implemented as explicit encoded-sRGB interoperability
+spaces. The implementation provides typed `float`/`double` values, degree-based
+hue normalization, achromatic hue canonicalization, conversion reference tests,
+and root/direct-module imports. They remain deliberately separate from the
+perceptual Oklab/OKLCH editing and measurement APIs.
+
+The reusable sRGB8 decode table and exact scalar batch APIs are also implemented
+for repeated RGB8 consumer workloads. Real consumer repositories remain
+read-only during validation; consumer-shaped evidence belongs in this
+repository or the companion research repository.
+
+Detailed v0.2.0 work is tracked by GitHub milestone `v0.2.0`; the v0.3.0 work
+is the release-line follow-up for issues #157, #195, and #196.
 
 ## v0.2.0 consumer-driven color-math promotion
 
