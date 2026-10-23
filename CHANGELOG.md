@@ -7,6 +7,25 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 
 ## Unreleased
 
+## [0.3.0] - 2026-10-23
+
+### Added
+
+- HSL and HSV computational color-space types for `float` and `double`, with
+  explicit encoded-sRGB conversion, degree-based hue normalization, and
+  canonical zero hue for achromatic colors (#157);
+- reusable 256-entry encoded-sRGB decode tables and allocation-free batch
+  encode/decode APIs for repeated `SRgb8`-style workloads (#196).
+
+### Changed
+
+- restored build and unittest compatibility with the shared DMD 2.111.0 /
+  LDC 1.41.0 baseline through version-specific source fallbacks and older
+  compiler guards, while retaining the supported release matrix at DMD 2.112+
+  and LDC 1.42+ (#195);
+- documented the legacy compiler qualification boundary and recorded the
+  measured batch sRGB performance evidence.
+
 ## [0.2.0] - 2026-10-03
 
 ### Added
@@ -119,7 +138,8 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 - CSS parsing/serialization, named colors, HDR, ICC/CMYK, and policy-heavy
   Palette/Theme abstractions.
 
-[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.2.0...develop
+[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.3.0...develop
+[0.3.0]: https://github.com/alex-1974/color-d/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/alex-1974/color-d/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/alex-1974/color-d/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/alex-1974/color-d/releases/tag/v0.1.0

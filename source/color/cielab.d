@@ -7,7 +7,7 @@
 +/
 module color.cielab;
 
-private import color.xyz : XyzD65;
+private import color.xyz : XyzD65, XyzD65d;
 private import std.math : cbrt, pow;
 
 /** CIE 1976 L*a*b* coordinates referenced to D50. */
@@ -53,8 +53,15 @@ if (is(T == float) || is(T == double))
     if (value == cast(T)0)
         return value;
 
-    if (!__ctfe)
-        return cbrt(value);
+    // Phobos before DMD 2.112 does not declare cbrt pure. Keep those
+    // compilers on the source-available route so this pure API remains
+    // compilable while newer toolchains retain the more accurate runtime
+    // implementation.
+    static if (__VERSION__ >= 2120)
+    {
+        if (!__ctfe)
+            return cbrt(value);
+    }
 
     const T magnitude = value < cast(T)0 ? -value : value;
     const T root = cast(T)pow(

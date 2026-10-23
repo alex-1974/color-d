@@ -84,8 +84,14 @@ if (is(T == float) || is(T == double))
     if (value == cast(T)0)
         return value;
 
-    if (!__ctfe)
-        return cbrt(value);
+    // Phobos before DMD 2.112 does not declare cbrt pure. Keep that compiler
+    // able to consume this pure API by compiling the source-only route there.
+    // Newer DMD/LDC use the more accurate runtime implementation.
+    static if (__VERSION__ >= 2120)
+    {
+        if (!__ctfe)
+            return cbrt(value);
+    }
 
     const T absValue =
         value < cast(T)0

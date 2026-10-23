@@ -419,7 +419,7 @@ jobs:
 
           trap cleanup EXIT
 
-          release_version="0.2.0"
+          release_version="0.3.0"
 
           bash .github/scripts/check-release-metadata.sh               "$release_version"               preflight               "$GITHUB_WORKSPACE"
 
