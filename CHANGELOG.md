@@ -7,6 +7,14 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 
 ## Unreleased
 
+## [0.3.3] - 2026-11-04
+
+### Added
+
+- explicit typed YCbCr values with BT.601/BT.709 and full/video-range policies;
+- allocation-free conversion from YCbCr to encoded and linear-light sRGB;
+- DMD 2.111-compatible cube-root fallbacks and regression coverage.
+
 ## [0.3.0] - 2026-10-23
 
 ### Added

@@ -49,13 +49,13 @@ Core principles:
 
 ## Support and compatibility
 
-The v0.3.0 release is qualified against DMD 2.112.1 and 2.113.0 plus LDC
+The v0.3.3 release is qualified against DMD 2.112.1 and 2.113.0 plus LDC
 1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. The shared workspace baseline is
 also build- and unittest-compatible with DMD 2.111.0 and LDC 1.41.0 through
 version-specific source fallbacks. Full release qualification of those legacy
 toolchains remains separate from this compatibility result.
 
-The v0.3.0 release adds HSL/HSV conversion and reusable batch sRGB conversion
+The v0.3.3 release adds explicit YCbCr conversion alongside the v0.3.0 HSL/HSV and reusable batch sRGB conversion
 APIs. Its release qualification keeps the established supported matrix;
 DMD 2.111.0 and LDC 1.41.0 remain explicitly supported as compatibility
 baselines, not as promoted release-matrix entries.
@@ -74,11 +74,11 @@ without requiring a provider-side API correction for v0.1.0.
 
 ## Installation with DUB
 
-`v0.3.0` is the current released package. For normal use, add it as a DUB
+`v0.3.3` is the current released package. For normal use, add it as a DUB
 dependency:
 
 ```sdl
-dependency "color-d" version="~>0.3.0"
+dependency "color-d" version="~>0.3.3"
 ```
 
 For a local workspace checkout, a path dependency remains valid:
@@ -92,7 +92,7 @@ For an external Git dependency pinned to the released source:
 ```sdl
 dependency "color-d" \
     repository="git+https://github.com/alex-1974/color-d.git" \
-    version="v0.3.0"
+    version="v0.3.3"
 ```
 
 ## Release package, repository, and research
