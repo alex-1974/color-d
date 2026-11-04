@@ -8,6 +8,8 @@
 +/
 module color.tone;
 
+private import std.traits : Unqual;
+
 import color.oklch : Oklch, OklabHue, withLightness, withChroma;
 
 private bool isFiniteScheduleScalar(T)(T value)
@@ -306,8 +308,8 @@ if (is(T == float) || is(T == double))
         0.10,
         OklabHue!double.fromDegrees(210.0)
     );
-    const double[] lightnesses = [0.25, 0.75];
-    const double[] chromas = [0.05, 0.15];
+    const double[2] lightnesses = [0.25, 0.75];
+    const double[2] chromas = [0.05, 0.15];
     Oklch!double[2] output;
 
     assert(tryTonesAtLightnessAndChromaInto(
@@ -825,7 +827,7 @@ if (is(T == float) || is(T == double))
 
     foreach (value; values)
     {
-        if (!isFiniteScheduleScalar(value))
+        if (!isFiniteScheduleScalar!(Unqual!T)(value))
             return false;
 
         if (start <= end)
@@ -890,7 +892,7 @@ if (is(T == float) || is(T == double))
     {
         foreach (end; endpoints)
         {
-            if (!scheduleProperties(start, end))
+            if (!scheduleProperties!(Unqual!T)(start, end))
                 return false;
         }
     }
