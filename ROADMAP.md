@@ -2,16 +2,18 @@
 
 ## Current release line
 
-**v0.3.0 — HSL/HSV and reusable batch conversion** was published on
-2026-10-23.
+**v0.3.3 — YCbCr, HSL/HSV and reusable batch conversion** was published on
+2026-11-04.
 
-**Status: COMPLETE — v0.3.0 RELEASED.**
+**Status: COMPLETE — v0.3.3 RELEASED.**
 
 Feature freeze, consumer-driven promotion, the public API audit, API freeze,
 release hardening, compiler/consumer qualification, and publication are
 complete.
 
 The v0.3.0 scope includes the completed v0.2.0 foundation plus:
+
+- explicit YCbCr values and BT.601/BT.709 full/video-range conversion to sRGB;
 
 - HSL and HSV as explicit encoded-sRGB interoperability spaces for `float` and
   `double`, with degree-based hue normalization and achromatic hue

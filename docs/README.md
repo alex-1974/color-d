@@ -3,7 +3,7 @@
 This directory contains the documentation that a package user needs to
 understand and use color-d. It is shipped with the consumer archive.
 
-The current released package is `v0.3.0`. It includes the HSL/HSV and reusable
+The current released package is `v0.3.3`. It includes explicit YCbCr alongside the HSL/HSV and reusable
 batch-conversion additions, together with the storage/interop surface and the
 independently promoted generic color-math capabilities from v0.2.0.
 
