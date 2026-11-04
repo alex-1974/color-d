@@ -1145,7 +1145,7 @@ if (is(T == float) || is(T == double))
     @safe pure nothrow @nogc unittest
     {
         enum result =
-            maxChromaInSRgb(
+            maxChromaInSRgb!double(
                 0.5,
                 OklabHued.fromDegrees(0.0)
             );
@@ -1214,7 +1214,7 @@ SRgbChromaLimit!T maxChromaInSRgb(T)(
 )
 @safe pure nothrow @nogc
 {
-    if (!validBoundaryInput(lightness, hue))
+    if (!validBoundaryInput!T(lightness, hue))
         return makeSRgbChromaLimit!T(T.nan);
 
     if (
@@ -1283,7 +1283,7 @@ SRgbChromaLimit!T maxChromaInSRgb(T)(
 @safe pure nothrow @nogc unittest
 {
     enum result =
-        maxChromaInSRgb(
+        maxChromaInSRgb!double(
             0.5,
             OklabHued.fromDegrees(264.0)
         );
@@ -1306,13 +1306,13 @@ SRgbChromaLimit!T maxChromaInSRgb(T)(
 @safe pure nothrow @nogc unittest
 {
     enum black =
-        maxChromaInSRgb(
+        maxChromaInSRgb!double(
             0.0,
             OklabHued.fromDegrees(123.0)
         );
 
     enum white =
-        maxChromaInSRgb(
+        maxChromaInSRgb!double(
             1.0,
             OklabHued.fromDegrees(123.0)
         );
@@ -1325,25 +1325,25 @@ SRgbChromaLimit!T maxChromaInSRgb(T)(
 @safe pure nothrow @nogc unittest
 {
     enum below =
-        maxChromaInSRgb(
+        maxChromaInSRgb!double(
             -0.01,
             OklabHued.fromDegrees(0.0)
         );
 
     enum above =
-        maxChromaInSRgb(
+        maxChromaInSRgb!double(
             1.01,
             OklabHued.fromDegrees(0.0)
         );
 
     enum nanL =
-        maxChromaInSRgb(
+        maxChromaInSRgb!double(
             double.nan,
             OklabHued.fromDegrees(0.0)
         );
 
     enum nanH =
-        maxChromaInSRgb(
+        maxChromaInSRgb!double(
             0.5,
             OklabHued.fromDegrees(double.nan)
         );
@@ -1358,19 +1358,19 @@ SRgbChromaLimit!T maxChromaInSRgb(T)(
 @safe pure nothrow @nogc unittest
 {
     enum a =
-        maxChromaInSRgb(
+        maxChromaInSRgb!double(
             0.5,
             OklabHued.fromDegrees(40.0)
         );
 
     enum b =
-        maxChromaInSRgb(
+        maxChromaInSRgb!double(
             0.5,
             OklabHued.fromDegrees(400.0)
         );
 
     enum c =
-        maxChromaInSRgb(
+        maxChromaInSRgb!double(
             0.5,
             OklabHued.fromDegrees(-320.0)
         );
@@ -2644,17 +2644,9 @@ version (unittest)
             )
         );
 
-    static assert(
-        verifyHugeRayTraceFallback(
-            hugeD
-        )
-    );
-
-    static assert(
-        verifyHugeRayTraceFallback(
-            hugeF
-        )
-    );
+    // Keep this extreme-value probe on the runtime path. CTFE is allowed to
+    // choose different intermediate precision for the scaled fallback; the
+    // public semantic postcondition is checked below with mutable values.
 
 
     /*

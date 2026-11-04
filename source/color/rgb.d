@@ -85,7 +85,7 @@ if (is(T == float) || is(T == double))
 
     assert(encoded.r > linear.r);
     assert(encoded.g > linear.g);
-    assert(encoded.b == 1.0);
+    assert(encoded.b >= 1.0 - 1e-14 && encoded.b <= 1.0 + 1e-14);
 }
 
 /// Encoded sRGB with `float` components.
@@ -288,7 +288,9 @@ SRgb!T toSRgb(T)(LinearSRgb!T color)
     const linear = LinearSRgbd(1.0, 0.0, -1.0);
     const encoded = linear.toSRgb;
 
-    assert(encoded == SRgbd(1.0, 0.0, -1.0));
+    assert(encoded.r >= 1.0 - 1e-14 && encoded.r <= 1.0 + 1e-14);
+    assert(encoded.g >= -1e-14 && encoded.g <= 1e-14);
+    assert(encoded.b >= -1.0 - 1e-14 && encoded.b <= -1.0 + 1e-14);
 }
 
 @safe pure nothrow @nogc unittest

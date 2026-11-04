@@ -84,8 +84,15 @@ if (is(T == float) || is(T == double))
     if (value == cast(T)0)
         return value;
 
-    if (!__ctfe)
-        return cbrt(value);
+    // DMD 2.111's Phobos declaration does not carry the attributes needed by
+    // this pure function, even though newer supported DMD releases do. Keep
+    // the optimized intrinsic path for LDC and use the source-available path
+    // on DMD so older frontends can still compile the module.
+    version (LDC)
+    {
+        if (!__ctfe)
+            return cbrt(value);
+    }
 
     const T absValue =
         value < cast(T)0
@@ -458,6 +465,13 @@ version (unittest)
         1e-15,
         1e-15
     ));
+
+    // Regression: both signs must remain CTFE-evaluable on DMD 2.111, where
+    // Phobos cbrt cannot be used from a pure function.
+    enum negativeRoot = cubeRoot(-0.125);
+    enum positiveRoot = cubeRoot(0.125);
+    static assert(negativeRoot == -0.5);
+    static assert(positiveRoot == 0.5);
 
     // REGRESSION: extreme finite XYZ remains finite even when the direct LMS
     // intermediate would overflow in the public scalar type.

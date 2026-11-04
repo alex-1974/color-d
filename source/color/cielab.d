@@ -7,7 +7,7 @@
 +/
 module color.cielab;
 
-private import color.xyz : XyzD65;
+private import color.xyz : XyzD65, XyzD65f, XyzD65d;
 private import std.math : cbrt, pow;
 
 /** CIE 1976 L*a*b* coordinates referenced to D50. */
@@ -53,8 +53,14 @@ if (is(T == float) || is(T == double))
     if (value == cast(T)0)
         return value;
 
-    if (!__ctfe)
-        return cbrt(value);
+    // DMD 2.111's Phobos declaration does not carry the attributes required
+    // by this pure function. Keep the optimized cbrt route for LDC and use
+    // the source-available route on DMD and during CTFE.
+    version (LDC)
+    {
+        if (!__ctfe)
+            return cbrt(value);
+    }
 
     const T magnitude = value < cast(T)0 ? -value : value;
     const T root = cast(T)pow(
@@ -245,6 +251,11 @@ if (is(T == float) || is(T == double))
     enum lab = source.toCieLabD50;
     enum back = lab.toXyzD65;
 
+    // Regression: the DMD 2.111-compatible source pow fallback must remain
+    // CTFE-evaluable and numerically finite in the public conversion path.
+    static assert(lab.l > 44.35 && lab.l < 44.37);
+    static assert(lab.a > 36.03 && lab.a < 36.07);
+    static assert(lab.b > -59.01 && lab.b < -58.97);
     static assert(lab.l == lab.l);
     static assert(lab.a == lab.a);
     static assert(lab.b == lab.b);

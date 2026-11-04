@@ -641,7 +641,7 @@ static assert(allStorageRoundTrips!double());
     assert(zero == SRgb8(0, 0, 0));
 
     // Every invalid class rejects without changing caller-owned storage.
-    const invalidInputs =
+    const SRgbd[5] invalidInputs =
     [
         SRgbd(-0.001, 0.0, 0.0),
         SRgbd(1.001, 0.0, 0.0),
