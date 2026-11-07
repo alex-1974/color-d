@@ -3,12 +3,24 @@
 
  YCbCr is a value-level color representation. This module deliberately does
  not own image planes, chroma upsampling, byte decoding, or codec metadata.
- Samples are normalized code values; callers must select the matrix and range
- policy explicitly.
+ Samples are normalized code values in the nominal domain [0, 1]; callers must
+ select the matrix and range policy explicitly. Integer code values are not
+ accepted by this API: the consumer must normalize them using its actual bit
+ depth before construction.
+
+ Full range uses Y in [0, 1] and Cb/Cr centered at 0.5. Video range uses the
+ 8-bit-equivalent legal codes: Y 16..235 and Cb/Cr 16..240, with neutral
+ chroma at 128. The formulas expand those code values to the mathematical
+ range before applying the selected matrix. Extended values are preserved.
+
+ `toSRgb` returns encoded (nonlinear) sRGB and performs no clipping, rounding,
+ or quantization. `toSRgbClamped` is the explicit clipping operation for
+ callers that need [0, 1] output. `toLinearSRgb` applies the existing sRGB
+ transfer decode. NaN and infinity are propagated by scalar IEEE arithmetic.
 +/
 module color.ycbcr;
 
-private import color.rgb : SRgb, SRgbd, LinearSRgb;
+private import color.rgb : SRgb, SRgbd, LinearSRgb, toLinear;
 private import std.math : isNaN;
 
 /// Matrix coefficients used by a YCbCr policy.
@@ -41,6 +53,19 @@ alias Bt601Full = YCbCrPolicy!(YCbCrMatrix.bt601, YCbCrRange.full);
 alias Bt601Video = YCbCrPolicy!(YCbCrMatrix.bt601, YCbCrRange.video);
 alias Bt709Full = YCbCrPolicy!(YCbCrMatrix.bt709, YCbCrRange.full);
 alias Bt709Video = YCbCrPolicy!(YCbCrMatrix.bt709, YCbCrRange.video);
+
+///
+/// Policy contract:
+///
+/// `Bt601Full` and `Bt709Full` interpret normalized Y as [0, 1], with neutral
+/// Cb/Cr at 0.5. `Bt601Video` and `Bt709Video` interpret normalized 8-bit code
+/// values using Y=16/255..235/255 and Cb/Cr=16/255..240/255, with neutral
+/// chroma at 128/255. The BT.601 coefficients are (1.402, 0.344136, 0.714136,
+/// 1.772); BT.709 uses (1.5748, 0.187324, 0.468124, 1.8556).
+///
+/// The matrix result is encoded sRGB. Use `toLinearSRgb` for linear-light
+/// values. No policy is inferred and no integer rounding occurs here.
+///
 
 /** Normalized YCbCr samples under an explicit `Policy`.
  *
