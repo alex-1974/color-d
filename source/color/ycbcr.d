@@ -9,6 +9,7 @@
 module color.ycbcr;
 
 private import color.rgb : SRgb, SRgbd, LinearSRgb;
+private import std.math : isNaN;
 
 /// Matrix coefficients used by a YCbCr policy.
 enum YCbCrMatrix
@@ -109,6 +110,23 @@ SRgb!T toSRgb(T, Policy)(YCbCr!(T, Policy) value)
     }
 }
 
+private T clampUnit(T)(T value) @safe pure nothrow @nogc
+{
+    if (value < cast(T)0)
+        return cast(T)0;
+    if (value > cast(T)1)
+        return cast(T)1;
+    return value;
+}
+
+/// Converts to encoded sRGB and explicitly clips finite components to [0, 1].
+SRgb!T toSRgbClamped(T, Policy)(YCbCr!(T, Policy) value)
+@safe pure nothrow @nogc
+{
+    const auto rgb = toSRgb(value);
+    return SRgb!T(clampUnit(rgb.r), clampUnit(rgb.g), clampUnit(rgb.b));
+}
+
 /// Converts explicit YCbCr samples to linear-light sRGB.
 LinearSRgb!T toLinearSRgb(T, Policy)(YCbCr!(T, Policy) value)
 @safe pure nothrow @nogc
@@ -128,6 +146,24 @@ LinearSRgb!T toLinearSRgb(T, Policy)(YCbCr!(T, Policy) value)
         YCbCr!(double, Bt709Video)(16.0 / 255.0, 128.0 / 255.0, 128.0 / 255.0)
             .toSRgb;
     assert(limitedBlack == SRgbd(0.0, 0.0, 0.0));
+
+    const auto videoWhite = YCbCr!(double, Bt601Video)(235.0 / 255.0,
+        128.0 / 255.0, 128.0 / 255.0).toSRgb;
+    assert(videoWhite.r > 0.9999 && videoWhite.g > 0.9999
+        && videoWhite.b > 0.9999);
+    const auto extended = YCbCr!(double, Bt601Full)(0.5, 1.0, 0.5).toSRgb;
+    assert(extended.b > 1.0);
+    assert(YCbCr!(double, Bt601Full)(0.5, 1.0, 0.5).toSRgbClamped.b == 1.0);
+
+    // BT.601 reference equations: Y=0.5, Cb=0.5, Cr=1.0.
+    const auto reference = YCbCr!(double, Bt601Full)(0.5, 0.5, 1.0).toSRgb;
+    assert(reference.r >= 1.2 && reference.r < 1.203);
+    assert(reference.g >= 0.14 && reference.g < 0.1439);
+    assert(reference.b == 0.5);
+
+    const auto nanResult = YCbCr!(double, Bt601Full)(double.nan, 0.5,
+        0.5).toSRgb;
+    assert(isNaN(nanResult.r) && isNaN(nanResult.g) && isNaN(nanResult.b));
 }
 
 static assert(!__traits(compiles, YCbCr!int(Bt601Full)));
