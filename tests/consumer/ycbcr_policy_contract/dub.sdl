@@ -1,0 +1,5 @@
+name "color-d-ycbcr-policy-consumer"
+description "Public API consumer contract for explicit YCbCr policies"
+targetType "executable"
+
+dependency "color-d" path="../../.."
