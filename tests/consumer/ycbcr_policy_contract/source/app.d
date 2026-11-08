@@ -52,4 +52,36 @@ void main()
     checkPolicy!Bt601Video(128.0 / 255.0, 128.0 / 255.0, 128.0 / 255.0);
     checkPolicy!Bt709Full(0.5, 0.5, 0.5);
     checkPolicy!Bt709Video(128.0 / 255.0, 128.0 / 255.0, 128.0 / 255.0);
+
+    const auto rgb = SRgbd(0.2, 0.4, 0.8);
+    const auto encoded = rgb.toYCbCr!Bt709Video;
+    const auto roundTrip = encoded.toSRgb;
+    assert(near(roundTrip.r, rgb.r, 1e-6));
+    assert(near(roundTrip.g, rgb.g, 1e-6));
+    assert(near(roundTrip.b, rgb.b, 1e-6));
+
+    const parsed = parseSRgb8Hex("#12AbF0");
+    assert(parsed.hasValue);
+    assert(parsed.value() == SRgb8(0x12, 0xAB, 0xF0));
+
+    const invalid = parseSRgb8Hex("#12GGF0");
+    assert(invalid.hasError);
+    assert(invalid.error() == ColorParseError.invalidDigit);
+
+    const stored = toSRgb8Result(SRgbd(0.2, 0.4, 0.8));
+    assert(stored.hasValue);
+    assert(stored.value() == SRgb8(51, 102, 204));
+
+    const rejected = toSRgb8Result(SRgbd(1.2, 0.4, 0.8));
+    assert(rejected.hasError);
+    assert(rejected.error() == ColorStorageError.outOfRange);
+
+    const prepared = prepareMachado2009(
+        RedGreenCvdDeficiency.protan, 0.5);
+    assert(prepared.hasValue);
+
+    const invalidSeverity = prepareMachado2009(
+        RedGreenCvdDeficiency.protan, 1.5);
+    assert(invalidSeverity.hasError);
+    assert(invalidSeverity.error() == CvdPreparationError.invalidSeverity);
 }

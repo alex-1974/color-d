@@ -68,6 +68,28 @@ private import color.rgb :
     SRgb,
     SRgbf,
     SRgbd;
+private import color.result : ColorResult;
+private import std.math : isInfinity;
+
+/// Errors returned by Result-based computational-to-storage conversion.
+enum ColorStorageError : ubyte
+{
+    /// A component is NaN or infinite.
+    nonFinite,
+    /// A component is outside the inclusive storage domain [0, 1].
+    outOfRange
+}
+
+/// Errors returned by Result-based hexadecimal storage parsing.
+enum ColorParseError : ubyte
+{
+    /// The input does not have the required fixed length.
+    invalidLength,
+    /// The input is missing the required leading '#'.
+    invalidPrefix,
+    /// One or more hexadecimal digits are invalid.
+    invalidDigit
+}
 
 
 /**
@@ -469,6 +491,31 @@ bool tryToSRgb8(T)(
     return true;
 }
 
+/// Checked computational-to-storage conversion with a typed public result.
+ColorResult!(SRgb8, ColorStorageError) toSRgb8Result(T)(SRgb!T value)
+@safe pure nothrow @nogc
+{
+    if (!isStorableUnit(value.r) || !isStorableUnit(value.g)
+        || !isStorableUnit(value.b))
+    {
+        const bool nonFinite =
+            value.r != value.r || isInfinity(value.r)
+            || value.g != value.g || isInfinity(value.g)
+            || value.b != value.b || isInfinity(value.b);
+        return ColorResult!(SRgb8, ColorStorageError).failure(
+            nonFinite ? ColorStorageError.nonFinite
+                      : ColorStorageError.outOfRange);
+    }
+
+    return ColorResult!(SRgb8, ColorStorageError).success(
+        SRgb8(
+            unitToStorageChannel(value.r),
+            unitToStorageChannel(value.g),
+            unitToStorageChannel(value.b)
+        )
+    );
+}
+
 ///
 @safe pure nothrow @nogc unittest
 {
@@ -533,6 +580,35 @@ bool tryToSRgba8(T)(
 
     output = candidate;
     return true;
+}
+
+/// Checked straight-alpha computational-to-storage conversion with a typed result.
+ColorResult!(SRgba8, ColorStorageError) toSRgba8Result(T)(
+    Alpha!(SRgb!T) value
+)
+@safe pure nothrow @nogc
+{
+    if (!isStorableUnit(value.color.r) || !isStorableUnit(value.color.g)
+        || !isStorableUnit(value.color.b) || !isStorableUnit(value.alpha))
+    {
+        const bool nonFinite =
+            value.color.r != value.color.r || isInfinity(value.color.r)
+            || value.color.g != value.color.g || isInfinity(value.color.g)
+            || value.color.b != value.color.b || isInfinity(value.color.b)
+            || value.alpha != value.alpha || isInfinity(value.alpha);
+        return ColorResult!(SRgba8, ColorStorageError).failure(
+            nonFinite ? ColorStorageError.nonFinite
+                      : ColorStorageError.outOfRange);
+    }
+
+    return ColorResult!(SRgba8, ColorStorageError).success(
+        SRgba8(
+            unitToStorageChannel(value.color.r),
+            unitToStorageChannel(value.color.g),
+            unitToStorageChannel(value.color.b),
+            unitToStorageChannel(value.alpha)
+        )
+    );
 }
 
 ///
@@ -820,6 +896,26 @@ bool tryParseSRgb8Hex(
     return true;
 }
 
+/// Parses `#RRGGBB` and returns a typed public failure when parsing fails.
+ColorResult!(SRgb8, ColorParseError) parseSRgb8Hex(
+    scope const(char)[] text
+)
+@safe pure nothrow @nogc
+{
+    if (text.length != 7)
+        return ColorResult!(SRgb8, ColorParseError).failure(
+            ColorParseError.invalidLength);
+    if (text[0] != '#')
+        return ColorResult!(SRgb8, ColorParseError).failure(
+            ColorParseError.invalidPrefix);
+
+    SRgb8 output;
+    if (!tryParseSRgb8Hex(text, output))
+        return ColorResult!(SRgb8, ColorParseError).failure(
+            ColorParseError.invalidDigit);
+    return ColorResult!(SRgb8, ColorParseError).success(output);
+}
+
 ///
 @safe pure nothrow @nogc unittest
 {
@@ -913,6 +1009,26 @@ bool tryParseSRgba8Hex(
         );
 
     return true;
+}
+
+/// Parses `#RRGGBBAA` and returns a typed public failure when parsing fails.
+ColorResult!(SRgba8, ColorParseError) parseSRgba8Hex(
+    scope const(char)[] text
+)
+@safe pure nothrow @nogc
+{
+    if (text.length != 9)
+        return ColorResult!(SRgba8, ColorParseError).failure(
+            ColorParseError.invalidLength);
+    if (text[0] != '#')
+        return ColorResult!(SRgba8, ColorParseError).failure(
+            ColorParseError.invalidPrefix);
+
+    SRgba8 output;
+    if (!tryParseSRgba8Hex(text, output))
+        return ColorResult!(SRgba8, ColorParseError).failure(
+            ColorParseError.invalidDigit);
+    return ColorResult!(SRgba8, ColorParseError).success(output);
 }
 
 ///

@@ -53,3 +53,18 @@ chroma representation.
 
 See [Color model](../concepts/color-model.md) and
 [Extended values and `.init`](../concepts/extended-values-and-init.md).
+
+## Handle fallible public boundaries
+
+Parsing and checked storage conversion expose typed `Result` variants for
+callers that want a composable error value:
+
+```d
+const parsed = parseSRgb8Hex("#336699");
+if (parsed.hasValue)
+    auto color = parsed.value();
+```
+
+The original `try...` functions remain available for caller-owned output and
+hot paths. Scalar color-space conversions do not return `Result`; they are
+mathematical value transformations.
