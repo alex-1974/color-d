@@ -932,6 +932,13 @@ jobs:
           }
           D
 
-          "$DC"               -c               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/root.o"               "$tmp/root.d"
+          mapfile -t import_paths < <(
+              dub describe --compiler="$DC" --data=import-paths --data-list
+          )
+          import_flags=()
+          for path in "${import_paths[@]}"; do
+              import_flags+=("-I$path")
+          done
 
-          "$DC"               -c               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/direct.o"               "$tmp/direct.d"
+          "$DC" -c "${import_flags[@]}" -i -of="$tmp/root.o" "$tmp/root.d"
+          "$DC" -c "${import_flags[@]}" -i -of="$tmp/direct.o" "$tmp/direct.d"
