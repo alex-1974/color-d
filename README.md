@@ -46,7 +46,7 @@ Core principles:
 
 ## Support and compatibility
 
-The v0.2.0 release is qualified against DMD 2.112.1 and 2.113.0 plus LDC
+The v0.3.3 release is qualified against DMD 2.112.1 and 2.113.0 plus LDC
 1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0, DMD 2.111.0,
 and LDC 1.41.0 are diagnostic points rather than supported release compilers.
 
@@ -64,11 +64,11 @@ without requiring a provider-side API correction for v0.1.0.
 
 ## Installation with DUB
 
-`v0.2.0` is the current released package. For normal use, add it as a DUB
+`v0.3.3` is the current released package. For normal use, add it as a DUB
 dependency:
 
 ```sdl
-dependency "color-d" version="~>0.2.0"
+dependency "color-d" version="~>0.3.3"
 ```
 
 For a local workspace checkout, a path dependency remains valid:
@@ -82,7 +82,7 @@ For an external Git dependency pinned to the released source:
 ```sdl
 dependency "color-d" \
     repository="git+https://github.com/alex-1974/color-d.git" \
-    version="v0.2.0"
+    version="v0.3.3"
 ```
 
 ## Release package, repository, and research
@@ -225,7 +225,7 @@ part of the consumer archive:
 
 ## Project status
 
-**v0.2.0 was released on 2026-10-03** and is the current published package.
+**v0.3.3 is the current published package.**
 It follows v0.1.1 with practical storage/interop and the promoted generic
 color-math capabilities qualified for the Dunia consumer.
 
@@ -235,13 +235,15 @@ historical development of v0.1.0 rather than current release work. Both R4
 consumers — `imagery-d` and Dunia's theme/style layer — exercised the public
 API without requiring a provider-side API correction.
 
-**v0.2.0 — Practical Color Storage and Interop** is released. Its frozen
+**v0.3.3 — Consumer Color Interop** is released. Its current
 scope adds packed sRGB/RGBA storage and compact hexadecimal interop, plus the
 independently validated gamut-boundary, CIELAB/Delta-E, and CVD primitives
 required by the Dunia consumer.
 
-HSL/HSV, wider-gamut spaces, general CSS Color parsing, and policy-heavy
-palette/theme abstractions remain outside the committed v0.2.0 scope.
+General CSS Color parsing and policy-heavy palette/theme abstractions remain
+outside the current scope. The development line additionally contains HSL/HSV
+and Display-P3 as explicit value-level conversions; these are not part of the
+published v0.3.3 package.
 
 The library remains pre-1.0, so later 0.x releases may still make
 well-justified, documented breaking changes.

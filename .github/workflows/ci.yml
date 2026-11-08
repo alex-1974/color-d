@@ -435,15 +435,17 @@ jobs:
 
           trap cleanup EXIT
 
-          release_version="0.2.0"
+          release_version="0.3.3"
 
           bash .github/scripts/check-release-metadata.sh               "$release_version"               preflight               "$GITHUB_WORKSPACE"
 
           bash .github/scripts/check-release-metadata.sh               "$release_version"               release               "$GITHUB_WORKSPACE"
 
-          if bash .github/scripts/check-release-metadata.sh 0.2 release "$GITHUB_WORKSPACE"
+          if ! bash .github/scripts/check-release-metadata.sh 0.2.0 release "$GITHUB_WORKSPACE"
           then
-              echo "Invalid release version unexpectedly passed" >&2
+              echo "Expected stale release metadata rejection" >&2
+          else
+              echo "Stale release metadata unexpectedly passed" >&2
               exit 1
           fi
 

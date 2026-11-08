@@ -15,6 +15,19 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 - Display-P3 encoded/linear values with XYZ D65 and sRGB interop;
 - consumer-contract coverage for the new public color-space surfaces.
 
+## [0.3.3] - 2026-11-04
+
+### Added
+
+- practical consumer color interop, including YCbCr value conversion;
+- packed sRGB/RGBA storage and compact hexadecimal interop;
+- validated gamut-boundary, CIELAB/Delta-E, and CVD primitives.
+
+### Changed
+
+- release documentation and consumer-facing interoperability contracts were
+  aligned with the v0.3.3 package line.
+
 ## [0.2.0] - 2026-10-03
 
 ### Added
@@ -127,7 +140,8 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 - CSS parsing/serialization, named colors, HDR, ICC/CMYK, and policy-heavy
   Palette/Theme abstractions.
 
-[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.2.0...develop
+[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.3.3...develop
+[0.3.3]: https://github.com/alex-1974/color-d/compare/v0.3.0...v0.3.3
 [0.2.0]: https://github.com/alex-1974/color-d/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/alex-1974/color-d/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/alex-1974/color-d/releases/tag/v0.1.0

@@ -54,6 +54,16 @@ const linearYcbcr = SRgbd(0.2, 0.4, 0.8).toLinear.toYCbCr!Bt709Video;
 const linearAgain = linearYcbcr.toLinearSRgb;
 ```
 
+Packed code values can be decoded with the same policy. This example uses a
+10-bit full-range BT.2020 value:
+
+```d
+alias Bt2020Full10 = YCbCrPolicy!(YCbCrMatrix.bt2020,
+    YCbCrRange.full, 10);
+const packed = YCbCrCode!Bt2020Full10(512, 512, 512);
+const normalized = packed.toYCbCr!double;
+```
+
 The result remains normalized and unquantized. `Bt709Video` places luma in the
 normalized equivalents of codes 16..235 and chroma in 16..240. Byte rounding,
 plane layout, chroma sampling, and codec metadata remain consumer/codec
