@@ -7,6 +7,10 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 
 ## Unreleased
 
+No changes yet.
+
+## [0.4.0] - 2026-11-08
+
 ### Added
 
 - explicit linear sRGB ↔ YCbCr conversion, BT.2020 policies, 8–16 bit
@@ -140,7 +144,8 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 - CSS parsing/serialization, named colors, HDR, ICC/CMYK, and policy-heavy
   Palette/Theme abstractions.
 
-[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.3.3...develop
+[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.4.0...develop
+[0.4.0]: https://github.com/alex-1974/color-d/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/alex-1974/color-d/compare/v0.3.0...v0.3.3
 [0.2.0]: https://github.com/alex-1974/color-d/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/alex-1974/color-d/compare/v0.1.0...v0.1.1
