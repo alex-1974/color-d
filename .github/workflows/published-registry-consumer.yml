@@ -62,7 +62,7 @@ jobs:
               const packed = SRgb8(0x80, 0x40, 0x20);
               const encoded = packed.toSRgb!double;
               const perceptual = encoded.toLinear.toXyzD65.toOklab.toOklch;
-              const mapped = perceptual.gamutMapRayTraceToLinearSRgb();
+              const mapped = perceptual.mapToLinearSRgbRayTrace();
 
               assert(mapped.inGamut);
           }
