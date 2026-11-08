@@ -9,4 +9,6 @@ targetType "library"
 
 sourcePaths "source"
 
+dependency "error-d" version="~>0.4.1"
+
 x:ddoxFilterArgs "--min-protection=Public" "--only-documented"

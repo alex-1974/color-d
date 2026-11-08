@@ -26,6 +26,14 @@ module color.cvd;
 private import color.rgb :
     LinearSRgb,
     LinearSRgbd;
+private import color.result : ColorResult;
+
+/// Errors returned by Result-based CVD preparation.
+enum CvdPreparationError : ubyte
+{
+    /// Severity is outside the model's inclusive [0, 1] domain.
+    invalidSeverity
+}
 
 
 /**
@@ -1432,6 +1440,26 @@ if (is(T == float) || is(T == double))
         );
 
     return true;
+}
+
+/// Prepares a Machado 2009 transform with a typed public result.
+ColorResult!(PreparedMachado2009!T, CvdPreparationError)
+    prepareMachado2009(T)(
+        RedGreenCvdDeficiency deficiency,
+        T severity
+    )
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    PreparedMachado2009!T prepared;
+    if (!tryPrepareMachado2009(deficiency, severity, prepared))
+    {
+        return ColorResult!(PreparedMachado2009!T,
+            CvdPreparationError).failure(
+                CvdPreparationError.invalidSeverity);
+    }
+    return ColorResult!(PreparedMachado2009!T,
+        CvdPreparationError).success(prepared);
 }
 
 ///
