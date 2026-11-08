@@ -703,9 +703,17 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
 
+          mapfile -t import_paths < <(
+              dub describe --compiler="$DC" --data=import-paths --data-list
+          )
+          import_flags=()
+          for path in "${import_paths[@]}"; do
+              import_flags+=("-I$path")
+          done
+
           "$DC" \
               -c \
-              -I"$GITHUB_WORKSPACE/source" \
+              "${import_flags[@]}" \
               -i \
               -of="$tmp/linear-schedule-qualifiers.o" \
               "$GITHUB_WORKSPACE/tests/compat/linear_schedule_qualifier_probe.d"
@@ -718,9 +726,17 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
 
+          mapfile -t import_paths < <(
+              dub describe --compiler="$DC" --data=import-paths --data-list
+          )
+          import_flags=()
+          for path in "${import_paths[@]}"; do
+              import_flags+=("-I$path")
+          done
+
           "$DC" \
               -c \
-              -I"$GITHUB_WORKSPACE/source" \
+              "${import_flags[@]}" \
               -i \
               -of="$tmp/named-arguments.o" \
               "$GITHUB_WORKSPACE/tests/compat/named_arguments.d"
@@ -733,13 +749,21 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
 
+          mapfile -t import_paths < <(
+              dub describe --compiler="$DC" --data=import-paths --data-list
+          )
+          import_flags=()
+          for path in "${import_paths[@]}"; do
+              import_flags+=("-I$path")
+          done
+
           for probe in \
               public_api_root_surface \
               public_api_direct_modules
           do
               "$DC" \
                   -c \
-                  -I"$GITHUB_WORKSPACE/source" \
+                  "${import_flags[@]}" \
                   -i \
                   -of="$tmp/$probe.o" \
                   "$GITHUB_WORKSPACE/tests/compat/$probe.d"
