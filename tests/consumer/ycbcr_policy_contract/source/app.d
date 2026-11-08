@@ -84,4 +84,21 @@ void main()
         RedGreenCvdDeficiency.protan, 1.5);
     assert(invalidSeverity.hasError);
     assert(invalidSeverity.error() == CvdPreparationError.invalidSeverity);
+
+    const bt2020 = SRgbd(0.2, 0.4, 0.8).toYCbCr!Bt2020Video;
+    assert(near(bt2020.toSRgb.r, 0.2, 1e-3));
+    const tenBit = YCbCr!(double, YCbCrPolicy!(YCbCrMatrix.bt2020,
+        YCbCrRange.full, 10))(0.5, 0.5, 0.5).toYCbCrCode;
+    assert(tenBit.hasValue && tenBit.value().y == 512);
+
+    const hsl = rgb.toHsl;
+    const hsv = rgb.toHsv;
+    assert(near(hsl.toSRgb.r, rgb.r, 1e-12));
+    assert(near(hsv.toSRgb.b, rgb.b, 1e-12));
+
+    const p3 = DisplayP3d(0.2, 0.4, 0.8);
+    const p3Linear = p3.toLinear;
+    const p3RoundTrip = p3Linear.toDisplayP3;
+    assert(near(p3RoundTrip.r, p3.r, 1e-12));
+    assert(p3.toSRgb.r == p3.toSRgb.r);
 }

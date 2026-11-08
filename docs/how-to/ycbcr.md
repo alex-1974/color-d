@@ -1,7 +1,8 @@
 # YCbCr conversion
 
 `color.ycbcr` provides value-level YCbCr conversion without image, plane, or
-codec dependencies. The caller must select one of the four explicit policies:
+codec dependencies. The caller must select an explicit matrix, range, and
+optional bit-depth policy:
 
 | Policy | Matrix | Input code interpretation |
 | --- | --- | --- |
@@ -9,9 +10,12 @@ codec dependencies. The caller must select one of the four explicit policies:
 | `Bt601Video` | BT.601 | Y 16..235, Cb/Cr 16..240 in 8-bit notation |
 | `Bt709Full` | BT.709 | Y 0..1, neutral Cb/Cr 0.5 |
 | `Bt709Video` | BT.709 | Y 16..235, Cb/Cr 16..240 in 8-bit notation |
+| `Bt2020Full` | BT.2020 | Y 0..1, neutral Cb/Cr 0.5 |
+| `Bt2020Video` | BT.2020 | Y 16..235, Cb/Cr 16..240 in 8-bit notation |
 
-Samples are normalized `float` or `double` values. Integer samples are not
-accepted because the caller owns bit-depth and storage-range interpretation.
+Samples are normalized `float` or `double` values. Packed code values can be
+decoded and quantized with `YCbCrCode!Policy`; policies support 8 through 16
+bits.
 For video range, `Y=16/255` maps to black, `Y=235/255` maps to white, and
 `Cb=Cr=128/255` is neutral. Values outside the legal range remain extended.
 
@@ -41,6 +45,13 @@ values:
 const rgb = SRgbd(0.2, 0.4, 0.8);
 const ycbcr = rgb.toYCbCr!Bt709Video;
 const roundTrip = ycbcr.toSRgb;
+```
+
+Linear-light sRGB is supported explicitly through the sRGB transfer boundary:
+
+```d
+const linearYcbcr = SRgbd(0.2, 0.4, 0.8).toLinear.toYCbCr!Bt709Video;
+const linearAgain = linearYcbcr.toLinearSRgb;
 ```
 
 The result remains normalized and unquantized. `Bt709Video` places luma in the

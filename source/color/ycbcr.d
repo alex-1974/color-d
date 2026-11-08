@@ -4,14 +4,11 @@
  YCbCr is a value-level color representation. This module deliberately does
  not own image planes, chroma upsampling, byte decoding, or codec metadata.
  Samples are normalized code values in the nominal domain [0, 1]; callers must
- select the matrix and range policy explicitly. Integer code values are not
- accepted by this API: the consumer must normalize them using its actual bit
- depth before construction.
+ select the matrix, range, and bit-depth policy explicitly.
 
  Full range uses Y in [0, 1] and Cb/Cr centered at 0.5. Video range uses the
- 8-bit-equivalent legal codes: Y 16..235 and Cb/Cr 16..240, with neutral
- chroma at 128. The formulas expand those code values to the mathematical
- range before applying the selected matrix. Extended values are preserved.
+ legal code interval scaled to the selected bit depth. Extended values are
+ preserved by scalar conversion.
 
  `toSRgb` returns encoded (nonlinear) sRGB and performs no clipping, rounding,
  or quantization. `toSRgbClamped` is the explicit clipping operation for
@@ -21,6 +18,8 @@
 module color.ycbcr;
 
 private import color.rgb : SRgb, SRgbd, LinearSRgb, toLinear;
+private import color.rgb;
+private import color.result : ColorResult;
 private import std.math : isNaN;
 
 /// Matrix coefficients used by a YCbCr policy.
@@ -29,7 +28,9 @@ enum YCbCrMatrix
     /// ITU-R BT.601 / SMPTE 170M coefficients.
     bt601,
     /// ITU-R BT.709 coefficients.
-    bt709
+    bt709,
+    /// ITU-R BT.2020 non-constant-luminance coefficients.
+    bt2020
 }
 
 /// Interpretation of normalized YCbCr code values.
@@ -42,10 +43,12 @@ enum YCbCrRange
 }
 
 /// Explicit conversion policy. No policy is inferred from the samples.
-struct YCbCrPolicy(YCbCrMatrix matrixValue, YCbCrRange rangeValue)
+struct YCbCrPolicy(YCbCrMatrix matrixValue, YCbCrRange rangeValue,
+    uint bitDepthValue = 8)
 {
     enum matrix = matrixValue;
     enum range = rangeValue;
+    enum bitDepth = bitDepthValue;
 }
 
 /// Common explicit policies.
@@ -53,6 +56,28 @@ alias Bt601Full = YCbCrPolicy!(YCbCrMatrix.bt601, YCbCrRange.full);
 alias Bt601Video = YCbCrPolicy!(YCbCrMatrix.bt601, YCbCrRange.video);
 alias Bt709Full = YCbCrPolicy!(YCbCrMatrix.bt709, YCbCrRange.full);
 alias Bt709Video = YCbCrPolicy!(YCbCrMatrix.bt709, YCbCrRange.video);
+alias Bt2020Full = YCbCrPolicy!(YCbCrMatrix.bt2020, YCbCrRange.full);
+alias Bt2020Video = YCbCrPolicy!(YCbCrMatrix.bt2020, YCbCrRange.video);
+
+/// Errors returned when normalized YCbCr values are quantized to code values.
+enum YCbCrQuantizationError : ubyte
+{
+    nonFinite,
+    outOfRange
+}
+
+/// Packed three-channel code values for a YCbCr policy.
+struct YCbCrCode(Policy)
+{
+    ushort y;
+    ushort cb;
+    ushort cr;
+}
+
+private uint ycbcrMaxCode(Policy)() @safe pure nothrow @nogc
+{
+    return (1u << Policy.bitDepth) - 1;
+}
 
 ///
 /// Policy contract:
@@ -74,9 +99,8 @@ alias Bt709Video = YCbCrPolicy!(YCbCrMatrix.bt709, YCbCrRange.video);
  * Construction preserves extended values and performs no clipping.
  */
 struct YCbCr(T, Policy)
-if ((is(T == float) || is(T == double)) &&
-    (is(Policy == Bt601Full) || is(Policy == Bt601Video) ||
-     is(Policy == Bt709Full) || is(Policy == Bt709Video)))
+if ((is(T == float) || is(T == double)) && Policy.bitDepth >= 8 &&
+    Policy.bitDepth <= 16)
 {
     alias Scalar = T;
     T y;
@@ -87,11 +111,51 @@ if ((is(T == float) || is(T == double)) &&
 alias YCbCrf(Policy) = YCbCr!(float, Policy);
 alias YCbCrd(Policy) = YCbCr!(double, Policy);
 
+/// Decodes integer YCbCr code values into normalized scalar samples.
+YCbCr!(T, Policy) toYCbCr(T, Policy)(YCbCrCode!Policy value)
+@safe pure nothrow @nogc
+{
+    const T scale = cast(T)ycbcrMaxCode!Policy;
+    return YCbCr!(T, Policy)(value.y / scale, value.cb / scale,
+        value.cr / scale);
+}
+
+private ushort quantizeYCbCr(T)(T value, uint maxCode)
+@safe pure nothrow @nogc
+{
+    return cast(ushort)(value * cast(T)maxCode + cast(T)0.5);
+}
+
+/// Quantizes normalized YCbCr samples to the policy's 8--16 bit code values.
+ColorResult!(YCbCrCode!Policy, YCbCrQuantizationError)
+toYCbCrCode(T, Policy)(YCbCr!(T, Policy) value)
+@safe pure nothrow @nogc
+{
+    if (isNaN(value.y) || isNaN(value.cb) || isNaN(value.cr))
+        return ColorResult!(YCbCrCode!Policy,
+            YCbCrQuantizationError).failure(
+                YCbCrQuantizationError.nonFinite);
+    if (value.y < 0 || value.y > 1 || value.cb < 0 || value.cb > 1
+        || value.cr < 0 || value.cr > 1)
+        return ColorResult!(YCbCrCode!Policy,
+            YCbCrQuantizationError).failure(
+                YCbCrQuantizationError.outOfRange);
+
+    const auto maxCode = ycbcrMaxCode!Policy;
+    return ColorResult!(YCbCrCode!Policy,
+        YCbCrQuantizationError).success(YCbCrCode!Policy(
+            quantizeYCbCr(value.y, maxCode),
+            quantizeYCbCr(value.cb, maxCode),
+            quantizeYCbCr(value.cr, maxCode)));
+}
+
 private T normalizeLuma(T, Policy)(T value)
 @safe pure nothrow @nogc
 {
     static if (Policy.range == YCbCrRange.video)
-        return (value - cast(T)(16.0 / 255.0)) * cast(T)(255.0 / 219.0);
+        return (value - cast(T)(16.0 / ((1u << Policy.bitDepth) - 1)))
+            * cast(T)(((1u << Policy.bitDepth) - 1)
+                / cast(double)(219u << (Policy.bitDepth - 8)));
     else
         return value;
 }
@@ -100,7 +164,9 @@ private T normalizeChroma(T, Policy)(T value)
 @safe pure nothrow @nogc
 {
     static if (Policy.range == YCbCrRange.video)
-        return (value - cast(T)(128.0 / 255.0)) * cast(T)(255.0 / 224.0);
+        return (value - cast(T)(128.0 / ((1u << Policy.bitDepth) - 1)))
+            * cast(T)(((1u << Policy.bitDepth) - 1)
+                / cast(double)(224u << (Policy.bitDepth - 8)));
     else
         return value - cast(T)0.5;
 }
@@ -109,7 +175,9 @@ private T encodeLuma(T, Policy)(T value)
 @safe pure nothrow @nogc
 {
     static if (Policy.range == YCbCrRange.video)
-        return value * cast(T)(219.0 / 255.0) + cast(T)(16.0 / 255.0);
+        return value * cast(T)(cast(double)(219u << (Policy.bitDepth - 8))
+                / ((1u << Policy.bitDepth) - 1))
+            + cast(T)(16.0 / ((1u << Policy.bitDepth) - 1));
     else
         return value;
 }
@@ -118,7 +186,9 @@ private T encodeChroma(T, Policy)(T value)
 @safe pure nothrow @nogc
 {
     static if (Policy.range == YCbCrRange.video)
-        return value * cast(T)(224.0 / 255.0) + cast(T)(128.0 / 255.0);
+        return value * cast(T)(cast(double)(224u << (Policy.bitDepth - 8))
+                / ((1u << Policy.bitDepth) - 1))
+            + cast(T)(128.0 / ((1u << Policy.bitDepth) - 1));
     else
         return value + cast(T)0.5;
 }
@@ -141,6 +211,14 @@ SRgb!T toSRgb(T, Policy)(YCbCr!(T, Policy) value)
             y + cast(T)1.5748 * cr,
             y - cast(T)0.187324 * cb - cast(T)0.468124 * cr,
             y + cast(T)1.8556 * cb
+        );
+    }
+    else static if (Policy.matrix == YCbCrMatrix.bt2020)
+    {
+        return SRgb!T(
+            y + cast(T)1.4746 * cr,
+            y - cast(T)0.164553 * cb - cast(T)0.571353 * cr,
+            y + cast(T)1.8814 * cb
         );
     }
     else
@@ -173,6 +251,13 @@ YCbCr!(T, Policy) toYCbCr(Policy, T)(SRgb!T value)
             + cast(T)0.0722 * value.b;
         cb = (value.b - y) / cast(T)1.8556;
         cr = (value.r - y) / cast(T)1.5748;
+    }
+    else static if (Policy.matrix == YCbCrMatrix.bt2020)
+    {
+        y = cast(T)0.262 * value.r + cast(T)0.678 * value.g
+            + cast(T)0.059 * value.b;
+        cb = (value.b - y) / cast(T)1.8814;
+        cr = (value.r - y) / cast(T)1.4746;
     }
     else
     {
@@ -212,6 +297,14 @@ LinearSRgb!T toLinearSRgb(T, Policy)(YCbCr!(T, Policy) value)
 {
     return toSRgb(value).toLinear;
 }
+
+/// Converts linear-light sRGB to normalized YCbCr using the sRGB transfer curve.
+YCbCr!(T, Policy) toYCbCr(Policy, T)(LinearSRgb!T value)
+@safe pure nothrow @nogc
+{
+    return toYCbCr!Policy(color.rgb.toSRgb(value));
+}
+
 
 @safe pure nothrow @nogc unittest
 {
@@ -254,6 +347,30 @@ LinearSRgb!T toLinearSRgb(T, Policy)(YCbCr!(T, Policy) value)
     assert(videoRoundTrip.r > 0.199999 && videoRoundTrip.r < 0.200001);
     assert(videoRoundTrip.g > 0.399999 && videoRoundTrip.g < 0.400001);
     assert(videoRoundTrip.b > 0.799999 && videoRoundTrip.b < 0.800001);
+
+    const auto bt2020RoundTrip =
+        SRgbd(0.2, 0.4, 0.8).toYCbCr!Bt2020Full.toSRgb;
+    assert(bt2020RoundTrip.r > 0.199 && bt2020RoundTrip.r < 0.201);
+    assert(bt2020RoundTrip.g > 0.399 && bt2020RoundTrip.g < 0.401);
+    assert(bt2020RoundTrip.b > 0.799 && bt2020RoundTrip.b < 0.801);
+
+    const auto originalLinear = SRgbd(0.2, 0.4, 0.8).toLinear;
+    const auto linearRoundTrip = originalLinear.toYCbCr!Bt709Full.toLinearSRgb;
+    assert(linearRoundTrip.r > originalLinear.r - 1e-4
+        && linearRoundTrip.r < originalLinear.r + 1e-4);
+    assert(linearRoundTrip.g > originalLinear.g - 1e-4
+        && linearRoundTrip.g < originalLinear.g + 1e-4);
+    assert(linearRoundTrip.b > originalLinear.b - 1e-4
+        && linearRoundTrip.b < originalLinear.b + 1e-4);
+
+    const auto code = YCbCr!(double, Bt709Video)(16.0 / 255.0,
+        128.0 / 255.0, 128.0 / 255.0).toYCbCrCode;
+    assert(code.hasValue);
+    assert(code.value().y == 16 && code.value().cb == 128
+        && code.value().cr == 128);
+    const auto tenBit = YCbCr!(double, YCbCrPolicy!(YCbCrMatrix.bt2020,
+        YCbCrRange.full, 10))(0.5, 0.5, 0.5).toYCbCrCode;
+    assert(tenBit.hasValue && tenBit.value().y == 512);
 }
 
 static assert(!__traits(compiles, YCbCr!int(Bt601Full)));
