@@ -54,6 +54,10 @@
 
      `T` is `float` or `double`.
 
+     HSL and HSV are also available as explicit interoperability spaces for
+     CSS, color-pickers, and established UI/tooling workflows. They are not
+     perceptual replacements for Oklab or OKLCH.
+
      Encoded sRGB and linear-light sRGB are deliberately different types.
      This matters because physically meaningful operations such as alpha
      compositing must not be performed on nonlinear encoded channel values.

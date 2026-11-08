@@ -2,6 +2,8 @@ module public_api_direct_modules;
 
 static import color.storage;
 static import color.rgb;
+static import color.hsl;
+static import color.hsv;
 static import color.xyz;
 static import color.cielab;
 static import color.oklab;
@@ -67,6 +69,11 @@ void acceptedDirectModuleSurface()
             0.25,
             0.12
         );
+
+    const hsl = color.hsl.toHsl(encoded);
+    const hsv = color.hsv.toHsv(encoded);
+    const hslBack = color.hsl.toSRgb(hsl);
+    const hsvBack = color.hsv.toSRgb(hsv);
 
     const linear =
         color.rgb.toLinear(

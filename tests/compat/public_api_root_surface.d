@@ -7,6 +7,10 @@ static assert(is(SRgb8));
 static assert(is(SRgba8));
 static assert(is(SRgbf));
 static assert(is(SRgbd));
+static assert(is(Hslf));
+static assert(is(Hsld));
+static assert(is(Hsvf));
+static assert(is(Hsvd));
 static assert(is(LinearSRgbf));
 static assert(is(LinearSRgbd));
 static assert(is(XyzD65f));
@@ -86,6 +90,11 @@ void acceptedRootAndUfcsSurface()
 
     const encoded =
         SRgbd(0.82, 0.25, 0.12);
+
+    const hsl = encoded.toHsl;
+    const hsv = encoded.toHsv;
+    const hslBack = hsl.toSRgb;
+    const hsvBack = hsv.toSRgb;
 
     const linear =
         encoded.toLinear;

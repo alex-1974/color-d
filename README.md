@@ -7,6 +7,9 @@ Stable API documentation: https://alex-1974.github.io/color-d/
 
 Development API documentation: https://alex-1974.github.io/color-d/dev/
 
+> Assisted by AI: implementation, tests, documentation, and release
+> preparation were developed with AI assistance and reviewed by the maintainer.
+
 The library is intended to provide explicit color-space types, correct
 linear-light operations, perceptual color workflows, alpha compositing,
 interpolation, gamut handling, contrast analysis, and palette primitives.
@@ -21,7 +24,7 @@ Primary initial consumers are:
 
 Use `color-d` when a D program needs explicit color-space mathematics rather
 than framework-specific styling objects. Typical use cases include typed
-sRGB/XYZ/Oklab/OKLCH conversion, linear-light alpha compositing, perceptual
+sRGB/XYZ/CIELAB/HSL/HSV/Oklab/OKLCH conversion, linear-light alpha compositing, perceptual
 interpolation, explicit sRGB gamut handling, model-specific color-vision-deficiency transformations, WCAG 2 measurements, and
 compile-time construction of fixed color data.
 

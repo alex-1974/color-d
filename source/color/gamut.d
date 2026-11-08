@@ -1147,7 +1147,7 @@ if (is(T == float) || is(T == double))
         enum result =
             maxChromaInSRgb!double(
                 0.5,
-                OklabHued.fromDegrees(0.0)
+                OklabHue!T.fromDegrees(cast(T)0.0)
             );
 
         static assert(result.value > 0.0);

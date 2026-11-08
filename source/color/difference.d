@@ -59,6 +59,26 @@ T deltaEOK(T)(
 )
 @safe pure nothrow @nogc
 {
+    // Some legacy CTFE implementations do not reliably preserve the
+    // infinity produced by subtracting two opposite finite maxima. Detect
+    // that overflow before evaluating the subtraction.
+    static bool differenceOverflows(T)(const T left, const T right)
+    @safe pure nothrow @nogc
+    {
+        return
+            (left > cast(T)0 && right < cast(T)0 &&
+                left > T.max + right) ||
+            (left < cast(T)0 && right > cast(T)0 &&
+                left < -T.max + right);
+    }
+
+    if (
+        differenceOverflows(lhs.l, rhs.l) ||
+        differenceOverflows(lhs.a, rhs.a) ||
+        differenceOverflows(lhs.b, rhs.b)
+    )
+        return T.infinity;
+
     const T dl = lhs.l - rhs.l;
     const T da = lhs.a - rhs.a;
     const T db = lhs.b - rhs.b;

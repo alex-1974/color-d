@@ -5,7 +5,7 @@ for compatibility evidence and for compiler-specific workarounds.
 
 ## Supported release matrix
 
-The v0.2.0 release is qualified against:
+The v0.3.0 release uses the following supported matrix:
 
 | Frontend generation | DMD | LDC |
 | --- | --- | --- |
