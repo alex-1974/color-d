@@ -164,9 +164,14 @@ jobs:
           }
           D
 
-          "$DC"               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/probe"               "$tmp/probe.d"
+          cat > "$tmp/dub.sdl" <<DUB
+          name "ci-probe"
+          targetType "executable"
+          sourcePaths "."
+          dependency "color-d" path="$GITHUB_WORKSPACE"
+          DUB
 
-          "$tmp/probe" 0.75 0.75
+          dub run --root="$tmp" --compiler="$DC" --build=release -- 0.75 0.75
 
       - name: Oklab CTFE/runtime parity probe
         shell: bash
@@ -308,10 +313,15 @@ jobs:
           }
           D
 
-          "$DC"               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/probe"               "$tmp/probe.d"
+          cat > "$tmp/dub.sdl" <<DUB
+          name "ci-probe"
+          targetType "executable"
+          sourcePaths "."
+          dependency "color-d" path="$GITHUB_WORKSPACE"
+          DUB
 
-          "$tmp/probe" ordinary 0.125 0.25 0.5
-          "$tmp/probe" extended -0.25 0.5 1.25
+          dub run --root="$tmp" --compiler="$DC" --build=release -- ordinary 0.125 0.25 0.5
+          dub run --root="$tmp" --compiler="$DC" --build=release -- extended -0.25 0.5 1.25
 
       - name: Public special-value semantics
         shell: bash
@@ -321,13 +331,16 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
 
-          "$DC" \
-              -I"$GITHUB_WORKSPACE/source" \
-              -i \
-              -of="$tmp/special-values" \
-              "$GITHUB_WORKSPACE/tests/numerical/special_value_semantics.d"
+          cp "$GITHUB_WORKSPACE/tests/numerical/special_value_semantics.d" \
+              "$tmp/special_value_semantics.d"
+          cat > "$tmp/dub.sdl" <<DUB
+          name "ci-special-values"
+          targetType "executable"
+          sourcePaths "."
+          dependency "color-d" path="$GITHUB_WORKSPACE"
+          DUB
 
-          "$tmp/special-values"
+          dub run --root="$tmp" --compiler="$DC" --build=release
 
       - name: README quick-start consumer smoke
         shell: bash
@@ -337,13 +350,16 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
 
-          "$DC" \
-              -I"$GITHUB_WORKSPACE/source" \
-              -i \
-              -of="$tmp/readme-quickstart" \
-              "$GITHUB_WORKSPACE/tests/examples/readme_quickstart.d"
+          cp "$GITHUB_WORKSPACE/tests/examples/readme_quickstart.d" \
+              "$tmp/readme_quickstart.d"
+          cat > "$tmp/dub.sdl" <<DUB
+          name "ci-readme-quickstart"
+          targetType "executable"
+          sourcePaths "."
+          dependency "color-d" path="$GITHUB_WORKSPACE"
+          DUB
 
-          "$tmp/readme-quickstart"
+          dub run --root="$tmp" --compiler="$DC" --build=release
 
       - name: Consumer archive boundary smoke
         if: matrix.compiler == 'dmd-2.113.0'
@@ -419,15 +435,17 @@ jobs:
 
           trap cleanup EXIT
 
-          release_version="0.3.0"
+          release_version="0.4.0"
 
           bash .github/scripts/check-release-metadata.sh               "$release_version"               preflight               "$GITHUB_WORKSPACE"
 
           bash .github/scripts/check-release-metadata.sh               "$release_version"               release               "$GITHUB_WORKSPACE"
 
-          if bash .github/scripts/check-release-metadata.sh 0.2 release "$GITHUB_WORKSPACE"
+          if ! bash .github/scripts/check-release-metadata.sh 0.2.0 release "$GITHUB_WORKSPACE"
           then
-              echo "Invalid release version unexpectedly passed" >&2
+              echo "Expected stale release metadata rejection" >&2
+          else
+              echo "Stale release metadata unexpectedly passed" >&2
               exit 1
           fi
 
@@ -687,9 +705,17 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
 
+          mapfile -t import_paths < <(
+              dub describe --compiler="$DC" --data=import-paths --data-list
+          )
+          import_flags=()
+          for path in "${import_paths[@]}"; do
+              import_flags+=("-I$path")
+          done
+
           "$DC" \
               -c \
-              -I"$GITHUB_WORKSPACE/source" \
+              "${import_flags[@]}" \
               -i \
               -of="$tmp/linear-schedule-qualifiers.o" \
               "$GITHUB_WORKSPACE/tests/compat/linear_schedule_qualifier_probe.d"
@@ -702,9 +728,17 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
 
+          mapfile -t import_paths < <(
+              dub describe --compiler="$DC" --data=import-paths --data-list
+          )
+          import_flags=()
+          for path in "${import_paths[@]}"; do
+              import_flags+=("-I$path")
+          done
+
           "$DC" \
               -c \
-              -I"$GITHUB_WORKSPACE/source" \
+              "${import_flags[@]}" \
               -i \
               -of="$tmp/named-arguments.o" \
               "$GITHUB_WORKSPACE/tests/compat/named_arguments.d"
@@ -717,13 +751,21 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
 
+          mapfile -t import_paths < <(
+              dub describe --compiler="$DC" --data=import-paths --data-list
+          )
+          import_flags=()
+          for path in "${import_paths[@]}"; do
+              import_flags+=("-I$path")
+          done
+
           for probe in \
               public_api_root_surface \
               public_api_direct_modules
           do
               "$DC" \
                   -c \
-                  -I"$GITHUB_WORKSPACE/source" \
+                  "${import_flags[@]}" \
                   -i \
                   -of="$tmp/$probe.o" \
                   "$GITHUB_WORKSPACE/tests/compat/$probe.d"
@@ -892,6 +934,13 @@ jobs:
           }
           D
 
-          "$DC"               -c               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/root.o"               "$tmp/root.d"
+          mapfile -t import_paths < <(
+              dub describe --compiler="$DC" --data=import-paths --data-list
+          )
+          import_flags=()
+          for path in "${import_paths[@]}"; do
+              import_flags+=("-I$path")
+          done
 
-          "$DC"               -c               -I"$GITHUB_WORKSPACE/source"               -i               -of="$tmp/direct.o"               "$tmp/direct.d"
+          "$DC" -c "${import_flags[@]}" -i -of="$tmp/root.o" "$tmp/root.d"
+          "$DC" -c "${import_flags[@]}" -i -of="$tmp/direct.o" "$tmp/direct.d"

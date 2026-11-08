@@ -7,32 +7,30 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 
 ## Unreleased
 
+No changes yet.
+
+## [0.4.0] - 2026-11-08
+
+### Added
+
+- explicit linear sRGB ↔ YCbCr conversion, BT.2020 policies, 8–16 bit
+  normalized code-value interop, and typed quantization failures;
+- allocation-free HSL/HSV value conversions for encoded sRGB;
+- Display-P3 encoded/linear values with XYZ D65 and sRGB interop;
+- consumer-contract coverage for the new public color-space surfaces.
+
 ## [0.3.3] - 2026-11-04
 
 ### Added
 
-- explicit typed YCbCr values with BT.601/BT.709 and full/video-range policies;
-- allocation-free conversion from YCbCr to encoded and linear-light sRGB;
-- DMD 2.111-compatible cube-root fallbacks and regression coverage.
-
-## [0.3.0] - 2026-10-23
-
-### Added
-
-- HSL and HSV computational color-space types for `float` and `double`, with
-  explicit encoded-sRGB conversion, degree-based hue normalization, and
-  canonical zero hue for achromatic colors (#157);
-- reusable 256-entry encoded-sRGB decode tables and allocation-free batch
-  encode/decode APIs for repeated `SRgb8`-style workloads (#196).
+- practical consumer color interop, including YCbCr value conversion;
+- packed sRGB/RGBA storage and compact hexadecimal interop;
+- validated gamut-boundary, CIELAB/Delta-E, and CVD primitives.
 
 ### Changed
 
-- restored build and unittest compatibility with the shared DMD 2.111.0 /
-  LDC 1.41.0 baseline through version-specific source fallbacks and older
-  compiler guards, while retaining the supported release matrix at DMD 2.112+
-  and LDC 1.42+ (#195);
-- documented the legacy compiler qualification boundary and recorded the
-  measured batch sRGB performance evidence.
+- release documentation and consumer-facing interoperability contracts were
+  aligned with the v0.3.3 package line.
 
 ## [0.2.0] - 2026-10-03
 
@@ -146,8 +144,9 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 - CSS parsing/serialization, named colors, HDR, ICC/CMYK, and policy-heavy
   Palette/Theme abstractions.
 
-[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.3.0...develop
-[0.3.0]: https://github.com/alex-1974/color-d/compare/v0.2.0...v0.3.0
+[Unreleased]: https://github.com/alex-1974/color-d/compare/v0.4.0...develop
+[0.4.0]: https://github.com/alex-1974/color-d/compare/v0.3.3...v0.4.0
+[0.3.3]: https://github.com/alex-1974/color-d/compare/v0.3.0...v0.3.3
 [0.2.0]: https://github.com/alex-1974/color-d/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/alex-1974/color-d/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/alex-1974/color-d/releases/tag/v0.1.0

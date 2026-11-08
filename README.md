@@ -49,16 +49,9 @@ Core principles:
 
 ## Support and compatibility
 
-The v0.3.3 release is qualified against DMD 2.112.1 and 2.113.0 plus LDC
-1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. The shared workspace baseline is
-also build- and unittest-compatible with DMD 2.111.0 and LDC 1.41.0 through
-version-specific source fallbacks. Full release qualification of those legacy
-toolchains remains separate from this compatibility result.
-
-The v0.3.3 release adds explicit YCbCr conversion alongside the v0.3.0 HSL/HSV and reusable batch sRGB conversion
-APIs. Its release qualification keeps the established supported matrix;
-DMD 2.111.0 and LDC 1.41.0 remain explicitly supported as compatibility
-baselines, not as promoted release-matrix entries.
+The v0.4.0 release is qualified against DMD 2.112.1 and 2.113.0 plus LDC
+1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. DMD 2.112.0, DMD 2.111.0,
+and LDC 1.41.0 are diagnostic points rather than supported release compilers.
 
 Fast CI uses the current pair, DMD 2.113.0 and LDC 1.43.0. Broader compatibility
 qualification is kept separate from the daily development gate. DMD and LDC are
@@ -74,11 +67,11 @@ without requiring a provider-side API correction for v0.1.0.
 
 ## Installation with DUB
 
-`v0.3.3` is the current released package. For normal use, add it as a DUB
+`v0.4.0` is the current release package. For normal use, add it as a DUB
 dependency:
 
 ```sdl
-dependency "color-d" version="~>0.3.3"
+dependency "color-d" version="~>0.4.0"
 ```
 
 For a local workspace checkout, a path dependency remains valid:
@@ -92,7 +85,7 @@ For an external Git dependency pinned to the released source:
 ```sdl
 dependency "color-d" \
     repository="git+https://github.com/alex-1974/color-d.git" \
-    version="v0.3.3"
+    version="v0.4.0"
 ```
 
 ## Release package, repository, and research
@@ -235,9 +228,9 @@ part of the consumer archive:
 
 ## Project status
 
-**v0.3.0 was released on 2026-10-23** and is the current published package.
-It follows v0.2.0 with HSL/HSV interoperability and reusable batch sRGB
-conversion APIs, while retaining the established compiler support matrix.
+**v0.4.0 is the current release candidate.**
+It follows v0.3.3 with practical storage/interop and the promoted generic
+color-math capabilities qualified for the Dunia consumer.
 
 The R0 research/architecture programme and R1–R4 production, utility, and
 real-consumer validation phases are complete. Those phase names now describe
@@ -245,13 +238,12 @@ historical development of v0.1.0 rather than current release work. Both R4
 consumers — `imagery-d` and Dunia's theme/style layer — exercised the public
 API without requiring a provider-side API correction.
 
-**v0.3.0 — HSL/HSV and reusable batch conversion** is released. Its scope
-adds widely used HSL/HSV interoperability spaces, reusable sRGB batch
-conversion APIs, and compatibility with the shared DMD 2.111/LDC 1.41
-baseline through version-specific implementation paths.
+**v0.4.0 — Complete Consumer Color Interop** is prepared for release. Its
+scope adds YCbCr, HSL/HSV, Display-P3, and the independently validated
+storage, gamut, CIELAB/Delta-E, and CVD primitives.
 
-Wider-gamut spaces, general CSS Color parsing, and policy-heavy palette/theme
-abstractions remain outside the v0.3.0 scope.
+General CSS Color parsing and policy-heavy palette/theme abstractions remain
+outside the current scope.
 
 The library remains pre-1.0, so later 0.x releases may still make
 well-justified, documented breaking changes.

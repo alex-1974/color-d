@@ -3,9 +3,8 @@
 This directory contains the documentation that a package user needs to
 understand and use color-d. It is shipped with the consumer archive.
 
-The current released package is `v0.3.3`. It includes explicit YCbCr alongside the HSL/HSV and reusable
-batch-conversion additions, together with the storage/interop surface and the
-independently promoted generic color-math capabilities from v0.2.0.
+The current release candidate is `v0.4.0`. It contains YCbCr, HSL/HSV, and
+Display-P3 value-level color operations.
 
 ## Start here
 
@@ -14,9 +13,11 @@ If this is your first time using color-d, follow this path:
 1. [Tutorial: getting started](tutorial/getting-started.md)
 2. [Concepts: color model](concepts/color-model.md)
 3. [How-to: convert and adjust colors](how-to/convert-and-adjust.md)
-4. [How-to: alpha and compositing](how-to/alpha-and-compositing.md)
-5. [How-to: interpolation and gamut mapping](how-to/interpolate-and-map-gamut.md)
-6. [How-to: WCAG measurements and tone families](how-to/wcag-and-tones.md)
+4. [How-to: HSL and HSV](how-to/hsl-and-hsv.md)
+5. [How-to: Display-P3](how-to/display-p3.md)
+6. [How-to: alpha and compositing](how-to/alpha-and-compositing.md)
+7. [How-to: interpolation and gamut mapping](how-to/interpolate-and-map-gamut.md)
+8. [How-to: WCAG measurements and tone families](how-to/wcag-and-tones.md)
 
 ## Understand the model
 

@@ -79,12 +79,19 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
 
+          error_d_source="$(find "$HOME/.dub/packages/error-d" \
+              -type d -path '*/error-d/source' -print | sort -V | tail -n 1)"
+          test -n "$error_d_source"
+
           compile_ok()
           {
               source="$1"
               object="$2"
 
-              "$DC" -c -I"$GITHUB_WORKSPACE/source" -i -of="$object" "$source"
+              "$DC" -c \
+                  -I"$GITHUB_WORKSPACE/source" \
+                  -I"$error_d_source" \
+                  -i -of="$object" "$source"
           }
 
           compile_fail()
@@ -92,7 +99,10 @@ jobs:
               source="$1"
               object="$2"
 
-              if "$DC" -c -I"$GITHUB_WORKSPACE/source" -i -of="$object" "$source" >"$tmp/negative.log" 2>&1
+              if "$DC" -c \
+                  -I"$GITHUB_WORKSPACE/source" \
+                  -I"$error_d_source" \
+                  -i -of="$object" "$source" >"$tmp/negative.log" 2>&1
               then
                   echo "Unexpected compile success: $source"
                   cat "$tmp/negative.log"

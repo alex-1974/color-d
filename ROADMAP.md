@@ -2,29 +2,15 @@
 
 ## Current release line
 
-**v0.3.3 — YCbCr, HSL/HSV and reusable batch conversion** was published on
-2026-11-04.
+**v0.4.0 — Complete Consumer Color Interop** was published on 2026-11-08.
 
-**Status: COMPLETE — v0.3.3 RELEASED.**
+**Status: COMPLETE — v0.4.0 RELEASED.**
 
 Feature freeze, consumer-driven promotion, the public API audit, API freeze,
 release hardening, compiler/consumer qualification, and publication are
 complete.
 
-The v0.3.0 scope includes the completed v0.2.0 foundation plus:
-
-- explicit YCbCr values and BT.601/BT.709 full/video-range conversion to sRGB;
-
-- HSL and HSV as explicit encoded-sRGB interoperability spaces for `float` and
-  `double`, with degree-based hue normalization and achromatic hue
-  canonicalization;
-- reusable encoded-sRGB decode tables plus allocation-free batch encode/decode
-  operations for repeated RGB8 consumer workloads;
-- DMD 2.111.0 / LDC 1.41.0 build and unittest compatibility through
-  version-specific fallbacks, while the supported release matrix remains DMD
-  2.112+ and LDC 1.42+.
-
-The v0.2.0 foundation scope was:
+The v0.4.0 scope is:
 
 - compact encoded-sRGB storage with `SRgb8`;
 - compact encoded-sRGB plus straight-alpha storage with `SRgba8`;
@@ -43,8 +29,8 @@ The v0.2.0 foundation scope was:
 The release does **not** introduce a second floating-point RGBA computational
 model. Existing alpha and premultiplied-alpha semantics remain authoritative.
 
-HSL/HSV, semantic Theme/Palette objects, general CSS Color parsing, wide-gamut
-spaces, and other candidate families remain outside the committed v0.2.0 scope.
+semantic Theme/Palette objects and general CSS Color parsing remain outside
+the committed v0.4.0 scope.
 
 ## Post-v0.2 development
 
