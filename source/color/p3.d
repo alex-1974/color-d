@@ -25,6 +25,7 @@ alias DisplayP3d = DisplayP3!double;
 
 /// Converts encoded Display-P3 to linear Display-P3.
 LinearDisplayP3!T toLinear(T)(DisplayP3!T value)
+@safe pure nothrow @nogc
 {
     const auto encoded = color.rgb.toLinear(SRgb!T(value.r, value.g, value.b));
     return LinearDisplayP3!T(encoded.r, encoded.g, encoded.b);
@@ -43,6 +44,7 @@ alias LinearDisplayP3d = LinearDisplayP3!double;
 
 /// Converts linear Display-P3 to encoded Display-P3.
 DisplayP3!T toDisplayP3(T)(LinearDisplayP3!T value)
+@safe pure nothrow @nogc
 {
     const auto encoded = LinearSRgb!T(value.r, value.g, value.b).toSRgb;
     return DisplayP3!T(encoded.r, encoded.g, encoded.b);
@@ -68,20 +70,31 @@ LinearDisplayP3!T toLinearDisplayP3(T)(XyzD65!T value)
         cast(T)0.03584583024378447 * value.x - cast(T)0.07617238926804182 * value.y + cast(T)0.9568845240076872 * value.z);
 }
 
+/// Converts linear Display-P3 to linear-light sRGB through XYZ D65.
+LinearSRgb!T toLinearSRgb(T)(LinearDisplayP3!T value)
+@safe pure nothrow @nogc
+{
+    const auto rgb = color.xyz.toLinearSRgb(toXyzD65(value));
+    return LinearSRgb!T(rgb.r, rgb.g, rgb.b);
+}
+
+/// Converts linear-light sRGB to linear Display-P3 through XYZ D65.
+LinearDisplayP3!T toLinearDisplayP3(T)(LinearSRgb!T value)
+@safe pure nothrow @nogc
+{
+    return toLinearDisplayP3(color.xyz.toXyzD65(value));
+}
+
 /// Converts encoded Display-P3 to encoded sRGB through XYZ D65.
 SRgb!T toSRgb(T)(DisplayP3!T value) @safe pure nothrow @nogc
 {
-    const auto encoded = color.xyz.toLinearSRgb(
-        toXyzD65(color.p3.toLinear(value)));
-    return SRgb!T(encoded.r, encoded.g, encoded.b);
+    return color.rgb.toSRgb(color.p3.toLinear(value).toLinearSRgb);
 }
 
 /// Converts encoded sRGB to encoded Display-P3 through XYZ D65.
 DisplayP3!T toDisplayP3(T)(SRgb!T value) @safe pure nothrow @nogc
 {
-    const auto linear = color.p3.toDisplayP3(
-        toLinearDisplayP3(color.xyz.toXyzD65(color.rgb.toLinear(value))));
-    return DisplayP3!T(linear.r, linear.g, linear.b);
+    return color.p3.toLinearDisplayP3(color.rgb.toLinear(value)).toDisplayP3;
 }
 
 @safe pure nothrow @nogc unittest
