@@ -23,6 +23,11 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 - packed sRGB/RGBA storage and compact hexadecimal interop;
 - validated gamut-boundary, CIELAB/Delta-E, and CVD primitives.
 
+### Changed
+
+- release documentation and consumer-facing interoperability contracts were
+  aligned with the v0.3.3 package line.
+
 ## [0.2.0] - 2026-10-03
 
 ### Added
