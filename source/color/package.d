@@ -166,6 +166,8 @@
 
  See_Also:
      color.storage, color.rgb, color.ycbcr, color.xyz, color.cielab, color.oklab, color.oklch, color.alpha,
+     color.hsl,
+     color.p3,
      color.composite, color.interpolate, color.gamut, color.wcag,
      color.difference, color.tone, color.cvd, color.result,
      $(LINK2 https://github.com/alex-1974/color-d, color-d on GitHub)
@@ -175,6 +177,8 @@ module color;
 public import color.result;
 public import color.storage;
 public import color.rgb;
+public import color.hsl;
+public import color.p3;
 public import color.ycbcr;
 public import color.xyz;
 public import color.cielab;

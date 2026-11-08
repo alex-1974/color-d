@@ -7,6 +7,14 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 
 ## Unreleased
 
+### Added
+
+- explicit linear sRGB ↔ YCbCr conversion, BT.2020 policies, 8–16 bit
+  normalized code-value interop, and typed quantization failures;
+- allocation-free HSL/HSV value conversions for encoded sRGB;
+- Display-P3 encoded/linear values with XYZ D65 and sRGB interop;
+- consumer-contract coverage for the new public color-space surfaces.
+
 ## [0.2.0] - 2026-10-03
 
 ### Added
