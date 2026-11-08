@@ -441,7 +441,7 @@ jobs:
 
           bash .github/scripts/check-release-metadata.sh               "$release_version"               release               "$GITHUB_WORKSPACE"
 
-          if bash .github/scripts/check-release-metadata.sh 0.2 release "$GITHUB_WORKSPACE"
+          if bash .github/scripts/check-release-metadata.sh 0.2.0 release "$GITHUB_WORKSPACE"
           then
               echo "Invalid release version unexpectedly passed" >&2
               exit 1
