@@ -142,7 +142,7 @@ void main()
         .withChroma(0.16);
 
     const displayLinear =
-        adjusted.gamutMapRayTraceToLinearSRgb();
+        adjusted.mapToLinearSRgbRayTrace();
 
     assert(displayLinear.inGamut);
 
@@ -228,7 +228,7 @@ part of the consumer archive:
 
 ## Project status
 
-**v0.4.0 is the current release candidate.**
+**v0.4.0 is the current release.**
 It follows v0.3.3 with practical storage/interop and the promoted generic
 color-math capabilities qualified for the Dunia consumer.
 
@@ -238,7 +238,7 @@ historical development of v0.1.0 rather than current release work. Both R4
 consumers — `imagery-d` and Dunia's theme/style layer — exercised the public
 API without requiring a provider-side API correction.
 
-**v0.4.0 — Complete Consumer Color Interop** is prepared for release. Its
+**v0.4.0 — Complete Consumer Color Interop** is released. Its
 scope adds YCbCr, HSL/HSV, Display-P3, and the independently validated
 storage, gamut, CIELAB/Delta-E, and CVD primitives.
 

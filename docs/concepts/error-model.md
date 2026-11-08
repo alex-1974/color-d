@@ -19,7 +19,7 @@ recoverable user-input channel.
 
 When an operation intentionally validates runtime input, success is explicit.
 
-`Wcag2Measurement!T`
+`WcagMeasurement!T`
 : `.valid` is the success channel. Invalid standards-domain input yields an
 invalid measurement whose stored scalar is NaN.
 

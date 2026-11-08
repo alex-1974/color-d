@@ -88,7 +88,7 @@ void main()
     const bt2020 = SRgbd(0.2, 0.4, 0.8).toYCbCr!Bt2020Video;
     assert(near(bt2020.toSRgb.r, 0.2, 1e-3));
     const tenBit = YCbCr!(double, YCbCrPolicy!(YCbCrMatrix.bt2020,
-        YCbCrRange.full, 10))(0.5, 0.5, 0.5).toYCbCrCode;
+        YCbCrRange.full, 10))(0.5, 0.5, 0.5).toQuantizedYCbCr;
     assert(tenBit.hasValue && tenBit.value().y == 512);
 
     const hsl = rgb.toHsl;

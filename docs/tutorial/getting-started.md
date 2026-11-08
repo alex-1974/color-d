@@ -115,7 +115,7 @@ Ray Trace mapping:
 
 ```d
 const displayLinear =
-    adjusted.gamutMapRayTraceToLinearSRgb;
+    adjusted.mapToLinearSRgbRayTrace;
 
 assert(displayLinear.inGamut);
 ```
@@ -200,7 +200,7 @@ enum accent =
         0.30,
         OklabHued.fromDegrees(40.0)
     )
-    .gamutMapRayTraceToLinearSRgb;
+    .mapToLinearSRgbRayTrace;
 
 static assert(accent.inGamut);
 ```
@@ -249,7 +249,7 @@ void main()
         .withChroma(0.16);
 
     const displayLinear =
-        edited.gamutMapRayTraceToLinearSRgb;
+        edited.mapToLinearSRgbRayTrace;
 
     assert(displayLinear.inGamut);
 

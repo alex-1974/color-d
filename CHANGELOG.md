@@ -7,7 +7,18 @@ The project is pre-1.0. Changes planned for the next release accumulate under
 
 ## Unreleased
 
-No changes yet.
+### Changed
+
+- renamed the public YCbCr quantization API to `QuantizedYCbCr`,
+  `toQuantizedYCbCr`, and `toNormalizedYCbCr`;
+- renamed prepared CVD operations from `apply`/`applyInto` to
+  `transform`/`transformInto`;
+- renamed WCAG measurement APIs to `WcagMeasurement`,
+  `wcagRelativeLuminance`, and `wcagContrastRatio`;
+- renamed the reusable byte decoder to `SRgb8Decoder` and
+  `makeSRgb8Decoder`;
+- renamed perceptual gamut mapping entry points to
+  `mapToLinearSRgbLocalMinde` and `mapToLinearSRgbRayTrace`.
 
 ## [0.4.0] - 2026-11-08
 
@@ -57,7 +68,7 @@ No changes yet.
   protan/deutan severity, without accessibility classification or implicit
   gamut policy;
 - prepared CVD transforms for repeated work, with allocation-free
-  fixed-cardinality `applyInto` and runtime-sized `tryApplyInto` batch forms;
+  fixed-cardinality `transformInto` and runtime-sized `tryTransformInto` batch forms;
   Machado severity interpolation can be performed once per batch through the
   explicit `tryPrepareMachado2009` success channel.
 

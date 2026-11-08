@@ -1416,10 +1416,10 @@ SRgbChromaLimit!T maxChromaInSRgb(T)(
  *     independent of image or collection size.
  *
  * See_Also:
- *     gamutMapRayTraceToLinearSRgb, clip
+ *     mapToLinearSRgbRayTrace, clip
  */
 
-LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
+LinearSRgb!T mapToLinearSRgbLocalMinde(T)(
     Oklch!T color
 )
 @safe pure nothrow @nogc
@@ -1470,7 +1470,7 @@ LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
         );
 
     const mapped =
-        vivid.gamutMapLocalMindeToLinearSRgb;
+        vivid.mapToLinearSRgbLocalMinde;
 
     assert(mapped.inGamut);
 }
@@ -1505,10 +1505,10 @@ LinearSRgb!T gamutMapLocalMindeToLinearSRgb(T)(
  *     is independent of image or collection size.
  *
  * See_Also:
- *     gamutMapLocalMindeToLinearSRgb, clip
+ *     mapToLinearSRgbLocalMinde, clip
  */
 
-LinearSRgb!T gamutMapRayTraceToLinearSRgb(T)(
+LinearSRgb!T mapToLinearSRgbRayTrace(T)(
     Oklch!T color
 )
 @safe pure nothrow @nogc
@@ -1559,7 +1559,7 @@ LinearSRgb!T gamutMapRayTraceToLinearSRgb(T)(
         );
 
     const mapped =
-        vivid.gamutMapRayTraceToLinearSRgb;
+        vivid.mapToLinearSRgbRayTrace;
 
     assert(mapped.inGamut);
 }
@@ -1578,13 +1578,13 @@ LinearSRgb!T gamutMapRayTraceToLinearSRgb(T)(
  *     Straight-alpha linear sRGB with unchanged alpha.
  */
 
-Alpha!(LinearSRgb!T) gamutMapLocalMindeToLinearSRgb(T)(
+Alpha!(LinearSRgb!T) mapToLinearSRgbLocalMinde(T)(
     Alpha!(Oklch!T) value
 )
 @safe pure nothrow @nogc
 {
     return Alpha!(LinearSRgb!T)(
-        gamutMapLocalMindeToLinearSRgb(
+        mapToLinearSRgbLocalMinde(
             value.color
         ),
         value.alpha
@@ -1601,7 +1601,7 @@ Alpha!(LinearSRgb!T) gamutMapLocalMindeToLinearSRgb(T)(
         0.40
     );
 
-    const mapped = value.gamutMapLocalMindeToLinearSRgb;
+    const mapped = value.mapToLinearSRgbLocalMinde;
 
     assert(mapped.alpha == 0.40);
     assert(mapped.color.inGamut);
@@ -1621,13 +1621,13 @@ Alpha!(LinearSRgb!T) gamutMapLocalMindeToLinearSRgb(T)(
  *     Straight-alpha linear sRGB with unchanged alpha.
  */
 
-Alpha!(LinearSRgb!T) gamutMapRayTraceToLinearSRgb(T)(
+Alpha!(LinearSRgb!T) mapToLinearSRgbRayTrace(T)(
     Alpha!(Oklch!T) value
 )
 @safe pure nothrow @nogc
 {
     return Alpha!(LinearSRgb!T)(
-        gamutMapRayTraceToLinearSRgb(
+        mapToLinearSRgbRayTrace(
             value.color
         ),
         value.alpha
@@ -1656,7 +1656,7 @@ Alpha!(LinearSRgb!T) gamutMapRayTraceToLinearSRgb(T)(
         );
 
     const mapped =
-        selected.gamutMapRayTraceToLinearSRgb;
+        selected.mapToLinearSRgbRayTrace;
 
     assert(mapped.alpha == 0.40);
     assert(mapped.color.inGamut);
@@ -2052,7 +2052,7 @@ version (unittest)
                 );
 
             const auto productionLocalD =
-                gamutMapLocalMindeToLinearSRgb(candidateD);
+                mapToLinearSRgbLocalMinde(candidateD);
 
             const auto referenceRayD =
                 referenceRayTrace(
@@ -2060,7 +2060,7 @@ version (unittest)
                 );
 
             const auto productionRayD =
-                gamutMapRayTraceToLinearSRgb(candidateD);
+                mapToLinearSRgbRayTrace(candidateD);
 
             assert(referenceLocalD.inGamut);
             assert(productionLocalD.inGamut);
@@ -2097,7 +2097,7 @@ version (unittest)
                 );
 
             const auto productionLocalF =
-                gamutMapLocalMindeToLinearSRgb(candidateF);
+                mapToLinearSRgbLocalMinde(candidateF);
 
             const auto referenceRayF =
                 referenceRayTrace(
@@ -2105,7 +2105,7 @@ version (unittest)
                 );
 
             const auto productionRayF =
-                gamutMapRayTraceToLinearSRgb(candidateF);
+                mapToLinearSRgbRayTrace(candidateF);
 
             assert(referenceLocalF.inGamut);
             assert(productionLocalF.inGamut);
@@ -2154,11 +2154,11 @@ version (unittest)
                 );
 
             assert(
-                gamutMapLocalMindeToLinearSRgb(localAgainInputD).inGamut
+                mapToLinearSRgbLocalMinde(localAgainInputD).inGamut
             );
 
             assert(
-                gamutMapRayTraceToLinearSRgb(rayAgainInputD).inGamut
+                mapToLinearSRgbRayTrace(rayAgainInputD).inGamut
             );
 
             ++accepted;
@@ -2216,11 +2216,11 @@ version (unittest)
             // no perceptual mapping work changes an already-valid target color
             // after the explicit OKLCH -> linear-sRGB conversion.
             assert(
-                gamutMapLocalMindeToLinearSRgb(candidate) == expected
+                mapToLinearSRgbLocalMinde(candidate) == expected
             );
 
             assert(
-                gamutMapRayTraceToLinearSRgb(candidate) == expected
+                mapToLinearSRgbRayTrace(candidate) == expected
             );
 
             ++accepted;
@@ -2231,15 +2231,15 @@ version (unittest)
     // Mapping is deliberately available only from OKLCH and requires an
     // explicit algorithm choice.
     static assert(!__traits(compiles,
-        gamutMapRayTraceToLinearSRgb(SRgbd.init)
+        mapToLinearSRgbRayTrace(SRgbd.init)
     ));
 
     static assert(!__traits(compiles,
-        gamutMapRayTraceToLinearSRgb(LinearSRgbd.init)
+        mapToLinearSRgbRayTrace(LinearSRgbd.init)
     ));
 
     static assert(!__traits(compiles,
-        gamutMapLocalMindeToLinearSRgb(Oklabf.init)
+        mapToLinearSRgbLocalMinde(Oklabf.init)
     ));
 
     // R0.8 published yellow: representative out-of-gamut mapping case.
@@ -2253,10 +2253,10 @@ version (unittest)
         );
 
     enum mappedYellowLocalD =
-        gamutMapLocalMindeToLinearSRgb(mappingYellowD);
+        mapToLinearSRgbLocalMinde(mappingYellowD);
 
     enum mappedYellowRayD =
-        gamutMapRayTraceToLinearSRgb(mappingYellowD);
+        mapToLinearSRgbRayTrace(mappingYellowD);
 
     static assert(
         mappedYellowLocalD.inGamut
@@ -2278,7 +2278,7 @@ version (unittest)
         );
 
     enum mappedYellowRayF =
-        gamutMapRayTraceToLinearSRgb(mappingYellowF);
+        mapToLinearSRgbRayTrace(mappingYellowF);
 
     static assert(
         mappedYellowRayF.inGamut
@@ -2305,11 +2305,11 @@ version (unittest)
     );
 
     static assert(
-        gamutMapLocalMindeToLinearSRgb(ordinaryLchD) == ordinaryLinearD
+        mapToLinearSRgbLocalMinde(ordinaryLchD) == ordinaryLinearD
     );
 
     static assert(
-        gamutMapRayTraceToLinearSRgb(ordinaryLchD) == ordinaryLinearD
+        mapToLinearSRgbRayTrace(ordinaryLchD) == ordinaryLinearD
     );
 
 
@@ -2328,13 +2328,13 @@ version (unittest)
         negativeChromaD.canonicalized;
 
     static assert(
-        gamutMapLocalMindeToLinearSRgb(negativeChromaD) ==
-        gamutMapLocalMindeToLinearSRgb(canonicalChromaD)
+        mapToLinearSRgbLocalMinde(negativeChromaD) ==
+        mapToLinearSRgbLocalMinde(canonicalChromaD)
     );
 
     static assert(
-        gamutMapRayTraceToLinearSRgb(negativeChromaD) ==
-        gamutMapRayTraceToLinearSRgb(canonicalChromaD)
+        mapToLinearSRgbRayTrace(negativeChromaD) ==
+        mapToLinearSRgbRayTrace(canonicalChromaD)
     );
 
 
@@ -2358,22 +2358,22 @@ version (unittest)
         );
 
     static assert(
-        gamutMapLocalMindeToLinearSRgb(tooLightD) ==
+        mapToLinearSRgbLocalMinde(tooLightD) ==
         LinearSRgbd(1, 1, 1)
     );
 
     static assert(
-        gamutMapRayTraceToLinearSRgb(tooLightD) ==
+        mapToLinearSRgbRayTrace(tooLightD) ==
         LinearSRgbd(1, 1, 1)
     );
 
     static assert(
-        gamutMapLocalMindeToLinearSRgb(tooDarkD) ==
+        mapToLinearSRgbLocalMinde(tooDarkD) ==
         LinearSRgbd(0, 0, 0)
     );
 
     static assert(
-        gamutMapRayTraceToLinearSRgb(tooDarkD) ==
+        mapToLinearSRgbRayTrace(tooDarkD) ==
         LinearSRgbd(0, 0, 0)
     );
 
@@ -2389,10 +2389,10 @@ version (unittest)
         );
 
     enum nonFiniteLocalD =
-        gamutMapLocalMindeToLinearSRgb(nonFiniteMappingD);
+        mapToLinearSRgbLocalMinde(nonFiniteMappingD);
 
     enum nonFiniteRayD =
-        gamutMapRayTraceToLinearSRgb(nonFiniteMappingD);
+        mapToLinearSRgbRayTrace(nonFiniteMappingD);
 
     static assert(
         !nonFiniteLocalD.inGamut
@@ -2421,10 +2421,10 @@ version (unittest)
         );
 
     enum alphaMappedLocalD =
-        gamutMapLocalMindeToLinearSRgb(alphaYellowD);
+        mapToLinearSRgbLocalMinde(alphaYellowD);
 
     enum alphaMappedRayD =
-        gamutMapRayTraceToLinearSRgb(alphaYellowD);
+        mapToLinearSRgbRayTrace(alphaYellowD);
 
     static assert(
         alphaMappedLocalD.alpha ==
@@ -2602,7 +2602,7 @@ version (unittest)
             return false;
 
         return
-            gamutMapRayTraceToLinearSRgb(
+            mapToLinearSRgbRayTrace(
                 input
             ).inGamut;
     }
@@ -2678,7 +2678,7 @@ version (unittest)
         );
 
     enum tc0015Ctfe =
-        gamutMapRayTraceToLinearSRgb(
+        mapToLinearSRgbRayTrace(
             tc0015Input
         );
 
@@ -2711,7 +2711,7 @@ version (unittest)
         tc0015Input;
 
     assert(
-        gamutMapRayTraceToLinearSRgb(
+        mapToLinearSRgbRayTrace(
             tc0015RuntimeInput
         ).inGamut
     );

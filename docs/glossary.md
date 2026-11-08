@@ -48,7 +48,7 @@ at runtime and CTFE where supported.
 
 **WCAG 2 measurement**  
 A standards-specific sRGB relative-luminance or contrast measurement represented
-by `Wcag2Measurement!T`.
+by `WcagMeasurement!T`.
 
 **ΔEOK / deltaEOK**  
 Euclidean distance directly in Oklab. It does not classify perceptibility.

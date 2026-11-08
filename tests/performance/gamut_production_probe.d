@@ -13,8 +13,8 @@ import color :
     LinearSRgb,
     OklabHue,
     Oklch,
-    gamutMapLocalMindeToLinearSRgb,
-    gamutMapRayTraceToLinearSRgb,
+    mapToLinearSRgbLocalMinde,
+    mapToLinearSRgbRayTrace,
     inGamut,
     toLinearSRgb,
     toOklab,
@@ -273,10 +273,10 @@ private bool validateMapped(T)(
     foreach (value; values)
     {
         const local =
-            gamutMapLocalMindeToLinearSRgb(value);
+            mapToLinearSRgbLocalMinde(value);
 
         const ray =
-            gamutMapRayTraceToLinearSRgb(value);
+            mapToLinearSRgbRayTrace(value);
 
         hashColor(localHash, local);
         hashColor(rayHash, ray);
@@ -335,7 +335,7 @@ private double timeLocal(T)(
     foreach (value; values)
     {
         const result =
-            gamutMapLocalMindeToLinearSRgb(value);
+            mapToLinearSRgbLocalMinde(value);
 
         sink +=
             cast(double)result.r +
@@ -363,7 +363,7 @@ private double timeRay(T)(
     foreach (value; values)
     {
         const result =
-            gamutMapRayTraceToLinearSRgb(value);
+            mapToLinearSRgbRayTrace(value);
 
         sink +=
             cast(double)result.r +

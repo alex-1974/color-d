@@ -18,7 +18,7 @@
 
  The scalar callables are convenient for isolated colors. Repeated work can
  prepare the selected model once and then reuse the resulting value through
- `apply`, fixed-cardinality `applyInto`, or runtime-sized `tryApplyInto`
+ `transform`, fixed-cardinality `transformInto`, or runtime-sized `tryTransformInto`
  without allocation.
 +/
 module color.cvd;
@@ -364,7 +364,7 @@ if (is(T == float) || is(T == double))
     /**
      * Applies the prepared transform to one linear-light sRGB color.
      */
-    LinearSRgb!T apply(
+    LinearSRgb!T transform(
         LinearSRgb!T color
     ) const
     @safe pure nothrow @nogc
@@ -391,7 +391,7 @@ if (is(T == float) || is(T == double))
             );
 
         const transformed =
-            prepared.apply(
+            prepared.transform(
                 LinearSRgbd(0.2, 0.4, 0.7)
             );
 
@@ -416,7 +416,7 @@ if (is(T == float) || is(T == double))
      * Complexity:
      *     O(N).
      */
-    void applyInto(size_t N)(
+    void transformInto(size_t N)(
         ref const LinearSRgb!T[N] input,
         ref LinearSRgb!T[N] output
     ) const
@@ -468,7 +468,7 @@ if (is(T == float) || is(T == double))
         ];
         LinearSRgbd[2] output;
 
-        prepared.applyInto(input, output);
+        prepared.transformInto(input, output);
 
         assert(
             output[0] ==
@@ -497,7 +497,7 @@ if (is(T == float) || is(T == double))
      * Complexity:
      *     O(N) on success and O(1) on a length mismatch.
      */
-    bool tryApplyInto(
+    bool tryTransformInto(
         const(LinearSRgb!T)[] input,
         LinearSRgb!T[] output
     ) const
@@ -553,7 +553,7 @@ if (is(T == float) || is(T == double))
         ];
         LinearSRgbd[1] output;
 
-        assert(prepared.tryApplyInto(input[], output[]));
+        assert(prepared.tryTransformInto(input[], output[]));
         assert(
             output[0] ==
             input[0].brettel1997Dichromat(
@@ -613,7 +613,7 @@ if (is(T == float) || is(T == double))
         );
 
     const transformed =
-        prepared.apply(
+        prepared.transform(
             LinearSRgbd(0.2, 0.4, 0.7)
         );
 
@@ -644,7 +644,7 @@ if (is(T == float) || is(T == double))
     private Matrix3!T matrix;
 
     /// Applies the prepared transform to one linear-light sRGB color.
-    LinearSRgb!T apply(
+    LinearSRgb!T transform(
         LinearSRgb!T color
     ) const
     @safe pure nothrow @nogc
@@ -664,7 +664,7 @@ if (is(T == float) || is(T == double))
             );
 
         const transformed =
-            prepared.apply(
+            prepared.transform(
                 LinearSRgbd(0.2, 0.4, 0.7)
             );
 
@@ -688,7 +688,7 @@ if (is(T == float) || is(T == double))
      * Complexity:
      *     O(N).
      */
-    void applyInto(size_t N)(
+    void transformInto(size_t N)(
         ref const LinearSRgb!T[N] input,
         ref LinearSRgb!T[N] output
     ) const
@@ -728,7 +728,7 @@ if (is(T == float) || is(T == double))
         ];
         LinearSRgbd[2] output;
 
-        prepared.applyInto(input, output);
+        prepared.transformInto(input, output);
 
         assert(
             output[0] ==
@@ -756,7 +756,7 @@ if (is(T == float) || is(T == double))
      * Complexity:
      *     O(N) on success and O(1) on a length mismatch.
      */
-    bool tryApplyInto(
+    bool tryTransformInto(
         const(LinearSRgb!T)[] input,
         LinearSRgb!T[] output
     ) const
@@ -800,7 +800,7 @@ if (is(T == float) || is(T == double))
         ];
         LinearSRgbd[1] output;
 
-        assert(prepared.tryApplyInto(input[], output[]));
+        assert(prepared.tryTransformInto(input[], output[]));
         assert(
             output[0] ==
             input[0].vienot1999Dichromat(
@@ -843,7 +843,7 @@ if (is(T == float) || is(T == double))
         );
 
     const transformed =
-        prepared.apply(
+        prepared.transform(
             LinearSRgbd(0.2, 0.4, 0.7)
         );
 
@@ -892,7 +892,7 @@ LinearSRgb!T brettel1997Dichromat(T)(
         prepareBrettel1997Dichromat!T(
             deficiency
         )
-        .apply(color);
+        .transform(color);
 }
 
 ///
@@ -955,7 +955,7 @@ LinearSRgb!T vienot1999Dichromat(T)(
         prepareVienot1999Dichromat!T(
             deficiency
         )
-        .apply(color);
+        .transform(color);
 }
 
 ///
@@ -1229,7 +1229,7 @@ if (is(T == float) || is(T == double))
     private Matrix3!T matrix;
 
     /// Applies the prepared transform to one linear-light sRGB color.
-    LinearSRgb!T apply(
+    LinearSRgb!T transform(
         LinearSRgb!T color
     ) const
     @safe pure nothrow @nogc
@@ -1252,7 +1252,7 @@ if (is(T == float) || is(T == double))
         ));
 
         const transformed =
-            prepared.apply(
+            prepared.transform(
                 LinearSRgbd(0.2, 0.4, 0.7)
             );
 
@@ -1277,7 +1277,7 @@ if (is(T == float) || is(T == double))
      * Complexity:
      *     O(N).
      */
-    void applyInto(size_t N)(
+    void transformInto(size_t N)(
         ref const LinearSRgb!T[N] input,
         ref LinearSRgb!T[N] output
     ) const
@@ -1320,7 +1320,7 @@ if (is(T == float) || is(T == double))
         ];
         LinearSRgbd[2] output;
 
-        prepared.applyInto(input, output);
+        prepared.transformInto(input, output);
 
         assert(
             output[0] ==
@@ -1350,7 +1350,7 @@ if (is(T == float) || is(T == double))
      * Complexity:
      *     O(N) on success and O(1) on a length mismatch.
      */
-    bool tryApplyInto(
+    bool tryTransformInto(
         const(LinearSRgb!T)[] input,
         LinearSRgb!T[] output
     ) const
@@ -1397,7 +1397,7 @@ if (is(T == float) || is(T == double))
         ];
         LinearSRgbd[1] output;
 
-        assert(prepared.tryApplyInto(input[], output[]));
+        assert(prepared.tryTransformInto(input[], output[]));
         assert(
             output[0] ==
             input[0].machado2009(
@@ -1476,7 +1476,7 @@ if (is(T == float) || is(T == double))
     const input = LinearSRgbd(0.2, 0.4, 0.7);
 
     assert(
-        prepared.apply(input) ==
+        prepared.transform(input) ==
         input.machado2009(
             RedGreenCvdDeficiency.protan,
             0.5
@@ -1713,7 +1713,7 @@ version (unittest)
 
             LinearSRgb!T[4] output;
 
-            prepared.applyInto(
+            prepared.transformInto(
                 input,
                 output
             );
@@ -1733,7 +1733,7 @@ version (unittest)
 
             auto inPlace = input;
 
-            prepared.applyInto(
+            prepared.transformInto(
                 inPlace,
                 inPlace
             );
@@ -1746,7 +1746,7 @@ version (unittest)
 
             auto runtimeInPlace = input;
 
-            if (!prepared.tryApplyInto(
+            if (!prepared.tryTransformInto(
                 runtimeInPlace[],
                 runtimeInPlace[]
             ))
@@ -1773,7 +1773,7 @@ version (unittest)
 
             LinearSRgb!T[4] output;
 
-            prepared.applyInto(
+            prepared.transformInto(
                 input,
                 output
             );
@@ -1793,7 +1793,7 @@ version (unittest)
 
             auto inPlace = input;
 
-            prepared.applyInto(
+            prepared.transformInto(
                 inPlace,
                 inPlace
             );
@@ -1817,7 +1817,7 @@ version (unittest)
 
             LinearSRgb!T[4] machadoOutput;
 
-            machado.applyInto(
+            machado.transformInto(
                 input,
                 machadoOutput
             );
@@ -1838,7 +1838,7 @@ version (unittest)
 
             auto machadoInPlace = input;
 
-            if (!machado.tryApplyInto(
+            if (!machado.tryTransformInto(
                 machadoInPlace[],
                 machadoInPlace[]
             ))
@@ -1871,7 +1871,7 @@ version (unittest)
                 RedGreenCvdDeficiency.protan
             );
 
-        if (vienot.tryApplyInto(
+        if (vienot.tryTransformInto(
             input[0 .. 1],
             mismatch[]
         ))
@@ -1899,7 +1899,7 @@ version (unittest)
         }
 
         const invalidColor =
-            invalidPrepared.apply(input[0]);
+            invalidPrepared.transform(input[0]);
 
         if (
             !isNaN(invalidColor.r) ||
@@ -1912,11 +1912,11 @@ version (unittest)
 
         const invalidVienot =
             PreparedVienot1999Dichromat!T.init
-            .apply(input[0]);
+            .transform(input[0]);
 
         const invalidBrettel =
             PreparedBrettel1997Dichromat!T.init
-            .apply(input[0]);
+            .transform(input[0]);
 
         if (
             !isNaN(invalidVienot.r) ||
@@ -1929,7 +1929,7 @@ version (unittest)
         LinearSRgb!T[0] emptyInput;
         LinearSRgb!T[0] emptyOutput;
 
-        return vienot.tryApplyInto(
+        return vienot.tryTransformInto(
             emptyInput[],
             emptyOutput[]
         );
@@ -2145,7 +2145,7 @@ version (unittest)
          */
         import color.difference : deltaEOK;
         import color.oklab : toOklab;
-        import color.wcag : wcag2ContrastRatio;
+        import color.wcag : wcagContrastRatio;
         import color.xyz : toXyzD65;
 
         const original =
@@ -2175,7 +2175,7 @@ version (unittest)
             );
 
         const contrast =
-            neutral.wcag2ContrastRatio(
+            neutral.wcagContrastRatio(
                 LinearSRgbd(0, 0, 0)
             );
 

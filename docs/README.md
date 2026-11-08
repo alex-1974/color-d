@@ -3,7 +3,7 @@
 This directory contains the documentation that a package user needs to
 understand and use color-d. It is shipped with the consumer archive.
 
-The current release candidate is `v0.4.0`. It contains YCbCr, HSL/HSV, and
+The current release is `v0.4.0`. It contains YCbCr, HSL/HSV, and
 Display-P3 value-level color operations.
 
 ## Start here
