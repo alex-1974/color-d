@@ -2,15 +2,15 @@
 
 ## Current release line
 
-**v0.2.0 — Practical Color Storage and Interop** was published on 2026-10-03.
+**v0.3.3 — Consumer Color Interop** was published on 2026-11-04.
 
-**Status: COMPLETE — v0.2.0 RELEASED.**
+**Status: COMPLETE — v0.3.3 RELEASED.**
 
 Feature freeze, consumer-driven promotion, the public API audit, API freeze,
 release hardening, compiler/consumer qualification, and publication are
 complete.
 
-The v0.2.0 scope is:
+The v0.3.3 scope is:
 
 - compact encoded-sRGB storage with `SRgb8`;
 - compact encoded-sRGB plus straight-alpha storage with `SRgba8`;
@@ -29,8 +29,9 @@ The v0.2.0 scope is:
 The release does **not** introduce a second floating-point RGBA computational
 model. Existing alpha and premultiplied-alpha semantics remain authoritative.
 
-HSL/HSV, semantic Theme/Palette objects, general CSS Color parsing, wide-gamut
-spaces, and other candidate families remain outside the committed v0.2.0 scope.
+HSL/HSV, Display-P3, semantic Theme/Palette objects, general CSS Color
+parsing, and other candidate families remain outside the committed v0.3.3
+scope.
 
 Detailed v0.2.0 work is tracked by GitHub milestone `v0.2.0`.
 

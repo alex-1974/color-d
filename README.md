@@ -241,8 +241,9 @@ independently validated gamut-boundary, CIELAB/Delta-E, and CVD primitives
 required by the Dunia consumer.
 
 General CSS Color parsing and policy-heavy palette/theme abstractions remain
-outside the current scope. HSL/HSV and Display-P3 are available as explicit
-value-level conversions.
+outside the current scope. The development line additionally contains HSL/HSV
+and Display-P3 as explicit value-level conversions; these are not part of the
+published v0.3.3 package.
 
 The library remains pre-1.0, so later 0.x releases may still make
 well-justified, documented breaking changes.
