@@ -30,3 +30,22 @@ const clipped = ycbcr.toSRgbClamped;  // explicit [0, 1] clipping
 `toSRgb` does not clip, round, or quantize. `toSRgbClamped` clips finite
 components explicitly; NaN and infinity remain non-finite. There is no implicit
 policy selection, chroma upsampling, plane interpretation, or image ownership.
+
+## Convert encoded sRGB to YCbCr
+
+The inverse scalar operation starts from encoded sRGB. It does not accept
+linear-light sRGB because YCbCr matrix coefficients operate on nonlinear code
+values:
+
+```d
+const rgb = SRgbd(0.2, 0.4, 0.8);
+const ycbcr = rgb.toYCbCr!Bt709Video;
+const roundTrip = ycbcr.toSRgb;
+```
+
+The result remains normalized and unquantized. `Bt709Video` places luma in the
+normalized equivalents of codes 16..235 and chroma in 16..240. Byte rounding,
+plane layout, chroma sampling, and codec metadata remain consumer/codec
+responsibilities. The conversion is a total mathematical operation and does
+not return an `error-d` `Result`; invalid or extended floating-point values
+remain visible according to the scalar arithmetic contract.

@@ -105,6 +105,24 @@ private T normalizeChroma(T, Policy)(T value)
         return value - cast(T)0.5;
 }
 
+private T encodeLuma(T, Policy)(T value)
+@safe pure nothrow @nogc
+{
+    static if (Policy.range == YCbCrRange.video)
+        return value * cast(T)(219.0 / 255.0) + cast(T)(16.0 / 255.0);
+    else
+        return value;
+}
+
+private T encodeChroma(T, Policy)(T value)
+@safe pure nothrow @nogc
+{
+    static if (Policy.range == YCbCrRange.video)
+        return value * cast(T)(224.0 / 255.0) + cast(T)(128.0 / 255.0);
+    else
+        return value + cast(T)0.5;
+}
+
 /** Converts explicit YCbCr samples to encoded sRGB.
  *
  * The result is encoded sRGB because YCbCr's matrix conversion produces
@@ -133,6 +151,42 @@ SRgb!T toSRgb(T, Policy)(YCbCr!(T, Policy) value)
             y + cast(T)1.772 * cb
         );
     }
+}
+
+/** Converts encoded sRGB to normalized YCbCr samples under `Policy`.
+ *
+ * The input is encoded (nonlinear) sRGB, not linear-light sRGB. The result is
+ * normalized code values: full range uses neutral chroma at 0.5, while video
+ * range uses the 8-bit-equivalent code positions 16..235 and 16..240. No
+ * clipping, rounding, or byte quantization is performed.
+ */
+YCbCr!(T, Policy) toYCbCr(Policy, T)(SRgb!T value)
+@safe pure nothrow @nogc
+{
+    T y;
+    T cb;
+    T cr;
+
+    static if (Policy.matrix == YCbCrMatrix.bt709)
+    {
+        y = cast(T)0.2126 * value.r + cast(T)0.7152 * value.g
+            + cast(T)0.0722 * value.b;
+        cb = (value.b - y) / cast(T)1.8556;
+        cr = (value.r - y) / cast(T)1.5748;
+    }
+    else
+    {
+        y = cast(T)0.299 * value.r + cast(T)0.587 * value.g
+            + cast(T)0.114 * value.b;
+        cb = (value.b - y) / cast(T)1.772;
+        cr = (value.r - y) / cast(T)1.402;
+    }
+
+    return YCbCr!(T, Policy)(
+        encodeLuma!(T, Policy)(y),
+        encodeChroma!(T, Policy)(cb),
+        encodeChroma!(T, Policy)(cr)
+    );
 }
 
 private T clampUnit(T)(T value) @safe pure nothrow @nogc
@@ -189,6 +243,17 @@ LinearSRgb!T toLinearSRgb(T, Policy)(YCbCr!(T, Policy) value)
     const auto nanResult = YCbCr!(double, Bt601Full)(double.nan, 0.5,
         0.5).toSRgb;
     assert(isNaN(nanResult.r) && isNaN(nanResult.g) && isNaN(nanResult.b));
+
+    const auto roundTrip = SRgbd(0.2, 0.4, 0.8).toYCbCr!Bt601Full.toSRgb;
+    assert(roundTrip.r > 0.199999 && roundTrip.r < 0.200001);
+    assert(roundTrip.g > 0.399999 && roundTrip.g < 0.400001);
+    assert(roundTrip.b > 0.799999 && roundTrip.b < 0.800001);
+
+    const auto videoRoundTrip =
+        SRgbd(0.2, 0.4, 0.8).toYCbCr!Bt709Video.toSRgb;
+    assert(videoRoundTrip.r > 0.199999 && videoRoundTrip.r < 0.200001);
+    assert(videoRoundTrip.g > 0.399999 && videoRoundTrip.g < 0.400001);
+    assert(videoRoundTrip.b > 0.799999 && videoRoundTrip.b < 0.800001);
 }
 
 static assert(!__traits(compiles, YCbCr!int(Bt601Full)));
