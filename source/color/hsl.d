@@ -1,126 +1,176 @@
-/++ HSL and HSV value conversions for encoded sRGB.
+/++
+ HSL color values and conversion to and from encoded sRGB.
 
- Hues are turns in the interval [0, 1$(RPAREN) on conversion output. Saturation,
- lightness, and value are normalized scalar components. Achromatic colors have
- a canonical hue of zero. Conversion is value-based and does not clamp input.
+ HSL is provided for interoperability, color-pickers, CSS-like input, and
+ familiar lightness/saturation editing. It is not a perceptual replacement
+ for Oklab or OKLCH. Hue is stored in degrees; conversion normalizes complete
+ revolutions to the canonical [0, 360$(RPAREN) interval and canonicalizes achromatic
+ colors to hue 0.
 +/
 module color.hsl;
 
 private import color.rgb : SRgb, SRgbd;
 
-struct Hsl(T) if (is(T == float) || is(T == double))
+package T hslAbs(T)(const T value)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
 {
+    return value < cast(T)0 ? -value : value;
+}
+package T hslMin(T)(const T first, const T second)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    return first < second ? first : second;
+}
+
+package T hslMax(T)(const T first, const T second)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    return first > second ? first : second;
+}
+
+package T normalizeHslHue(T)(T degrees)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
+{
+    T result = degrees % cast(T)360;
+
+    if (result < cast(T)0)
+        result += cast(T)360;
+
+    if (result >= cast(T)360)
+        result -= cast(T)360;
+
+    return result == cast(T)0 ? cast(T)0 : result;
+}
+
+/** HSL values with hue in degrees and saturation/lightness as ratios. */
+struct Hsl(T)
+if (is(T == float) || is(T == double))
+{
+    /// Hue in degrees. It may be raw/unbounded before conversion.
     T h;
+
+    /// Saturation ratio. The conventional range is [0, 1].
     T s;
+
+    /// Lightness ratio. The conventional range is [0, 1].
     T l;
+
+    /// Scalar component type.
+    alias Scalar = T;
 }
 
-struct Hsv(T) if (is(T == float) || is(T == double))
-{
-    T h;
-    T s;
-    T v;
-}
-
+/// HSL with `float` components.
 alias Hslf = Hsl!float;
+
+/// HSL with `double` components.
 alias Hsld = Hsl!double;
-alias Hsvf = Hsv!float;
-alias Hsvd = Hsv!double;
 
-private T hueWrap(T)(T h) @safe pure nothrow @nogc
+/// Converts encoded sRGB to HSL.
+Hsl!T toHsl(T)(SRgb!T color)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
 {
-    while (h < 0) h += 1;
-    while (h >= 1) h -= 1;
-    return h;
+    const T maximum = hslMax(color.r, hslMax(color.g, color.b));
+    const T minimum = hslMin(color.r, hslMin(color.g, color.b));
+    const T delta = maximum - minimum;
+    const T lightness = (maximum + minimum) / cast(T)2;
+
+    if (delta == cast(T)0)
+        return Hsl!T(cast(T)0, cast(T)0, lightness);
+
+    const T saturation = delta /
+        (cast(T)1 - hslAbs(cast(T)2 * lightness - cast(T)1));
+
+    T hue;
+    if (maximum == color.r)
+        hue = cast(T)60 * ((color.g - color.b) / delta);
+    else if (maximum == color.g)
+        hue = cast(T)60 * (((color.b - color.r) / delta) + cast(T)2);
+    else
+        hue = cast(T)60 * (((color.r - color.g) / delta) + cast(T)4);
+
+    return Hsl!T(normalizeHslHue(hue), saturation, lightness);
 }
 
-private T hueChannel(T)(T p, T q, T t) @safe pure nothrow @nogc
+/// Converts HSL to encoded sRGB without clipping or gamut mapping.
+SRgb!T toSRgb(T)(Hsl!T color)
+@safe pure nothrow @nogc
+if (is(T == float) || is(T == double))
 {
-    t = hueWrap(t);
-    if (t < cast(T)(1.0 / 6.0)) return p + (q - p) * 6 * t;
-    if (t < cast(T)(1.0 / 2.0)) return q;
-    if (t < cast(T)(2.0 / 3.0)) return p + (q - p) * (cast(T)(2.0 / 3.0) - t) * 6;
-    return p;
-}
+    const T hue = normalizeHslHue(color.h) / cast(T)60;
+    const T chroma =
+        (cast(T)1 - hslAbs(cast(T)2 * color.l - cast(T)1)) * color.s;
+    const T x = chroma *
+        (cast(T)1 - hslAbs((hue % cast(T)2) - cast(T)1));
+    const T match = color.l - chroma / cast(T)2;
 
-/// Converts encoded sRGB to HSL. Hue is zero for achromatic colors.
-Hsl!T toHsl(T)(SRgb!T value) @safe pure nothrow @nogc
-{
-    const T maxValue = value.r > value.g ? (value.r > value.b ? value.r : value.b)
-        : (value.g > value.b ? value.g : value.b);
-    const T minValue = value.r < value.g ? (value.r < value.b ? value.r : value.b)
-        : (value.g < value.b ? value.g : value.b);
-    const T d = maxValue - minValue;
-    const T l = (maxValue + minValue) / 2;
-    if (d == 0) return Hsl!T(0, 0, l);
-    const T s = d / (1 - (l > 0.5 ? 2 * l - 1 : 1 - 2 * l));
-    T h;
-    if (maxValue == value.r) h = (value.g - value.b) / d + (value.g < value.b ? 6 : 0);
-    else if (maxValue == value.g) h = (value.b - value.r) / d + 2;
-    else h = (value.r - value.g) / d + 4;
-    return Hsl!T(h / 6, s, l);
-}
+    T r;
+    T g;
+    T b;
 
-/// Converts HSL to encoded sRGB.
-SRgb!T toSRgb(T)(Hsl!T value) @safe pure nothrow @nogc
-{
-    if (value.s == 0) return SRgb!T(value.l, value.l, value.l);
-    const T q = value.l < 0.5 ? value.l * (1 + value.s)
-        : value.l + value.s - value.l * value.s;
-    const T p = 2 * value.l - q;
-    return SRgb!T(hueChannel(p, q, value.h + cast(T)(1.0 / 3.0)),
-        hueChannel(p, q, value.h), hueChannel(p, q, value.h - cast(T)(1.0 / 3.0)));
-}
-
-/// Converts encoded sRGB to HSV. Hue is zero for achromatic colors.
-Hsv!T toHsv(T)(SRgb!T value) @safe pure nothrow @nogc
-{
-    const T maxValue = value.r > value.g ? (value.r > value.b ? value.r : value.b)
-        : (value.g > value.b ? value.g : value.b);
-    const T minValue = value.r < value.g ? (value.r < value.b ? value.r : value.b)
-        : (value.g < value.b ? value.g : value.b);
-    const T d = maxValue - minValue;
-    if (d == 0) return Hsv!T(0, 0, maxValue);
-    T h;
-    if (maxValue == value.r) h = (value.g - value.b) / d + (value.g < value.b ? 6 : 0);
-    else if (maxValue == value.g) h = (value.b - value.r) / d + 2;
-    else h = (value.r - value.g) / d + 4;
-    return Hsv!T(h / 6, d / maxValue, maxValue);
-}
-
-/// Converts HSV to encoded sRGB.
-SRgb!T toSRgb(T)(Hsv!T value) @safe pure nothrow @nogc
-{
-    const T h = hueWrap(value.h) * 6;
-    const uint sector = cast(uint)h;
-    const T f = h - sector;
-    const T p = value.v * (1 - value.s);
-    const T q = value.v * (1 - value.s * f);
-    const T t = value.v * (1 - value.s * (1 - f));
-    final switch (sector % 6)
+    if (hue < cast(T)1)
     {
-        case 0: return SRgb!T(value.v, t, p);
-        case 1: return SRgb!T(q, value.v, p);
-        case 2: return SRgb!T(p, value.v, t);
-        case 3: return SRgb!T(p, q, value.v);
-        case 4: return SRgb!T(t, p, value.v);
-        case 5: return SRgb!T(value.v, p, q);
+        r = chroma;
+        g = x;
+        b = cast(T)0;
     }
+    else if (hue < cast(T)2)
+    {
+        r = x;
+        g = chroma;
+        b = cast(T)0;
+    }
+    else if (hue < cast(T)3)
+    {
+        r = cast(T)0;
+        g = chroma;
+        b = x;
+    }
+    else if (hue < cast(T)4)
+    {
+        r = cast(T)0;
+        g = x;
+        b = chroma;
+    }
+    else if (hue < cast(T)5)
+    {
+        r = x;
+        g = cast(T)0;
+        b = chroma;
+    }
+    else
+    {
+        r = chroma;
+        g = cast(T)0;
+        b = x;
+    }
+
+    return SRgb!T(r + match, g + match, b + match);
 }
 
+///
 @safe pure nothrow @nogc unittest
 {
-    const rgb = SRgbd(0.2, 0.4, 0.8);
-    const hsl = rgb.toHsl;
-    const hsv = rgb.toHsv;
-    const hslRoundTrip = hsl.toSRgb;
-    const hsvRoundTrip = hsv.toSRgb;
-    assert(hslRoundTrip.r > rgb.r - 1e-14 && hslRoundTrip.r < rgb.r + 1e-14);
-    assert(hslRoundTrip.g > rgb.g - 1e-14 && hslRoundTrip.g < rgb.g + 1e-14);
-    assert(hslRoundTrip.b > rgb.b - 1e-14 && hslRoundTrip.b < rgb.b + 1e-14);
-    assert(hsvRoundTrip.r > rgb.r - 1e-14 && hsvRoundTrip.r < rgb.r + 1e-14);
-    assert(hsvRoundTrip.g > rgb.g - 1e-14 && hsvRoundTrip.g < rgb.g + 1e-14);
-    assert(hsvRoundTrip.b > rgb.b - 1e-14 && hsvRoundTrip.b < rgb.b + 1e-14);
-    assert(SRgbd(0.4, 0.4, 0.4).toHsl.h == 0);
-    assert(SRgbd(0.4, 0.4, 0.4).toHsv.h == 0);
+    const red = SRgbd(1.0, 0.0, 0.0).toHsl;
+    assert(red.h == 0.0);
+    assert(red.s == 1.0);
+    assert(red.l == 0.5);
+
+    const gray = SRgbd(0.4, 0.4, 0.4).toHsl;
+    assert(gray.h == 0.0);
+    assert(gray.s == 0.0);
+    assert(gray.l == 0.4);
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    const color = Hsld(360.0 + 120.0, 1.0, 0.5).toSRgb;
+    assert(color.r == 0.0);
+    assert(color.g == 1.0);
+    assert(color.b == 0.0);
 }

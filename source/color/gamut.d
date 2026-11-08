@@ -1145,7 +1145,7 @@ if (is(T == float) || is(T == double))
     @safe pure nothrow @nogc unittest
     {
         enum result =
-            maxChromaInSRgb!double(
+            maxChromaInSRgb!T(
                 0.5,
                 OklabHue!T.fromDegrees(cast(T)0.0)
             );
@@ -2644,9 +2644,20 @@ version (unittest)
             )
         );
 
-    // Keep this extreme-value probe on the runtime path. CTFE is allowed to
-    // choose different intermediate precision for the scaled fallback; the
-    // public semantic postcondition is checked below with mutable values.
+    static if (__VERSION__ >= 2120)
+    {
+        static assert(
+            verifyHugeRayTraceFallback(
+                hugeD
+            )
+        );
+
+        static assert(
+            verifyHugeRayTraceFallback(
+                hugeF
+            )
+        );
+    }
 
 
     /*

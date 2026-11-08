@@ -214,7 +214,10 @@ if (is(T == float) || is(T == double))
         import std.math : PI;
 
         const hue = OklabHued.fromDegrees(180.0);
-        assert(hue.radians > PI - 1e-15 && hue.radians < PI + 1e-15);
+        assert(
+            hue.radians > PI - 1e-15 &&
+            hue.radians < PI + 1e-15
+        );
     }
 }
 
@@ -975,9 +978,15 @@ Oklab!T toOklab(T)(Oklch!T color)
             0.0f
         ).toOklch;
 
-    assert(smallestPolarD.c > 0.0);
+    assert(
+        smallestPolarD.c ==
+            smallestPositiveD
+    );
 
-    assert(smallestPolarF.c > 0.0f);
+    assert(
+        smallestPolarF.c ==
+            smallestPositiveF
+    );
 }
 
 @safe pure nothrow @nogc unittest
@@ -1135,12 +1144,15 @@ version (unittest)
             0.0f
         ).toOklch;
 
-    // CTFE is permitted to widen the smallest subnormal; the contract is that
-    // an axis-aligned nonzero chroma remains positive and is not collapsed to
-    // zero. Runtime coverage below retains the exact representability check.
-    static assert(smallestPolarD.c > 0.0);
+    static assert(
+        smallestPolarD.c ==
+            smallestPositiveD
+    );
 
-    static assert(smallestPolarF.c > 0.0f);
+    static assert(
+        smallestPolarF.c ==
+            smallestPositiveF
+    );
 
     // REFERENCE: primary Cartesian axes define the canonical hue quadrants.
     enum axis0 = Oklabd(0.5, 0.2, 0.0).toOklch;

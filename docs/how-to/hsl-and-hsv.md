@@ -1,7 +1,8 @@
 # HSL and HSV
 
 `color.hsl` provides value-based HSL and HSV conversions for encoded sRGB.
-Hue is represented as turns in `[0, 1)`, and achromatic colors use hue `0`.
+Hue is represented in degrees, normalized to `[0, 360)`, and achromatic
+colors use hue `0`.
 The API operates on encoded sRGB, does not clamp extended input, and is not a
 linear-light editing model.
 

@@ -182,6 +182,7 @@ public import color.result;
 public import color.storage;
 public import color.rgb;
 public import color.hsl;
+public import color.hsv;
 public import color.p3;
 public import color.ycbcr;
 public import color.xyz;
