@@ -331,13 +331,16 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
 
-          "$DC" \
-              -I"$GITHUB_WORKSPACE/source" \
-              -i \
-              -of="$tmp/special-values" \
-              "$GITHUB_WORKSPACE/tests/numerical/special_value_semantics.d"
+          cp "$GITHUB_WORKSPACE/tests/numerical/special_value_semantics.d" \
+              "$tmp/special_value_semantics.d"
+          cat > "$tmp/dub.sdl" <<DUB
+          name "ci-special-values"
+          targetType "executable"
+          sourcePaths "."
+          dependency "color-d" path="$GITHUB_WORKSPACE"
+          DUB
 
-          "$tmp/special-values"
+          dub run --root="$tmp" --compiler="$DC" --build=release
 
       - name: README quick-start consumer smoke
         shell: bash
@@ -347,13 +350,16 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
 
-          "$DC" \
-              -I"$GITHUB_WORKSPACE/source" \
-              -i \
-              -of="$tmp/readme-quickstart" \
-              "$GITHUB_WORKSPACE/tests/examples/readme_quickstart.d"
+          cp "$GITHUB_WORKSPACE/tests/examples/readme_quickstart.d" \
+              "$tmp/readme_quickstart.d"
+          cat > "$tmp/dub.sdl" <<DUB
+          name "ci-readme-quickstart"
+          targetType "executable"
+          sourcePaths "."
+          dependency "color-d" path="$GITHUB_WORKSPACE"
+          DUB
 
-          "$tmp/readme-quickstart"
+          dub run --root="$tmp" --compiler="$DC" --build=release
 
       - name: Consumer archive boundary smoke
         if: matrix.compiler == 'dmd-2.113.0'
