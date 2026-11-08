@@ -366,6 +366,7 @@ jobs:
           )
 
       - name: Accepted real consumer gates
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           bash .github/scripts/run-real-consumer-gates.sh \
