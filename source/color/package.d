@@ -30,7 +30,7 @@
 
      const display =
          adjusted
-         .gamutMapRayTraceToLinearSRgb
+         .mapToLinearSRgbRayTrace
          .toSRgb;
      ---
 
@@ -151,7 +151,7 @@
      documentation and not release-package content.
 
  Support:
-     The v0.2.0 release matrix supports DMD 2.112.1 and 2.113.0 plus LDC
+     The v0.4.0 release matrix supports DMD 2.112.1 and 2.113.0 plus LDC
      1.42.0 and 1.43.0 on Ubuntu 24.04 x86-64. Fast CI uses DMD 2.113.0 and
      LDC 1.43.0; the full supported matrix is a release gate. LDC is the
      current release-performance reference compiler.
@@ -160,7 +160,7 @@
      Alexander
 
  Date:
-     September 28, 2026
+     November 8, 2026
 
  Copyright:
      Copyright (c) 2026 Alexander

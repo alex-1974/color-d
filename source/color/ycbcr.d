@@ -67,7 +67,7 @@ enum YCbCrQuantizationError : ubyte
 }
 
 /// Packed three-channel code values for a YCbCr policy.
-struct YCbCrCode(Policy)
+struct QuantizedYCbCr(Policy)
 {
     ushort y;
     ushort cb;
@@ -112,7 +112,7 @@ alias YCbCrf(Policy) = YCbCr!(float, Policy);
 alias YCbCrd(Policy) = YCbCr!(double, Policy);
 
 /// Decodes integer YCbCr code values into normalized scalar samples.
-YCbCr!(T, Policy) toYCbCr(T, Policy)(YCbCrCode!Policy value)
+YCbCr!(T, Policy) toNormalizedYCbCr(T, Policy)(QuantizedYCbCr!Policy value)
 @safe pure nothrow @nogc
 {
     const T scale = cast(T)ycbcrMaxCode!Policy;
@@ -127,23 +127,23 @@ private ushort quantizeYCbCr(T)(T value, uint maxCode)
 }
 
 /// Quantizes normalized YCbCr samples to the policy's 8--16 bit code values.
-ColorResult!(YCbCrCode!Policy, YCbCrQuantizationError)
-toYCbCrCode(T, Policy)(YCbCr!(T, Policy) value)
+ColorResult!(QuantizedYCbCr!Policy, YCbCrQuantizationError)
+toQuantizedYCbCr(T, Policy)(YCbCr!(T, Policy) value)
 @safe pure nothrow @nogc
 {
     if (isNaN(value.y) || isNaN(value.cb) || isNaN(value.cr))
-        return ColorResult!(YCbCrCode!Policy,
+        return ColorResult!(QuantizedYCbCr!Policy,
             YCbCrQuantizationError).failure(
                 YCbCrQuantizationError.nonFinite);
     if (value.y < 0 || value.y > 1 || value.cb < 0 || value.cb > 1
         || value.cr < 0 || value.cr > 1)
-        return ColorResult!(YCbCrCode!Policy,
+        return ColorResult!(QuantizedYCbCr!Policy,
             YCbCrQuantizationError).failure(
                 YCbCrQuantizationError.outOfRange);
 
     const auto maxCode = ycbcrMaxCode!Policy;
-    return ColorResult!(YCbCrCode!Policy,
-        YCbCrQuantizationError).success(YCbCrCode!Policy(
+    return ColorResult!(QuantizedYCbCr!Policy,
+        YCbCrQuantizationError).success(QuantizedYCbCr!Policy(
             quantizeYCbCr(value.y, maxCode),
             quantizeYCbCr(value.cb, maxCode),
             quantizeYCbCr(value.cr, maxCode)));
@@ -364,12 +364,17 @@ YCbCr!(T, Policy) toYCbCr(Policy, T)(LinearSRgb!T value)
         && linearRoundTrip.b < originalLinear.b + 1e-4);
 
     const auto code = YCbCr!(double, Bt709Video)(16.0 / 255.0,
-        128.0 / 255.0, 128.0 / 255.0).toYCbCrCode;
+        128.0 / 255.0, 128.0 / 255.0).toQuantizedYCbCr;
     assert(code.hasValue);
     assert(code.value().y == 16 && code.value().cb == 128
         && code.value().cr == 128);
+    const auto normalized =
+        code.value().toNormalizedYCbCr!double;
+    assert(normalized.y == 16.0 / 255.0);
+    assert(normalized.cb == 128.0 / 255.0);
+    assert(normalized.cr == 128.0 / 255.0);
     const auto tenBit = YCbCr!(double, YCbCrPolicy!(YCbCrMatrix.bt2020,
-        YCbCrRange.full, 10))(0.5, 0.5, 0.5).toYCbCrCode;
+        YCbCrRange.full, 10))(0.5, 0.5, 0.5).toQuantizedYCbCr;
     assert(tenBit.hasValue && tenBit.value().y == 512);
 }
 

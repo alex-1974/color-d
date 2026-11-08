@@ -25,7 +25,7 @@ invalid/uninitialized for semantic use:
 - `Oklch!T`;
 - `Alpha!Color`;
 - `Premultiplied!Color`;
-- `Wcag2Measurement!T`.
+- `WcagMeasurement!T`.
 
 `HuePath` is different: `HuePath.init == HuePath.shorter`, and that is a
 valid interpolation policy.

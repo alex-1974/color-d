@@ -225,12 +225,12 @@ void acceptedDirectModuleSurface()
         );
 
     const localMapped =
-        color.gamut.gamutMapLocalMindeToLinearSRgb(
+        color.gamut.mapToLinearSRgbLocalMinde(
             lch
         );
 
     const rayMapped =
-        color.gamut.gamutMapRayTraceToLinearSRgb(
+        color.gamut.mapToLinearSRgbRayTrace(
             lch
         );
 
@@ -273,13 +273,13 @@ void acceptedDirectModuleSurface()
         );
 
     const preparedBrettelColor =
-        preparedBrettel.apply(linear);
+        preparedBrettel.transform(linear);
 
     const preparedVienotColor =
-        preparedVienot.apply(linear);
+        preparedVienot.transform(linear);
 
     const preparedMachadoColor =
-        preparedMachado.apply(linear);
+        preparedMachado.transform(linear);
 
     const color.rgb.LinearSRgbd[2] cvdInput =
     [
@@ -289,24 +289,24 @@ void acceptedDirectModuleSurface()
 
     color.rgb.LinearSRgbd[2] cvdOutput;
 
-    preparedBrettel.applyInto(
+    preparedBrettel.transformInto(
         cvdInput,
         cvdOutput
     );
 
     const bool cvdBatchOk =
-        preparedVienot.tryApplyInto(
+        preparedVienot.tryTransformInto(
             cvdInput[],
             cvdOutput[]
         );
 
     const luminance =
-        color.wcag.wcag2RelativeLuminance(
+        color.wcag.wcagRelativeLuminance(
             encoded
         );
 
     const contrast =
-        color.wcag.wcag2ContrastRatio(
+        color.wcag.wcagContrastRatio(
             encoded,
             color.rgb.SRgbd(
                 1.0,

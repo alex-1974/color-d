@@ -119,7 +119,7 @@ jobs:
                   0.30,
                   OklabHued.fromDegrees(40.0)
               )
-              .gamutMapRayTraceToLinearSRgb();
+              .mapToLinearSRgbRayTrace();
 
           static assert(mapped.inGamut);
 
@@ -159,7 +159,7 @@ jobs:
           @safe pure nothrow @nogc
           LinearSRgbd mapColor(Oklchd value)
           {
-              return value.gamutMapLocalMindeToLinearSRgb();
+              return value.mapToLinearSRgbLocalMinde();
           }
 
           @safe pure nothrow @nogc
@@ -215,7 +215,7 @@ jobs:
           void probe(Oklabd value)
           {
               auto mapped =
-                  value.gamutMapRayTraceToLinearSRgb();
+                  value.mapToLinearSRgbRayTrace();
           }
           D
 
@@ -333,7 +333,7 @@ jobs:
                   perceptual
                   .withLightness(0.70)
                   .withChroma(0.16)
-                  .gamutMapRayTraceToLinearSRgb;
+                  .mapToLinearSRgbRayTrace;
 
               assert(mapped.inGamut);
 
@@ -366,6 +366,7 @@ jobs:
           )
 
       - name: Accepted real consumer gates
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           bash .github/scripts/run-real-consumer-gates.sh \

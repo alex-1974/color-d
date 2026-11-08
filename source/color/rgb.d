@@ -217,7 +217,7 @@ if (is(T == float) || is(T == double))
  * It contains the same scalar transfer results as `SRgb!T.toLinear`; it does
  * not clip, gamut-map, interpolate, or allocate.
  */
-struct SRgb8DecodeTable(T)
+struct SRgb8Decoder(T)
 if (is(T == float) || is(T == double))
 {
     private T[256] values_;
@@ -237,11 +237,11 @@ if (is(T == float) || is(T == double))
  * `T`. Each subsequent lookup is an indexed read with zero interpolation
  * error. The returned value is independent and caller-owned.
  */
-SRgb8DecodeTable!T makeSRgb8DecodeTable(T)()
+SRgb8Decoder!T makeSRgb8Decoder(T)()
 @safe pure nothrow @nogc
 if (is(T == float) || is(T == double))
 {
-    SRgb8DecodeTable!T table;
+    SRgb8Decoder!T table;
 
     foreach (ubyte encoded; 0 .. 256)
         table.values_[encoded] = srgbToLinearComponent(
@@ -312,7 +312,7 @@ if (is(T == float) || is(T == double))
 ///
 @safe pure nothrow @nogc unittest
 {
-    const table = makeSRgb8DecodeTable!double();
+    const table = makeSRgb8Decoder!double();
 
     assert(table[0] == 0.0);
     assert(table[255] == 1.0);

@@ -665,7 +665,7 @@ jobs:
                   perceptual
                   .withLightness(0.70)
                   .withChroma(0.16)
-                  .gamutMapRayTraceToLinearSRgb;
+                  .mapToLinearSRgbRayTrace;
 
               assert(mapped.inGamut);
 
@@ -821,7 +821,7 @@ jobs:
                   0.30,
                   OklabHued.fromDegrees(40.0)
               )
-              .gamutMapRayTraceToLinearSRgb();
+              .mapToLinearSRgbRayTrace();
 
           static assert(mapped.inGamut);
 

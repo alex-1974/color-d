@@ -123,19 +123,19 @@ void main()
     static assert(is(Unqual!(typeof(polarMid)) == Oklchd));
 
     const mapped =
-        gamutMapRayTraceToLinearSRgb(
+        mapToLinearSRgbRayTrace(
             color: polarMid
         );
 
     static assert(is(Unqual!(typeof(mapped)) == LinearSRgbd));
 
     const contrast =
-        wcag2ContrastRatio(
+        wcagContrastRatio(
             first: encodedA,
             second: encodedB
         );
 
-    static assert(is(Unqual!(typeof(contrast)) == Wcag2Measurement!double));
+    static assert(is(Unqual!(typeof(contrast)) == WcagMeasurement!double));
 
     enum schedule =
         linearSchedule!3(

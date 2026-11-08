@@ -17,7 +17,7 @@ void main()
         .withChroma(0.16);
 
     const displayLinear =
-        adjusted.gamutMapRayTraceToLinearSRgb();
+        adjusted.mapToLinearSRgbRayTrace();
 
     assert(displayLinear.inGamut);
 

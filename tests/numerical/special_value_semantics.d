@@ -399,7 +399,7 @@ if (
     // WCAG domain validation accepts representable values in [0, 1],
     // including -0 and positive subnormals.
     const auto encodedLuminance =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgb!T(
                 minusZero,
                 minSub,
@@ -408,7 +408,7 @@ if (
         );
 
     const auto linearLuminance =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             LinearSRgb!T(
                 minusZero,
                 minSub,
@@ -971,10 +971,10 @@ if (
 
     if (
         invalidMapping
-            .gamutMapLocalMindeToLinearSRgb
+            .mapToLinearSRgbLocalMinde
             .inGamut ||
         invalidMapping
-            .gamutMapRayTraceToLinearSRgb
+            .mapToLinearSRgbRayTrace
             .inGamut
     )
     {
@@ -985,7 +985,7 @@ if (
     // WCAG rejects non-finite standards input through its explicit validity
     // channel.
     const auto nanMeasurement =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgb!T(
                 T.nan,
                 zero,
@@ -994,7 +994,7 @@ if (
         );
 
     const auto infMeasurement =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             LinearSRgb!T(
                 T.infinity,
                 zero,
@@ -1003,7 +1003,7 @@ if (
         );
 
     const auto invalidContrast =
-        wcag2ContrastRatio(
+        wcagContrastRatio(
             SRgb!T(
                 T.nan,
                 zero,

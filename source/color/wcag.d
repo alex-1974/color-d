@@ -25,7 +25,7 @@ private import color.rgb :
  *
  * The natural floating-point `.init` state is NaN and is therefore invalid.
  */
-struct Wcag2Measurement(T)
+struct WcagMeasurement(T)
 if (is(T == float) || is(T == double))
 {
     /// Scalar type used by the measurement.
@@ -59,7 +59,7 @@ if (is(T == float) || is(T == double))
     {
         import color.rgb : SRgbd;
 
-        const result = SRgbd(0, 0, 0).wcag2RelativeLuminance;
+        const result = SRgbd(0, 0, 0).wcagRelativeLuminance;
         assert(result.value == 0);
     }
 
@@ -75,16 +75,16 @@ if (is(T == float) || is(T == double))
     {
         import color.rgb : SRgbd;
 
-        assert(SRgbd(0, 0, 0).wcag2RelativeLuminance.valid);
-        assert(!SRgbd(-0.1, 0, 0).wcag2RelativeLuminance.valid);
+        assert(SRgbd(0, 0, 0).wcagRelativeLuminance.valid);
+        assert(!SRgbd(-0.1, 0, 0).wcagRelativeLuminance.valid);
     }
 }
 
 
-private Wcag2Measurement!T makeWcag2Measurement(T)(T value)
+private WcagMeasurement!T makeWcagMeasurement(T)(T value)
 @safe pure nothrow @nogc
 {
-    return Wcag2Measurement!T(value);
+    return WcagMeasurement!T(value);
 }
 
 
@@ -164,7 +164,7 @@ private T contrastFromLuminance(T)(T first, T second)
  *
  * Use this overload for ordinary encoded sRGB input. Components must be finite
  * and from 0 through 1 inclusive. Invalid input produces an
- * invalid `Wcag2Measurement` whose value is NaN. Alpha-bearing input is not
+ * invalid `WcagMeasurement` whose value is NaN. Alpha-bearing input is not
  * accepted and no clipping or gamut mapping is performed.
  *
  * Params:
@@ -178,13 +178,13 @@ private T contrastFromLuminance(T)(T first, T second)
  *     W3C WCAG 2.2 relative luminance for sRGB.
  */
 
-Wcag2Measurement!T wcag2RelativeLuminance(T)(SRgb!T color)
+WcagMeasurement!T wcagRelativeLuminance(T)(SRgb!T color)
 @safe pure nothrow @nogc
 {
     if (!isWcag2Domain(color))
-        return makeWcag2Measurement(T.nan);
+        return makeWcagMeasurement(T.nan);
 
-    return makeWcag2Measurement(
+    return makeWcagMeasurement(
         relativeLuminanceUnchecked(color)
     );
 }
@@ -197,10 +197,10 @@ Wcag2Measurement!T wcag2RelativeLuminance(T)(SRgb!T color)
         SRgbd;
 
     const black =
-        SRgbd(0, 0, 0).wcag2RelativeLuminance;
+        SRgbd(0, 0, 0).wcagRelativeLuminance;
 
     const white =
-        SRgbd(1, 1, 1).wcag2RelativeLuminance;
+        SRgbd(1, 1, 1).wcagRelativeLuminance;
 
     assert(black.valid);
     assert(black.value == 0);
@@ -229,13 +229,13 @@ Wcag2Measurement!T wcag2RelativeLuminance(T)(SRgb!T color)
  *     W3C WCAG 2.2 relative luminance for sRGB.
  */
 
-Wcag2Measurement!T wcag2RelativeLuminance(T)(LinearSRgb!T color)
+WcagMeasurement!T wcagRelativeLuminance(T)(LinearSRgb!T color)
 @safe pure nothrow @nogc
 {
     if (!isWcag2Domain(color))
-        return makeWcag2Measurement(T.nan);
+        return makeWcagMeasurement(T.nan);
 
-    return makeWcag2Measurement(
+    return makeWcagMeasurement(
         relativeLuminanceUnchecked(color)
     );
 }
@@ -245,8 +245,8 @@ Wcag2Measurement!T wcag2RelativeLuminance(T)(LinearSRgb!T color)
 {
     import color.rgb : LinearSRgbd;
 
-    const black = LinearSRgbd(0, 0, 0).wcag2RelativeLuminance;
-    const white = LinearSRgbd(1, 1, 1).wcag2RelativeLuminance;
+    const black = LinearSRgbd(0, 0, 0).wcagRelativeLuminance;
+    const white = LinearSRgbd(1, 1, 1).wcagRelativeLuminance;
 
     assert(black.valid && black.value == 0);
     assert(white.valid && white.value == 1);
@@ -272,7 +272,7 @@ Wcag2Measurement!T wcag2RelativeLuminance(T)(LinearSRgb!T color)
  *     W3C WCAG 2.2 contrast ratio.
  */
 
-Wcag2Measurement!T wcag2ContrastRatio(T)(
+WcagMeasurement!T wcagContrastRatio(T)(
     SRgb!T first,
     SRgb!T second
 )
@@ -283,10 +283,10 @@ Wcag2Measurement!T wcag2ContrastRatio(T)(
         !isWcag2Domain(second)
     )
     {
-        return makeWcag2Measurement(T.nan);
+        return makeWcagMeasurement(T.nan);
     }
 
-    return makeWcag2Measurement(
+    return makeWcagMeasurement(
         contrastFromLuminance(
             relativeLuminanceUnchecked(first),
             relativeLuminanceUnchecked(second)
@@ -302,7 +302,7 @@ Wcag2Measurement!T wcag2ContrastRatio(T)(
         SRgbd;
 
     const contrast =
-        SRgbd(0, 0, 0).wcag2ContrastRatio(
+        SRgbd(0, 0, 0).wcagContrastRatio(
             SRgbd(1, 1, 1)
         );
 
@@ -334,7 +334,7 @@ Wcag2Measurement!T wcag2ContrastRatio(T)(
  *     W3C WCAG 2.2 contrast ratio.
  */
 
-Wcag2Measurement!T wcag2ContrastRatio(T)(
+WcagMeasurement!T wcagContrastRatio(T)(
     LinearSRgb!T first,
     LinearSRgb!T second
 )
@@ -345,10 +345,10 @@ Wcag2Measurement!T wcag2ContrastRatio(T)(
         !isWcag2Domain(second)
     )
     {
-        return makeWcag2Measurement(T.nan);
+        return makeWcagMeasurement(T.nan);
     }
 
-    return makeWcag2Measurement(
+    return makeWcagMeasurement(
         contrastFromLuminance(
             relativeLuminanceUnchecked(first),
             relativeLuminanceUnchecked(second)
@@ -361,7 +361,7 @@ Wcag2Measurement!T wcag2ContrastRatio(T)(
 {
     import color.rgb : LinearSRgbd;
 
-    const contrast = LinearSRgbd(0, 0, 0).wcag2ContrastRatio(
+    const contrast = LinearSRgbd(0, 0, 0).wcagContrastRatio(
         LinearSRgbd(1, 1, 1)
     );
 
@@ -375,17 +375,17 @@ Wcag2Measurement!T wcag2ContrastRatio(T)(
     import color.rgb : SRgbd;
 
     const black =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgbd(0, 0, 0)
         );
 
     const white =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgbd(1, 1, 1)
         );
 
     const contrast =
-        wcag2ContrastRatio(
+        wcagContrastRatio(
             SRgbd(0, 0, 0),
             SRgbd(1, 1, 1)
         );
@@ -427,19 +427,19 @@ version (unittest)
 
 
     static assert(
-        Wcag2Measurement!float.sizeof ==
+        WcagMeasurement!float.sizeof ==
         float.sizeof
     );
 
     static assert(
-        Wcag2Measurement!double.sizeof ==
+        WcagMeasurement!double.sizeof ==
         double.sizeof
     );
 
 
     // Natural .init is deliberately invalid.
     enum initD =
-        Wcag2Measurement!double.init;
+        WcagMeasurement!double.init;
 
     static assert(!initD.valid);
     static assert(initD.value != initD.value);
@@ -447,12 +447,12 @@ version (unittest)
 
     // CTFE reference invariants.
     enum blackD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgbd(0, 0, 0)
         );
 
     enum whiteD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgbd(1, 1, 1)
         );
 
@@ -464,17 +464,17 @@ version (unittest)
 
 
     enum redLinearD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             LinearSRgbd(1, 0, 0)
         );
 
     enum greenLinearD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             LinearSRgbd(0, 1, 0)
         );
 
     enum blueLinearD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             LinearSRgbd(0, 0, 1)
         );
 
@@ -488,7 +488,7 @@ version (unittest)
 
 
     enum blackWhiteD =
-        wcag2ContrastRatio(
+        wcagContrastRatio(
             SRgbd(0, 0, 0),
             SRgbd(1, 1, 1)
         );
@@ -503,19 +503,19 @@ version (unittest)
 
     // Contrast is symmetric and equal colors have ratio 1.
     enum sameD =
-        wcag2ContrastRatio(
+        wcagContrastRatio(
             SRgbd(0.25, 0.5, 0.75),
             SRgbd(0.25, 0.5, 0.75)
         );
 
     enum orderAB =
-        wcag2ContrastRatio(
+        wcagContrastRatio(
             SRgbd(0.1, 0.2, 0.3),
             SRgbd(0.7, 0.8, 0.9)
         );
 
     enum orderBA =
-        wcag2ContrastRatio(
+        wcagContrastRatio(
             SRgbd(0.7, 0.8, 0.9),
             SRgbd(0.1, 0.2, 0.3)
         );
@@ -530,12 +530,12 @@ version (unittest)
 
     // Invalid finite domain.
     enum belowD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgbd(-0.0001, 0.5, 0.5)
         );
 
     enum aboveD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgbd(1.0001, 0.5, 0.5)
         );
 
@@ -548,17 +548,17 @@ version (unittest)
 
     // Non-finite encoded domain.
     enum nanD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgbd(double.nan, 0.5, 0.5)
         );
 
     enum posInfD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgbd(double.infinity, 0.5, 0.5)
         );
 
     enum negInfD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgbd(-double.infinity, 0.5, 0.5)
         );
 
@@ -569,27 +569,27 @@ version (unittest)
 
     // Linear-light input has the same strict normalized domain.
     enum belowLinearD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             LinearSRgbd(-0.0001, 0.5, 0.5)
         );
 
     enum aboveLinearD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             LinearSRgbd(1.0001, 0.5, 0.5)
         );
 
     enum nanLinearD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             LinearSRgbd(double.nan, 0.5, 0.5)
         );
 
     enum posInfLinearD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             LinearSRgbd(double.infinity, 0.5, 0.5)
         );
 
     enum negInfLinearD =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             LinearSRgbd(-double.infinity, 0.5, 0.5)
         );
 
@@ -602,7 +602,7 @@ version (unittest)
 
     // Invalid contrast input invalidates the whole measurement.
     enum invalidContrastD =
-        wcag2ContrastRatio(
+        wcagContrastRatio(
             SRgbd(0, 0, 0),
             SRgbd(1.01, 1, 1)
         );
@@ -612,33 +612,33 @@ version (unittest)
 
     // Scalar and color-space boundaries.
     static assert(!__traits(compiles,
-        wcag2ContrastRatio(
+        wcagContrastRatio(
             SRgbf(0, 0, 0),
             SRgbd(1, 1, 1)
         )
     ));
 
     static assert(!__traits(compiles,
-        wcag2ContrastRatio(
+        wcagContrastRatio(
             SRgbd(0, 0, 0),
             LinearSRgbd(1, 1, 1)
         )
     ));
 
     static assert(!__traits(compiles,
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             Oklabd(0, 0, 0)
         )
     ));
 
     static assert(!__traits(compiles,
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             XyzD65d(0, 0, 0)
         )
     ));
 
     static assert(!__traits(compiles,
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             Alpha!SRgbd(
                 SRgbd(0, 0, 0),
                 1
@@ -836,7 +836,7 @@ version (unittest)
 
             // Independent encoded-sRGB luminance reference.
             const auto measuredLuminance =
-                wcag2RelativeLuminance(first);
+                wcagRelativeLuminance(first);
 
             assert(measuredLuminance.valid);
 
@@ -855,19 +855,19 @@ version (unittest)
 
             // Public contrast result.
             const auto forward =
-                wcag2ContrastRatio(
+                wcagContrastRatio(
                     first,
                     second
                 );
 
             const auto reverse =
-                wcag2ContrastRatio(
+                wcagContrastRatio(
                     first: second,
                     second: first
                 );
 
             const auto identity =
-                wcag2ContrastRatio(
+                wcagContrastRatio(
                     first: first,
                     second: first
                 );
@@ -963,10 +963,10 @@ version (unittest)
         foreach (color; invalidEncoded)
         {
             const auto luminance =
-                wcag2RelativeLuminance(color);
+                wcagRelativeLuminance(color);
 
             const auto contrast =
-                wcag2ContrastRatio(
+                wcagContrastRatio(
                     color,
                     encodedWhite
                 );
@@ -987,10 +987,10 @@ version (unittest)
         foreach (color; invalidLinear)
         {
             const auto luminance =
-                wcag2RelativeLuminance(color);
+                wcagRelativeLuminance(color);
 
             const auto contrast =
-                wcag2ContrastRatio(
+                wcagContrastRatio(
                     color,
                     linearWhite
                 );
@@ -1012,7 +1012,7 @@ version (unittest)
 
     // R0.9 transfer-function boundary regression.
     enum boundary004044 =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgbd(
                 0.04044,
                 0.04044,
@@ -1021,7 +1021,7 @@ version (unittest)
         );
 
     enum boundary004045 =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgbd(
                 0.04045,
                 0.04045,
@@ -1030,7 +1030,7 @@ version (unittest)
         );
 
     enum boundary004046 =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             SRgbd(
                 0.04046,
                 0.04046,
@@ -1097,7 +1097,7 @@ version (unittest)
         );
 
     enum distinctionWcag =
-        wcag2RelativeLuminance(
+        wcagRelativeLuminance(
             distinctionColor
         );
 

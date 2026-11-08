@@ -25,7 +25,7 @@ static assert(is(Oklchf));
 static assert(is(Oklchd));
 static assert(is(Alpha!SRgbd));
 static assert(is(Premultiplied!LinearSRgbd));
-static assert(is(Wcag2Measurement!double));
+static assert(is(WcagMeasurement!double));
 static assert(is(SRgbChromaLimit!double));
 static assert(is(typeof(HuePath.shorter) == HuePath));
 static assert(is(typeof(CvdDeficiency.protan) == CvdDeficiency));
@@ -184,10 +184,10 @@ void acceptedRootAndUfcsSurface()
         LinearSRgbd(-0.1, 0.5, 1.1).clip;
 
     const localMapped =
-        lch.gamutMapLocalMindeToLinearSRgb;
+        lch.mapToLinearSRgbLocalMinde;
 
     const rayMapped =
-        lch.gamutMapRayTraceToLinearSRgb;
+        lch.mapToLinearSRgbRayTrace;
 
     const straight =
         Alpha!LinearSRgbd(
@@ -320,13 +320,13 @@ void acceptedRootAndUfcsSurface()
         );
 
     const preparedBrettelColor =
-        preparedBrettel.apply(linear);
+        preparedBrettel.transform(linear);
 
     const preparedVienotColor =
-        preparedVienot.apply(linear);
+        preparedVienot.transform(linear);
 
     const preparedMachadoColor =
-        preparedMachado.apply(linear);
+        preparedMachado.transform(linear);
 
     const LinearSRgbd[2] cvdInput =
     [
@@ -336,30 +336,30 @@ void acceptedRootAndUfcsSurface()
 
     LinearSRgbd[2] cvdOutput;
 
-    preparedVienot.applyInto(
+    preparedVienot.transformInto(
         cvdInput,
         cvdOutput
     );
 
     const bool cvdRuntimeBatchOk =
-        preparedMachado.tryApplyInto(
+        preparedMachado.tryTransformInto(
             cvdInput[],
             cvdOutput[]
         );
 
     const luminance =
-        encoded.wcag2RelativeLuminance;
+        encoded.wcagRelativeLuminance;
 
     const contrast =
-        encoded.wcag2ContrastRatio(
+        encoded.wcagContrastRatio(
             SRgbd(1.0, 1.0, 1.0)
         );
 
     const linearLuminance =
-        linear.wcag2RelativeLuminance;
+        linear.wcagRelativeLuminance;
 
     const linearContrast =
-        linear.wcag2ContrastRatio(
+        linear.wcagContrastRatio(
             LinearSRgbd(1.0, 1.0, 1.0)
         );
 
@@ -411,10 +411,10 @@ void acceptedRootAndUfcsSurface()
         );
 
     const alphaLocal =
-        alphaLch.gamutMapLocalMindeToLinearSRgb;
+        alphaLch.mapToLinearSRgbLocalMinde;
 
     const alphaRay =
-        alphaLch.gamutMapRayTraceToLinearSRgb;
+        alphaLch.mapToLinearSRgbRayTrace;
 
     assert(parsedRgb);
     assert(parsedRgba);
@@ -550,7 +550,7 @@ static assert(!__traits(compiles,
     )
 ));
 static assert(!__traits(compiles,
-    makeWcag2Measurement(0.5)
+    makeWcagMeasurement(0.5)
 ));
 static assert(!__traits(compiles,
     relativeLuminanceUnchecked(

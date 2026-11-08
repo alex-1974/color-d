@@ -14,7 +14,7 @@ optional bit-depth policy:
 | `Bt2020Video` | BT.2020 | Y 16..235, Cb/Cr 16..240 in 8-bit notation |
 
 Samples are normalized `float` or `double` values. Packed code values can be
-decoded and quantized with `YCbCrCode!Policy`; policies support 8 through 16
+decoded and quantized with `QuantizedYCbCr!Policy`; policies support 8 through 16
 bits.
 For video range, `Y=16/255` maps to black, `Y=235/255` maps to white, and
 `Cb=Cr=128/255` is neutral. Values outside the legal range remain extended.
@@ -60,8 +60,8 @@ Packed code values can be decoded with the same policy. This example uses a
 ```d
 alias Bt2020Full10 = YCbCrPolicy!(YCbCrMatrix.bt2020,
     YCbCrRange.full, 10);
-const packed = YCbCrCode!Bt2020Full10(512, 512, 512);
-const normalized = packed.toYCbCr!double;
+const packed = QuantizedYCbCr!Bt2020Full10(512, 512, 512);
+const normalized = packed.toNormalizedYCbCr!double;
 ```
 
 The result remains normalized and unquantized. `Bt709Video` places luma in the

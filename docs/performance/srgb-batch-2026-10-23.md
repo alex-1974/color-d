@@ -1,6 +1,6 @@
 # sRGB batch and byte-table measurement
 
-The reusable `SRgb8DecodeTable!T` is intended for consumers that repeatedly
+The reusable `SRgb8Decoder!T` is intended for consumers that repeatedly
 process encoded RGB8 values. It contains the exact scalar decode result for
 each of the 256 byte values; it does not interpolate, clip, gamut-map, or
 quantize.

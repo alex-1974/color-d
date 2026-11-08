@@ -7,9 +7,9 @@ module srgb_decode_batch_probe;
 
 import color.rgb :
     SRgbd,
-    SRgb8DecodeTable,
+    SRgb8Decoder,
     toLinear,
-    makeSRgb8DecodeTable;
+    makeSRgb8Decoder;
 import std.datetime.stopwatch : StopWatch;
 import std.stdio : writefln, writeln;
 
@@ -40,7 +40,7 @@ private double scalarPass(const ubyte[sampleCount] values)
 
 private double tablePass(
     const ubyte[sampleCount] values,
-    const SRgb8DecodeTable!double table
+    const SRgb8Decoder!double table
 )
 {
     double checksum = 0.0;
@@ -64,7 +64,7 @@ int main()
     foreach (i, ref value; values)
         value = cast(ubyte)(i & 255);
 
-    const table = makeSRgb8DecodeTable!double();
+    const table = makeSRgb8Decoder!double();
 
     StopWatch scalarWatch;
     scalarWatch.start();

@@ -35,7 +35,7 @@ const linear = middle.toOklab.toXyzD65.toLinearSRgb;
 
 if (!linear.inGamut)
 {
-    const mapped = middle.gamutMapRayTraceToLinearSRgb();
+    const mapped = middle.mapToLinearSRgbRayTrace();
     assert(mapped.inGamut);
 }
 ```

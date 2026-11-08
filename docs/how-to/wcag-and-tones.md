@@ -8,8 +8,8 @@ silently clipping invalid input.
 ```d
 import color;
 
-const black = wcag2RelativeLuminance(SRgbd(0, 0, 0));
-const white = wcag2RelativeLuminance(SRgbd(1, 1, 1));
+const black = wcagRelativeLuminance(SRgbd(0, 0, 0));
+const white = wcagRelativeLuminance(SRgbd(1, 1, 1));
 
 assert(black.valid);
 assert(white.valid);
@@ -17,14 +17,14 @@ assert(black.value == 0);
 assert(white.value == 1);
 ```
 
-Invalid input produces an invalid `Wcag2Measurement`; inspect `.valid`
+Invalid input produces an invalid `WcagMeasurement`; inspect `.valid`
 rather than treating the stored NaN as a success signal.
 
 ## Measure contrast, then apply application policy
 
 ```d
 const ratio =
-    wcag2ContrastRatio(
+    wcagContrastRatio(
         SRgbd(0, 0, 0),
         SRgbd(1, 1, 1)
     );
