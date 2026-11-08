@@ -1,6 +1,6 @@
 /++ HSL and HSV value conversions for encoded sRGB.
 
- Hues are turns in the interval [0, 1) on conversion output. Saturation,
+ Hues are turns in the interval [0, 1$(RPAREN) on conversion output. Saturation,
  lightness, and value are normalized scalar components. Achromatic colors have
  a canonical hue of zero. Conversion is value-based and does not clamp input.
 +/
